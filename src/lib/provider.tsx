@@ -88,7 +88,6 @@ interface AppContextType {
   addTenant: (tenant: Omit<Tenant, 'id'>) => Promise<void>;
   editTenant: (tenantId: string, tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
-  deleteIncomeTransactions: () => Promise<void>;
   loading: boolean;
   loadingCategories: boolean;
   loadingSettings: boolean;
@@ -563,30 +562,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const deleteIncomeTransactions = async () => {
-    if (!selectedTenantId) {
-      alert('Please select a tenant first.');
-      return;
-    }
-    try {
-      const q = query(
-        collection(db, 'transactions'),
-        where('tenantId', '==', selectedTenantId),
-        where('category', '==', 'Income')
-      );
-      const querySnapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      querySnapshot.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-      await batch.commit();
-      setAllTransactions(prev => prev.filter(t => t.category !== 'Income'));
-    } catch (e) {
-      console.error('Error deleting income transactions: ', e);
-    }
-  };
-
-
   const contextValue = useMemo(() => ({
     transactions: allTransactions,
     categories: allCategories,
@@ -611,7 +586,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addTenant,
     editTenant,
     deleteTenant,
-    deleteIncomeTransactions,
     loading,
     loadingCategories: loadingCategories,
     loadingSettings,

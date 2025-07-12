@@ -5,23 +5,12 @@ import { columns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
-import { Import, PlusCircle, Trash2 } from 'lucide-react';
+import { Import, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 
 export default function TransactionsPage() {
-  const { transactions, loading, loadingCategories, selectedTenantId, deleteIncomeTransactions } = useApp();
+  const { transactions, loading, loadingCategories, selectedTenantId } = useApp();
 
   if (loading || loadingCategories) {
     return (
@@ -51,32 +40,6 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={!selectedTenantId}>
-                <Trash2 className="mr-2" />
-                Delete Income Transactions
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete all
-                  transactions categorized as &quot;Income&quot; for the current tenant.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={deleteIncomeTransactions}
-                  className="bg-destructive hover:bg-destructive/90"
-                >
-                  Delete All
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
           <ImportCsvDialog>
             <Button variant="outline" disabled={!selectedTenantId}>
               <Import className="mr-2" />
