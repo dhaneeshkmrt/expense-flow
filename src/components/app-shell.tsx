@@ -63,17 +63,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
                         {item.subItems.map(subItem => (
                              <SidebarMenuItem key={subItem.href}>
-                                <Link href={subItem.href} passHref legacyBehavior>
+                                <Link href={subItem.href}>
                                     <SidebarMenuButton
-                                        asChild
                                         isActive={pathname === subItem.href}
                                         className="h-8"
                                         tooltip={subItem.label}
                                     >
-                                        <a>
-                                          <subItem.icon />
-                                          <span>{subItem.label}</span>
-                                        </a>
+                                        <subItem.icon />
+                                        <span>{subItem.label}</span>
                                     </SidebarMenuButton>
                                 </Link>
                              </SidebarMenuItem>
@@ -83,16 +80,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Collapsible>
               ) : (
                 <SidebarMenuItem key={item.href}>
-                   <Link href={item.href} passHref legacyBehavior>
+                   <Link href={item.href}>
                         <SidebarMenuButton
-                            asChild
                             isActive={pathname === item.href}
                             tooltip={item.label}
                         >
-                            <a>
-                                <item.icon />
-                                <span>{item.label}</span>
-                            </a>
+                            <item.icon />
+                            <span>{item.label}</span>
                         </SidebarMenuButton>
                    </Link>
                 </SidebarMenuItem>
