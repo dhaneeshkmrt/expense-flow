@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
@@ -20,7 +21,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -43,6 +44,8 @@ interface AppContextType {
   transactions: Transaction[];
   categories: Category[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  deleteTransaction: (transactionId: string) => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => void;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id'>) => void;
   editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon'>>) => void;
@@ -62,7 +65,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "transactions"));
+        const q = query(collection(db, "transactions"), orderBy("date", "desc"), orderBy("time", "desc"));
+        const querySnapshot = await getDocs(q);
         const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         setTransactions(fetchedTransactions);
       } catch (error) {
@@ -79,11 +83,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
     try {
       const docRef = await addDoc(collection(db, "transactions"), transaction);
-      setTransactions(prev => [{ ...transaction, id: docRef.id }, ...prev]);
+      setTransactions(prev => [{ ...transaction, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (e) {
       console.error("Error adding document: ", e);
     }
   };
+
+  const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id'>) => {
+    try {
+        const transactionRef = doc(db, "transactions", transactionId);
+        await updateDoc(transactionRef, transactionUpdate);
+        setTransactions(prev => 
+            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionUpdate } : t)
+               .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        );
+    } catch (e) {
+        console.error("Error updating document: ", e);
+    }
+  };
+
+  const deleteTransaction = async (transactionId: string) => {
+    try {
+        await deleteDoc(doc(db, "transactions", transactionId));
+        setTransactions(prev => prev.filter(t => t.id !== transactionId));
+    } catch (e) {
+        console.error("Error deleting document: ", e);
+    }
+  };
+
 
   const addCategory = (category: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => {
     const newCategory: Category = {
@@ -165,6 +192,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     transactions,
     categories,
     addTransaction,
+    editTransaction,
+    deleteTransaction,
     addCategory,
     addSubcategory,
     editCategory,

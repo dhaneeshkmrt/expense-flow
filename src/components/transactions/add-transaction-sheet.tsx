@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -35,7 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Loader2, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -48,6 +49,7 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command';
+import type { Transaction } from '@/lib/types';
 
 const transactionSchema = z.object({
   date: z.date({
@@ -66,24 +68,68 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 
 const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
 
-export default function AddTransactionSheet({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const { categories, addTransaction } = useApp();
+interface AddTransactionSheetProps {
+  children: React.ReactNode;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+  transaction?: Transaction;
+}
+
+export default function AddTransactionSheet({
+  children,
+  open: controlledOpen,
+  setOpen: setControlledOpen,
+  transaction,
+}: AddTransactionSheetProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const { categories, addTransaction, editTransaction } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const isEditing = !!transaction;
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = setControlledOpen !== undefined ? setControlledOpen : setInternalOpen;
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
-    defaultValues: {
-      date: new Date(),
-      time: format(new Date(), 'HH:mm'),
-      description: '',
-      amount: 0,
-      paidBy: '',
-      notes: '',
+    defaultValues: isEditing ? {
+        ...transaction,
+        date: parseISO(transaction.date),
+        amount: transaction.amount,
+        notes: transaction.notes || '',
+      } : {
+        date: new Date(),
+        time: format(new Date(), 'HH:mm'),
+        description: '',
+        amount: 0,
+        category: '',
+        subcategory: '',
+        paidBy: '',
+        notes: '',
     },
   });
+
+  useEffect(() => {
+    if (open) {
+      form.reset(isEditing ? {
+        ...transaction,
+        date: parseISO(transaction.date),
+        amount: transaction.amount,
+        notes: transaction.notes || '',
+      } : {
+        date: new Date(),
+        time: format(new Date(), 'HH:mm'),
+        description: '',
+        amount: 0,
+        category: '',
+        subcategory: '',
+        paidBy: '',
+        notes: '',
+      });
+    }
+  }, [open, isEditing, transaction, form]);
+
 
   const selectedCategory = form.watch('category');
   const descriptionToDebounce = form.watch('description');
@@ -95,7 +141,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
   }, [selectedCategory, categories]);
 
   useEffect(() => {
-    if (debouncedDescription.length > 5) {
+    if (!isEditing && debouncedDescription.length > 5) {
       startAiTransition(async () => {
         try {
           const allCategories = categories.map(c => c.name);
@@ -121,37 +167,58 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
         }
       });
     }
-  }, [debouncedDescription, categories, form]);
+  }, [debouncedDescription, categories, form, isEditing]);
 
-  // When category changes, reset subcategory
   useEffect(() => {
-    form.setValue('subcategory', '');
+    if (!form.formState.isDirty) return;
+    const currentSubcategory = form.getValues('subcategory');
+    const newSubcategories = categories.find(c => c.name === selectedCategory)?.subcategories || [];
+    if (!newSubcategories.some(s => s.name === currentSubcategory)) {
+      form.setValue('subcategory', '');
+    }
   }, [selectedCategory, form]);
 
 
   const onSubmit = async (data: TransactionFormValues) => {
     setIsSubmitting(true);
-    await addTransaction({
-      ...data,
-      date: format(data.date, 'yyyy-MM-dd'),
-    });
-    toast({
-      title: 'Transaction Added',
-      description: `Successfully added "${data.description}".`,
-    });
+    const submissionData = {
+        ...data,
+        date: format(data.date, 'yyyy-MM-dd'),
+    };
+    
+    if (isEditing) {
+        await editTransaction(transaction.id, submissionData);
+        toast({
+            title: 'Transaction Updated',
+            description: `Successfully updated "${data.description}".`,
+        });
+    } else {
+        await addTransaction(submissionData);
+        toast({
+            title: 'Transaction Added',
+            description: `Successfully added "${data.description}".`,
+        });
+    }
+
     form.reset();
     setIsSubmitting(false);
     setOpen(false);
   };
+
+  const sheetTitle = isEditing ? 'Edit Transaction' : 'Add a New Transaction';
+  const sheetDescription = isEditing
+    ? 'Update the details of your transaction below.'
+    : 'Enter the details of your transaction below.';
+
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Add a New Transaction</SheetTitle>
+          <SheetTitle>{sheetTitle}</SheetTitle>
           <SheetDescription>
-            Enter the details of your transaction below.
+            {sheetDescription}
           </SheetDescription>
         </SheetHeader>
         <Form {...form}>
@@ -228,7 +295,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="0.00" {...field} />
+                    <Input type="number" step="0.01" placeholder="0.00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -403,7 +470,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
             <SheetFooter>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Transaction
+                {isEditing ? 'Save Changes' : 'Save Transaction'}
               </Button>
             </SheetFooter>
           </form>

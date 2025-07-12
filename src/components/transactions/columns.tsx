@@ -3,9 +3,10 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Transaction } from '@/lib/types';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { ArrowUpDown, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '../ui/badge';
+import AddTransactionSheet from './add-transaction-sheet';
+import { useApp } from '@/lib/provider';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -98,26 +103,70 @@ export const columns: ColumnDef<Transaction>[] = [
   },
   {
     id: 'actions',
-    cell: ({ row }) => {
+    cell: function Actions({ row }) {
       const transaction = row.original;
+      const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
+      const { deleteTransaction } = useApp();
+
       return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigator.clipboard.writeText(transaction.id)}>
-              Copy Transaction ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Edit Transaction</DropdownMenuItem>
-            <DropdownMenuItem className="text-destructive">Delete Transaction</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <>
+          <AddTransactionSheet
+            open={isEditSheetOpen}
+            setOpen={setIsEditSheetOpen}
+            transaction={transaction}
+          >
+            {/* This is a dummy trigger, the sheet is controlled by state */}
+            <></>
+          </AddTransactionSheet>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(transaction.id)}>
+                Copy Transaction ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setIsEditSheetOpen(true)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Transaction
+              </DropdownMenuItem>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Transaction
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete this transaction.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteTransaction(transaction.id)}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
       );
     },
   },
