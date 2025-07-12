@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import type { Transaction, Category, Subcategory } from './types';
-import { transactions as initialTransactions, categories as initialCategories } from './data';
+import { categories as initialCategories } from './data';
 import {
   Briefcase,
   Gift,
@@ -19,6 +19,8 @@ import {
   Factory,
   HelpCircle,
 } from 'lucide-react';
+import { db } from './firebase';
+import { collection, addDoc, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -40,23 +42,47 @@ const iconMap: { [key: string]: React.ElementType } = {
 interface AppContextType {
   transactions: Transaction[];
   categories: Category[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => void;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id'>) => void;
   editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon'>>) => void;
   editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => void;
   deleteCategory: (categoryId: string) => void;
   deleteSubcategory: (categoryId: string, subcategoryId: string) => void;
+  loading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(initialCategories);
+  const [loading, setLoading] = useState(true);
 
-  const addTransaction = (transaction: Omit<Transaction, 'id'>) => {
-    setTransactions(prev => [{ ...transaction, id: `txn${Date.now()}` }, ...prev]);
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, "transactions"));
+        const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        setTransactions(fetchedTransactions);
+      } catch (error) {
+        console.error("Error fetching transactions: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+
+  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+    try {
+      const docRef = await addDoc(collection(db, "transactions"), transaction);
+      setTransactions(prev => [{ ...transaction, id: docRef.id }, ...prev]);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
   };
 
   const addCategory = (category: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => {
@@ -145,7 +171,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     editSubcategory,
     deleteCategory,
     deleteSubcategory,
-  }), [transactions, categories]);
+    loading,
+  }), [transactions, categories, loading]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

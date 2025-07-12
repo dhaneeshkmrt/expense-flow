@@ -71,6 +71,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
   const { categories, addTransaction } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -128,8 +129,9 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
   }, [selectedCategory, form]);
 
 
-  const onSubmit = (data: TransactionFormValues) => {
-    addTransaction({
+  const onSubmit = async (data: TransactionFormValues) => {
+    setIsSubmitting(true);
+    await addTransaction({
       ...data,
       date: format(data.date, 'yyyy-MM-dd'),
     });
@@ -138,6 +140,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
       description: `Successfully added "${data.description}".`,
     });
     form.reset();
+    setIsSubmitting(false);
     setOpen(false);
   };
 
@@ -398,7 +401,10 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
             />
 
             <SheetFooter>
-              <Button type="submit">Save Transaction</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Transaction
+              </Button>
             </SheetFooter>
           </form>
         </Form>

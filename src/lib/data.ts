@@ -1,4 +1,4 @@
-import type { Category, Transaction } from '@/lib/types';
+import type { Category } from '@/lib/types';
 import {
   Briefcase,
   Gift,
@@ -198,69 +198,5 @@ export const categories: Category[] = [
       { id: 'wfo_dmart', name: 'DMart' },
       { id: 'wfo_quick_commerce_app', name: 'Quick Commerce App' },
     ],
-  },
-];
-
-
-export const transactions: Transaction[] = [
-  {
-    id: 'txn1',
-    date: '2024-07-20',
-    time: '12:30',
-    description: 'Weekly groceries',
-    amount: 125.5,
-    category: 'Monthly',
-    subcategory: 'Grocery',
-    paidBy: 'Chase Sapphire',
-  },
-  {
-    id: 'txn2',
-    date: '2024-07-20',
-    time: '19:00',
-    description: 'Dinner with friends',
-    amount: 85.0,
-    category: 'Food & Snack',
-    subcategory: 'Food',
-    paidBy: 'Amex Gold',
-  },
-  {
-    id: 'txn3',
-    date: '2024-07-19',
-    time: '08:15',
-    description: 'Fuel for car',
-    amount: 132.0,
-    category: 'Monthly',
-    subcategory: 'petrol',
-    paidBy: 'Debit Card',
-  },
-  {
-    id: 'txn4',
-    date: '2024-07-18',
-    time: '15:45',
-    description: 'New shirt',
-    amount: 150.0,
-    category: 'DK professional',
-    subcategory: 'Shopping',
-    paidBy: 'Chase Sapphire',
-  },
-  {
-    id: 'txn5',
-    date: '2024-07-15',
-    time: '10:00',
-    description: 'Netflix monthly subscription',
-    amount: 15.49,
-    category: 'Dk',
-    subcategory: 'Subscriptions',
-    paidBy: 'Amex Gold',
-  },
-  {
-    id: 'txn6',
-    date: '2024-07-15',
-    time: '14:20',
-    description: 'Ibuprofen from CVS',
-    amount: 9.99,
-    category: 'Medical',
-    subcategory: 'Medical Bill',
-    paidBy: 'Cash',
   },
 ];
