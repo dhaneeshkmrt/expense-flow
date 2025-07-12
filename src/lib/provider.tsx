@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, where, getDoc } from 'firebase/firestore';
-import { useAuth } from './auth-provider';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -71,25 +70,19 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// A mock user ID to use since we've removed authentication
+const MOCK_USER_ID = 'local_user';
+
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading: authLoading } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const userId = user?.uid;
+  const userId = MOCK_USER_ID;
 
   useEffect(() => {
-    if (authLoading) {
-        setLoading(true);
-        setLoadingCategories(true);
-        return;
-    };
-
     if (!userId) {
-      setTransactions([]);
-      setCategories([]);
       setLoading(false);
       setLoadingCategories(false);
       return;
@@ -184,7 +177,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     fetchTransactions();
     fetchCategories();
-  }, [userId, authLoading]);
+  }, [userId]);
 
 
   const findCategory = (categoryId: string) => {
@@ -394,15 +387,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addCategory,
     editCategory,
     deleteCategory,
-addSubcategory,
+    addSubcategory,
     editSubcategory,
     deleteSubcategory,
     addMicrocategory,
     editMicrocategory,
     deleteMicrocategory,
-    loading: authLoading || loading,
-    loadingCategories: authLoading || loadingCategories,
-  }), [transactions, categories, loading, loadingCategories, authLoading, userId]);
+    loading: loading,
+    loadingCategories: loadingCategories,
+  }), [transactions, categories, loading, loadingCategories, userId]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
@@ -414,5 +407,3 @@ export function useApp() {
   }
   return context;
 }
-
-    
