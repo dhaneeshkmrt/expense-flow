@@ -55,7 +55,9 @@ interface DataTableProps<TData, TValue> {
 
 export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
   const { categories } = useApp();
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'date', desc: true }
+  ]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
@@ -85,11 +87,11 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
   });
 
   React.useEffect(() => {
-    table.getColumn('category')?.setFilterValue(categoryFilter || undefined);
+    table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
   }, [categoryFilter, table]);
 
   React.useEffect(() => {
-    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter || undefined);
+    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
   }, [subcategoryFilter, table]);
 
   React.useEffect(() => {
@@ -120,23 +122,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
       default:
         range = undefined;
     }
-
-    if (range?.from && range?.to) {
-        const filterFn = (row: any, columnId: string, value: any) => {
-            const date = new Date(row.getValue(columnId));
-            const fromDate = new Date(value.from);
-            fromDate.setHours(0,0,0,0);
-            const toDate = new Date(value.to);
-            toDate.setHours(23,59,59,999);
-            return date >= fromDate && date <= toDate;
-        };
-        table.getColumn('date')?.setFilterValue(range);
-        // @ts-ignore
-        table.getColumn('date').filterFn = filterFn;
-
-    } else {
-      table.getColumn('date')?.setFilterValue(undefined);
-    }
+    table.getColumn('date')?.setFilterValue(range);
   }, [period, dateRange, table]);
   
   // Set default period on mount

@@ -5,6 +5,7 @@ import { ColumnDef } from '@tanstack/react-table';
 import { Transaction } from '@/lib/types';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { format } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -33,10 +34,20 @@ export const columns: ColumnDef<Transaction>[] = [
       const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
       return <span>{format(utcDate, 'PPP')}</span>;
     },
-     filterFn: (row, id, value) => {
+    filterFn: (row, id, value) => {
       const date = new Date(row.getValue(id));
-      const [start, end] = value;
-      return date >= start && date <= end;
+      const { from, to } = value as DateRange;
+      const fromDate = from ? new Date(from.setHours(0, 0, 0, 0)) : undefined;
+      const toDate = to ? new Date(to.setHours(23, 59, 59, 999)) : undefined;
+
+      if (fromDate && !toDate) {
+        return date >= fromDate;
+      } else if (!fromDate && toDate) {
+        return date <= toDate;
+      } else if (fromDate && toDate) {
+        return date >= fromDate && date <= toDate;
+      }
+      return true;
     },
   },
   {
