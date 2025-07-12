@@ -18,6 +18,10 @@ import {
   CircleDollarSign,
   Factory,
   HelpCircle,
+  Apple,
+  Building,
+  User,
+  Calendar,
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, where } from 'firebase/firestore';
@@ -37,6 +41,10 @@ const iconMap: { [key: string]: React.ElementType } = {
   CircleDollarSign,
   Factory,
   HelpCircle,
+  Apple,
+  Building,
+  User,
+  Calendar,
 };
 
 const getIconName = (iconComponent: React.ElementType) => {
@@ -205,7 +213,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
             setTenants(fetchedTenants);
             if (fetchedTenants.length > 0 && !selectedTenantId) {
-                setSelectedTenantId(fetchedTenants[0].id);
+                const savedTenantId = localStorage.getItem('selectedTenantId');
+                if (savedTenantId && fetchedTenants.some(t => t.id === savedTenantId)) {
+                    setSelectedTenantId(savedTenantId);
+                } else {
+                    setSelectedTenantId(fetchedTenants[0].id);
+                }
             }
         } catch (error) {
             console.error("Error fetching tenants: ", error);
@@ -221,6 +234,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (selectedTenantId) {
+      localStorage.setItem('selectedTenantId', selectedTenantId);
       fetchTransactions(selectedTenantId);
       fetchCategories(selectedTenantId);
     } else {
@@ -464,7 +478,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const remainingTenants = tenants.filter(t => t.id !== tenantId);
         setTenants(remainingTenants);
         if (selectedTenantId === tenantId) {
-            setSelectedTenantId(remainingTenants.length > 0 ? remainingTenants[0].id : null);
+            const newSelectedId = remainingTenants.length > 0 ? remainingTenants[0].id : null
+            setSelectedTenantId(newSelectedId);
+            if(newSelectedId) {
+                localStorage.setItem('selectedTenantId', newSelectedId);
+            } else {
+                localStorage.removeItem('selectedTenantId');
+            }
         }
     } catch(e) {
         console.error("Error deleting tenant: ", e);
