@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -55,9 +56,9 @@ interface DataTableProps<TData, TValue> {
 
 export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories } = useApp();
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'date', desc: true }
-  ]);
+  const [sorting, setSorting] = React.useState<SortingState>(
+    showFilters ? [{ id: 'date', desc: true }] : []
+  );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
