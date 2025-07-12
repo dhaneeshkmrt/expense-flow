@@ -111,6 +111,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const seedDefaultCategories = useCallback(async (tenantId: string) => {
+    const batch = writeBatch(db);
+    initialCategories.forEach((category) => {
+        const categoryIdName = category.name.toLowerCase().replace(/\s+/g, '_');
+        const docRef = doc(db, 'categories', `${tenantId}_${categoryIdName}`);
+        const categoryForDb = {
+            ...category,
+            tenantId: tenantId,
+            icon: getIconName(category.icon),
+            subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
+        };
+        batch.set(docRef, categoryForDb);
+    });
+    await batch.commit();
+  }, []);
+
   const fetchCategories = useCallback(async (tenantId: string) => {
     setLoadingCategories(true);
     try {
@@ -118,20 +134,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const q = query(categoriesCollection, where("tenantId", "==", tenantId));
       let querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty && tenants.length > 0) {
-          const batch = writeBatch(db);
-          initialCategories.forEach((category) => {
-              const docRef = doc(db, 'categories', `${tenantId}_${category.id}`);
-              const categoryForDb = {
-                  ...category,
-                  tenantId: tenantId,
-                  icon: getIconName(category.icon),
-                  subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-              };
-              delete categoryForDb.id;
-              batch.set(docRef, categoryForDb);
-          });
-          await batch.commit();
+      if (querySnapshot.empty && tenants.some(t => t.id === tenantId)) {
+          await seedDefaultCategories(tenantId);
           querySnapshot = await getDocs(q);
       }
 
@@ -155,7 +159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoadingCategories(false);
     }
-  }, [tenants]);
+  }, [tenants, seedDefaultCategories]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -182,8 +186,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const fetchTenants = async () => {
         setLoadingTenants(true);
         try {
-            const querySnapshot = await getDocs(query(collection(db, "tenants"), orderBy("name")));
-            const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+            const tenantsCollection = collection(db, "tenants");
+            const querySnapshot = await getDocs(query(tenantsCollection, orderBy("name")));
+            let fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+
+            if (fetchedTenants.length === 0) {
+                const defaultTenantData = {
+                    name: 'dhanisha',
+                    mobileNo: '',
+                    address: '',
+                    members: []
+                };
+                const docRef = await addDoc(tenantsCollection, defaultTenantData);
+                const defaultTenant = { id: docRef.id, ...defaultTenantData };
+                fetchedTenants = [defaultTenant];
+                await seedDefaultCategories(defaultTenant.id);
+            }
+
             setTenants(fetchedTenants);
             if (fetchedTenants.length > 0 && !selectedTenantId) {
                 setSelectedTenantId(fetchedTenants[0].id);
@@ -197,6 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     fetchSettings();
     fetchTenants();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -222,6 +242,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...updatedCategory,
         icon: typeof updatedCategory.icon === 'string' ? updatedCategory.icon : getIconName(updatedCategory.icon),
     };
+    // @ts-ignore
+    delete categoryForDb.id;
     await updateDoc(categoryRef, categoryForDb);
   }
 
