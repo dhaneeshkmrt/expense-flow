@@ -65,7 +65,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const q = query(collection(db, "transactions"), orderBy("date", "desc"), orderBy("time", "desc"));
+        const q = query(collection(db, "transactions"), orderBy("date", "desc"));
         const querySnapshot = await getDocs(q);
         const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         setTransactions(fetchedTransactions);
