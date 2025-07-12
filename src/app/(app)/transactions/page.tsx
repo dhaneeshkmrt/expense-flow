@@ -5,8 +5,9 @@ import { columns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { Import, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 
 export default function TransactionsPage() {
   const { transactions, loading, loadingCategories, selectedTenantId } = useApp();
@@ -38,12 +39,20 @@ export default function TransactionsPage() {
             View and manage all your transactions.
           </p>
         </div>
-        <AddTransactionSheet>
-            <Button disabled={!selectedTenantId}>
-              <PlusCircle className="mr-2" />
-              Add Transaction
+        <div className="flex items-center gap-2">
+          <ImportCsvDialog>
+            <Button variant="outline" disabled={!selectedTenantId}>
+              <Import className="mr-2" />
+              Import CSV
             </Button>
-        </AddTransactionSheet>
+          </ImportCsvDialog>
+          <AddTransactionSheet>
+              <Button disabled={!selectedTenantId}>
+                <PlusCircle className="mr-2" />
+                Add Transaction
+              </Button>
+          </AddTransactionSheet>
+        </div>
       </div>
       <DataTable columns={columns} data={transactions} showFilters={true} />
     </div>

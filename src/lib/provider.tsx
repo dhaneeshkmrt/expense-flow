@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, where } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -72,6 +72,7 @@ interface AppContextType {
   selectedTenantId: string | null;
   setSelectedTenantId: (tenantId: string | null) => void;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
+  addMultipleTransactions: (transactions: Omit<Transaction, 'id' | 'tenantId' | 'userId'>[]) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => Promise<void>;
@@ -222,6 +223,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 const defaultTenant = { id: docRef.id, ...defaultTenantData };
                 fetchedTenants = [defaultTenant];
                 await seedDefaultCategories(defaultTenant.id);
+                await seedDefaultSettings(defaultTenant.id);
             }
 
             setTenants(fetchedTenants);
@@ -286,6 +288,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setAllTransactions(prev => [{ ...transactionData, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (e) {
       console.error("Error adding document: ", e);
+    }
+  };
+  
+  const addMultipleTransactions = async (transactions: Omit<Transaction, 'id' | 'tenantId' | 'userId'>[]) => {
+    if (!selectedTenantId) {
+      throw new Error("Please select a tenant first.");
+    }
+    const batch = writeBatch(db);
+    const newTransactions: Transaction[] = [];
+
+    transactions.forEach(transaction => {
+      const docRef = doc(collection(db, "transactions"));
+      const transactionData = { ...transaction, tenantId: selectedTenantId };
+      batch.set(docRef, transactionData);
+      newTransactions.push({ ...transactionData, id: docRef.id });
+    });
+
+    try {
+      await batch.commit();
+      setAllTransactions(prev => [...newTransactions, ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    } catch (e) {
+      console.error("Error adding multiple documents: ", e);
+      throw new Error("Failed to import transactions.");
     }
   };
 
@@ -545,6 +570,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectedTenantId,
     setSelectedTenantId,
     addTransaction,
+    addMultipleTransactions,
     editTransaction,
     deleteTransaction,
     addCategory,
