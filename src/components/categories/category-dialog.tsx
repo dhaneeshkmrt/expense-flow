@@ -45,7 +45,7 @@ import {
     Calendar,
     Apple
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
@@ -86,8 +86,11 @@ interface CategoryDialogProps {
 export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps) {
   const { addCategory, editCategory } = useApp();
   const isEditing = !!category;
-  const currentMonthKey = format(new Date(), 'yyyy-MM');
-  const currentMonthName = format(new Date(), 'MMMM');
+  
+  const now = new Date();
+  const currentMonthKey = format(now, 'yyyy-MM');
+  const previousMonthKey = format(subMonths(now, 1), 'yyyy-MM');
+  const currentMonthName = format(now, 'MMMM');
 
 
   const form = useForm<CategoryFormValues>({
@@ -103,17 +106,19 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
     if (open) {
       if (isEditing && category) {
         const iconName = iconList.find(icon => icon.component === category.icon)?.name;
-        const monthlyBudget = category.budgets?.[currentMonthKey] || 0;
+        const currentMonthBudget = category.budgets?.[currentMonthKey];
+        const previousMonthBudget = category.budgets?.[previousMonthKey] || 0;
+        
         form.reset({
           name: category.name,
           icon: iconName || '',
-          budget: monthlyBudget,
+          budget: currentMonthBudget !== undefined ? currentMonthBudget : previousMonthBudget,
         });
       } else {
         form.reset({ name: '', icon: '', budget: 0 });
       }
     }
-  }, [category, isEditing, open, form, currentMonthKey]);
+  }, [category, isEditing, open, form, currentMonthKey, previousMonthKey]);
 
   const onSubmit = (data: CategoryFormValues) => {
     const categoryData = {
