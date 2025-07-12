@@ -54,7 +54,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
   const parseAmount = (amountStr: string): number => {
     if (!amountStr) return 0;
     // Remove currency symbols (like ??), commas, and whitespace then parse as float
-    const cleaned = amountStr.replace(/[??,]/g, '').trim();
+    const cleaned = amountStr.replace(/[^\d.-]/g, '');
     return parseFloat(cleaned) || 0;
   };
 
