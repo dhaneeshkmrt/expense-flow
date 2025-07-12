@@ -17,25 +17,6 @@ import {
 // This data is used to seed the database on first run if it's empty.
 export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
-    name: 'Income',
-    icon: CircleDollarSign,
-    subcategories: [
-      { id: 'income_monthly', name: 'Monthly', microcategories: [] },
-      { id: 'income_appa_fd_interest', name: 'Appa FD Interest', microcategories: [] },
-      { id: 'income_fruits', name: 'Fruits', microcategories: [] },
-      { id: 'income_food_and_snack', name: 'Food & Snack', microcategories: [] },
-      { id: 'income_gift', name: 'Gift', microcategories: [] },
-      { id: 'income_medical', name: 'Medical', microcategories: [] },
-      { id: 'income_emergency', name: 'Emergency', microcategories: [] },
-      { id: 'income_home', name: 'Home', microcategories: [] },
-      { id: 'income_tour', name: 'Tour', microcategories: [] },
-      { id: 'income_dk_exp', name: 'Dk Exp', microcategories: [] },
-      { id: 'income_dk_professional', name: 'Dk Professional', microcategories: [] },
-      { id: 'income_nisha', name: 'Nisha', microcategories: [] },
-      { id: 'income_wfo', name: 'WFO', microcategories: [] },
-    ],
-  },
-  {
     name: 'Monthly',
     icon: Calendar,
     subcategories: [
