@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
-import { app } from './firebase'; // Use the initialized app
+import { app } from './firebase'; 
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -14,6 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Moved auth and provider initialization inside the provider component
+// to ensure they are only created on the client-side.
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
