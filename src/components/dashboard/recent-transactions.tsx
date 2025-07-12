@@ -2,15 +2,14 @@
 
 import { useApp } from '@/lib/provider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { categories } from '@/lib/data';
 
 export function RecentTransactions() {
-  const { transactions } = useApp();
+  const { transactions, categories } = useApp();
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
-    if (category) {
-      const Icon = category.icon;
+    if (category && category.icon) {
+      const Icon = typeof category.icon === 'string' ? () => null : category.icon;
       return <Icon className="w-4 h-4" />;
     }
     return null;
