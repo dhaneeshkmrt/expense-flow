@@ -14,31 +14,32 @@ import { Logo } from '@/components/logo';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const loginSchema = z.object({
+const signupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters.'),
   email: z.string().email('Please enter a valid email address.'),
-  password: z.string().min(1, 'Password is required.'),
+  password: z.string().min(6, 'Password must be at least 6 characters.'),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type SignupFormValues = z.infer<typeof signupSchema>;
 
-export default function LoginPage() {
-    const { signInWithEmail, loading } = useAuth();
+export default function SignupPage() {
+    const { signUpWithEmail, loading } = useAuth();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const form = useForm<LoginFormValues>({
-        resolver: zodResolver(loginSchema),
-        defaultValues: { email: '', password: '' },
+    const form = useForm<SignupFormValues>({
+        resolver: zodResolver(signupSchema),
+        defaultValues: { name: '', email: '', password: '' },
     });
 
-    const onSubmit = async (data: LoginFormValues) => {
+    const onSubmit = async (data: SignupFormValues) => {
         setIsSubmitting(true);
         try {
-            await signInWithEmail(data.email, data.password);
+            await signUpWithEmail(data.email, data.password, data.name);
         } catch (error: any) {
             toast({
                 variant: 'destructive',
-                title: 'Login Failed',
+                title: 'Sign Up Failed',
                 description: error.message || 'An unexpected error occurred.',
             });
             setIsSubmitting(false);
@@ -54,12 +55,25 @@ export default function LoginPage() {
                     <div className="mb-4 inline-block">
                         <Logo />
                     </div>
-                    <CardTitle className="text-2xl">Welcome Back</CardTitle>
-                    <CardDescription>Sign in to continue to ExpenseFlow.</CardDescription>
+                    <CardTitle className="text-2xl">Create an Account</CardTitle>
+                    <CardDescription>Enter your details to get started.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                             <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="John Doe" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                             <FormField
                                 control={form.control}
                                 name="email"
@@ -88,16 +102,16 @@ export default function LoginPage() {
                             />
                             <Button type="submit" className="w-full" disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Sign In
+                                Create Account
                             </Button>
                         </form>
                     </Form>
                 </CardContent>
                 <CardFooter className="flex justify-center text-sm">
                      <p className="text-muted-foreground">
-                        Don&apos;t have an account?&nbsp;
-                        <Link href="/signup" className="font-medium text-primary hover:underline">
-                            Sign up
+                        Already have an account?&nbsp;
+                        <Link href="/login" className="font-medium text-primary hover:underline">
+                            Sign In
                         </Link>
                     </p>
                 </CardFooter>

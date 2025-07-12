@@ -32,7 +32,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const getInitials = (name?: string | null) => {
     if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+    const names = name.split(' ');
+    if (names.length === 1) return names[0][0].toUpperCase();
+    return (names[0][0] + names[names.length - 1][0]).toUpperCase();
   }
 
   return (
@@ -68,11 +70,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         {user?.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'User'} />}
                         <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
                     </Avatar>
-                    <span className="truncate">{user?.displayName || 'User'}</span>
+                     <div className="flex flex-col items-start truncate">
+                      <span className="font-semibold truncate">{user?.displayName || 'User'}</span>
+                      <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+                    </div>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mb-2 ml-2">
-                <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                <DropdownMenuLabel>{user?.displayName || 'My Account'}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut}>
                   <LogOut className="mr-2 h-4 w-4" />

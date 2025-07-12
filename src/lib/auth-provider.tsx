@@ -1,14 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, updateProfile } from 'firebase/auth';
 import { app } from './firebase'; 
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<any>;
+  signUpWithEmail: (email: string, pass: string, name: string) => Promise<any>;
   signOut: () => Promise<void>;
 }
 
@@ -18,36 +19,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const auth = getAuth(app);
 
   useEffect(() => {
-    const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
-  const signInWithGoogle = async () => {
+  const signInWithEmail = async (email: string, pass: string) => {
     setLoading(true);
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged will handle the user state update
+      const userCredential = await signInWithEmailAndPassword(auth, email, pass);
       router.push('/dashboard');
+      return userCredential;
     } catch (error) {
-      console.error("Error signing in with Google: ", error);
+      console.error("Error signing in with email: ", error);
       setLoading(false);
+      throw error;
     }
   };
 
+  const signUpWithEmail = async (email: string, pass: string, name: string) => {
+    setLoading(true);
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+        if (auth.currentUser) {
+            await updateProfile(auth.currentUser, { displayName: name });
+        }
+        // Force a reload of the user to get the new display name
+        await auth.currentUser?.reload();
+        setUser(auth.currentUser);
+        router.push('/dashboard');
+        return userCredential;
+    } catch (error) {
+        console.error("Error signing up with email: ", error);
+        setLoading(false);
+        throw error;
+    }
+  };
+
+
   const handleSignOut = async () => {
-    const auth = getAuth(app);
     try {
       await signOut(auth);
-      // onAuthStateChanged will handle the user state update
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
@@ -57,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     loading,
-    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut: handleSignOut,
   };
 
