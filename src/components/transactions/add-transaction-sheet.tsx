@@ -64,7 +64,7 @@ interface AddTransactionSheetProps {
   children?: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
-  transaction?: Omit<Transaction, 'userId'>;
+  transaction?: Omit<Transaction, 'userId' | 'tenantId'>;
 }
 
 export default function AddTransactionSheet({

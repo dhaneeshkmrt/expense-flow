@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, TenantMember } from './types';
 import { categories as initialCategories } from './data';
 import {
@@ -20,7 +20,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, where } from 'firebase/firestore';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -54,10 +54,12 @@ interface AppContextType {
   categories: Category[];
   settings: Settings;
   tenants: Tenant[];
-  addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
-  editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
+  selectedTenantId: string | null;
+  setSelectedTenantId: (tenantId: string | null) => void;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
+  editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'userId'> & { icon: string }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => Promise<void>;
   editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon'>>) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
@@ -81,74 +83,80 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const SETTINGS_ID = 'app_settings';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
+  const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<Settings>({ currency: '₹' });
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+
+  const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingTenants, setLoadingTenants] = useState(true);
 
-  useEffect(() => {
-    const fetchTransactions = async () => {
-      setLoading(true);
-      try {
-        const querySnapshot = await getDocs(collection(db, "transactions"));
-        const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        
-        fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        setTransactions(fetchedTransactions);
-      } catch (error) {
-        console.error("Error fetching transactions: ", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loading = loadingTransactions || loadingCategories || loadingSettings || loadingTenants;
 
-    const fetchCategories = async () => {
-      setLoadingCategories(true);
-      try {
-        const categoriesCollection = collection(db, 'categories');
-        let querySnapshot = await getDocs(categoriesCollection);
+  const fetchTransactions = useCallback(async (tenantId: string) => {
+    setLoadingTransactions(true);
+    try {
+      const q = query(collection(db, "transactions"), where("tenantId", "==", tenantId));
+      const querySnapshot = await getDocs(q);
+      const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+      fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      setAllTransactions(fetchedTransactions);
+    } catch (error) {
+      console.error("Error fetching transactions: ", error);
+    } finally {
+      setLoadingTransactions(false);
+    }
+  }, []);
 
-        if (querySnapshot.empty) {
-            const batch = writeBatch(db);
-            initialCategories.forEach((category) => {
-                const docRef = doc(db, 'categories', category.id);
-                const categoryForDb = {
-                    ...category,
-                    icon: getIconName(category.icon),
-                    subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-                };
-                batch.set(docRef, categoryForDb);
-            });
-            await batch.commit();
-            querySnapshot = await getDocs(categoriesCollection);
-        }
+  const fetchCategories = useCallback(async (tenantId: string) => {
+    setLoadingCategories(true);
+    try {
+      const categoriesCollection = collection(db, 'categories');
+      const q = query(categoriesCollection, where("tenantId", "==", tenantId));
+      let querySnapshot = await getDocs(q);
 
-        const fetchedCategories = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              name: data.name,
-              icon: getIconComponent(data.icon),
-              subcategories: data.subcategories.map((sub: any) => ({
-                ...sub,
-                microcategories: sub.microcategories || []
-              })),
-            } as Category;
+      if (querySnapshot.empty && tenants.length > 0) {
+          const batch = writeBatch(db);
+          initialCategories.forEach((category) => {
+              const docRef = doc(db, 'categories', `${tenantId}_${category.id}`);
+              const categoryForDb = {
+                  ...category,
+                  tenantId: tenantId,
+                  icon: getIconName(category.icon),
+                  subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
+              };
+              batch.set(docRef, categoryForDb);
           });
-        setCategories(fetchedCategories);
-
-      } catch (error) {
-        console.error("Error fetching categories: ", error);
-      } finally {
-        setLoadingCategories(false);
+          await batch.commit();
+          querySnapshot = await getDocs(q);
       }
-    };
 
+      const fetchedCategories = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            icon: getIconComponent(data.icon),
+            subcategories: (data.subcategories || []).map((sub: any) => ({
+              ...sub,
+              microcategories: sub.microcategories || []
+            })),
+            tenantId: data.tenantId,
+          } as Category;
+        });
+      setAllCategories(fetchedCategories);
+
+    } catch (error) {
+      console.error("Error fetching categories: ", error);
+    } finally {
+      setLoadingCategories(false);
+    }
+  }, [tenants]);
+
+  useEffect(() => {
     const fetchSettings = async () => {
         setLoadingSettings(true);
         try {
@@ -176,22 +184,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             const querySnapshot = await getDocs(query(collection(db, "tenants"), orderBy("name")));
             const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
             setTenants(fetchedTenants);
+            if (fetchedTenants.length > 0 && !selectedTenantId) {
+                setSelectedTenantId(fetchedTenants[0].id);
+            }
         } catch (error) {
             console.error("Error fetching tenants: ", error);
         } finally {
             setLoadingTenants(false);
         }
     };
-
-    fetchTransactions();
-    fetchCategories();
+    
     fetchSettings();
     fetchTenants();
-  }, []);
+  }, [selectedTenantId]);
+
+  useEffect(() => {
+    if (selectedTenantId) {
+      fetchTransactions(selectedTenantId);
+      fetchCategories(selectedTenantId);
+    } else {
+        setAllTransactions([]);
+        setAllCategories([]);
+    }
+  }, [selectedTenantId, fetchTransactions, fetchCategories]);
 
 
   const findCategory = (categoryId: string) => {
-      const category = categories.find(c => c.id === categoryId);
+      const category = allCategories.find(c => c.id === categoryId);
       if (!category) throw new Error(`Category with id ${categoryId} not found`);
       return category;
   }
@@ -205,23 +224,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await updateDoc(categoryRef, categoryForDb);
   }
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'userId'>) => {
-    const transactionData = {...transaction };
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>) => {
+    if (!selectedTenantId) {
+        alert("Please select a tenant first.");
+        return;
+    }
+    const transactionData = { ...transaction, tenantId: selectedTenantId };
     try {
       const docRef = await addDoc(collection(db, "transactions"), transactionData);
-      setTransactions(prev => [{ ...transactionData, id: docRef.id, userId: '' }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setAllTransactions(prev => [{ ...transactionData, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (e) {
       console.error("Error adding document: ", e);
     }
   };
 
-  const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'userId'>) => {
-    const transactionData = {...transactionUpdate };
+  const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => {
+    if (!selectedTenantId) return;
+    const transactionData = { ...transactionUpdate, tenantId: selectedTenantId };
     try {
         const transactionRef = doc(db, "transactions", transactionId);
         await updateDoc(transactionRef, transactionData);
-        setTransactions(prev => 
-            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionData, userId: '' } : t)
+        setAllTransactions(prev => 
+            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionData } : t)
                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         );
     } catch (e) {
@@ -232,30 +256,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteTransaction = async (transactionId: string) => {
     try {
         await deleteDoc(doc(db, "transactions", transactionId));
-        setTransactions(prev => prev.filter(t => t.id !== transactionId));
+        setAllTransactions(prev => prev.filter(t => t.id !== transactionId));
     } catch (e) {
         console.error("Error deleting document: ", e);
     }
   };
 
-
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'userId'> & { icon: string }) => {
-    const id = categoryData.name.toLowerCase().replace(/\s+/g, '_');
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => {
+    if (!selectedTenantId) {
+        alert("Please select a tenant first.");
+        return;
+    }
+    const id = `${selectedTenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newCategoryForState: Category = {
       ...categoryData,
       id,
       subcategories: [],
       icon: getIconComponent(categoryData.icon),
+      tenantId: selectedTenantId,
     };
     const categoryForDb = {
         name: categoryData.name,
         icon: categoryData.icon,
         subcategories: [],
+        tenantId: selectedTenantId,
     }
 
     const docRef = doc(db, 'categories', id);
-    await writeBatch(db).set(docRef, categoryForDb).commit();
-    setCategories(prev => [...prev, newCategoryForState]);
+    await setDoc(docRef, categoryForDb);
+    setAllCategories(prev => [...prev, newCategoryForState]);
   };
 
   const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon'>>) => {
@@ -269,7 +298,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(categoryRef, dbUpdate);
     }
     
-    setCategories(prev => prev.map(c => {
+    setAllCategories(prev => prev.map(c => {
         if (c.id === categoryId) {
             const updatedCat = {...c};
             if(categoryUpdate.name) updatedCat.name = categoryUpdate.name;
@@ -283,12 +312,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteCategory = async (categoryId: string) => {
     const categoryRef = doc(db, 'categories', categoryId);
     await deleteDoc(categoryRef);
-    setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    setAllCategories(prev => prev.filter(cat => cat.id !== categoryId));
   };
   
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
     const category = findCategory(categoryId);
-    const id = subcategoryData.name.toLowerCase().replace(/\s+/g, '_');
+    const id = `${categoryId}_${subcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
 
     const updatedCategory = {
@@ -297,7 +326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
   
   const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
@@ -309,7 +338,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         )
     };
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
   const deleteSubcategory = async (categoryId: string, subcategoryId: string) => {
@@ -319,12 +348,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         subcategories: category.subcategories.filter(sub => sub.id !== subcategoryId)
     };
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
   
   const addMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryData: Omit<Microcategory, 'id'>) => {
     const category = findCategory(categoryId);
-    const id = microcategoryData.name.toLowerCase().replace(/\s+/g, '_');
+    const id = `${subcategoryId}_${microcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newMicrocategory: Microcategory = { ...microcategoryData, id };
 
     const updatedCategory = {
@@ -338,7 +367,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
   
   const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Pick<Microcategory, 'name'>) => {
@@ -354,7 +383,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
   const deleteMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string) => {
@@ -370,7 +399,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     
     await updateCategoryInDb(categoryId, updatedCategory);
-    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
   const updateSettings = async (newSettings: Partial<Settings>) => {
@@ -386,7 +415,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
     try {
         const docRef = await addDoc(collection(db, 'tenants'), tenantData);
-        setTenants(prev => [...prev, { id: docRef.id, ...tenantData }].sort((a,b) => a.name.localeCompare(b.name)));
+        const newTenant = { id: docRef.id, ...tenantData };
+        setTenants(prev => [...prev, newTenant].sort((a,b) => a.name.localeCompare(b.name)));
+        if (!selectedTenantId) {
+            setSelectedTenantId(newTenant.id);
+        }
     } catch(e) {
         console.error("Error adding tenant: ", e);
     }
@@ -405,7 +438,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteTenant = async (tenantId: string) => {
     try {
         await deleteDoc(doc(db, 'tenants', tenantId));
-        setTenants(prev => prev.filter(t => t.id !== tenantId));
+        const remainingTenants = tenants.filter(t => t.id !== tenantId);
+        setTenants(remainingTenants);
+        if (selectedTenantId === tenantId) {
+            setSelectedTenantId(remainingTenants.length > 0 ? remainingTenants[0].id : null);
+        }
     } catch(e) {
         console.error("Error deleting tenant: ", e);
     }
@@ -413,10 +450,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 
   const contextValue = useMemo(() => ({
-    transactions,
-    categories,
+    transactions: allTransactions,
+    categories: allCategories,
     settings,
     tenants,
+    selectedTenantId,
+    setSelectedTenantId,
     addTransaction,
     editTransaction,
     deleteTransaction,
@@ -434,10 +473,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     editTenant,
     deleteTenant,
     loading,
-    loadingCategories,
+    loadingCategories: loadingCategories,
     loadingSettings,
     loadingTenants,
-  }), [transactions, categories, settings, tenants, loading, loadingCategories, loadingSettings, loadingTenants]);
+  }), [
+      allTransactions, allCategories, settings, tenants, selectedTenantId, 
+      loading, loadingCategories, loadingSettings, loadingTenants,
+      fetchCategories, fetchTransactions
+    ]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

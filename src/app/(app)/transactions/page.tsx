@@ -9,7 +9,7 @@ import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TransactionsPage() {
-  const { transactions, loading, loadingCategories } = useApp();
+  const { transactions, loading, loadingCategories, selectedTenantId } = useApp();
 
   if (loading || loadingCategories) {
     return (
@@ -39,7 +39,7 @@ export default function TransactionsPage() {
           </p>
         </div>
         <AddTransactionSheet>
-            <Button>
+            <Button disabled={!selectedTenantId}>
               <PlusCircle className="mr-2" />
               Add Transaction
             </Button>

@@ -1,3 +1,4 @@
+'use client';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -5,8 +6,10 @@ import AddTransactionSheet from '@/components/transactions/add-transaction-sheet
 import { Button } from '@/components/ui/button';
 import { Download, PlusCircle } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
+import { useApp } from '@/lib/provider';
 
 export default function DashboardPage() {
+  const { selectedTenantId } = useApp();
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -22,7 +25,7 @@ export default function DashboardPage() {
             Download Report
           </Button>
           <AddTransactionSheet>
-            <Button>
+            <Button disabled={!selectedTenantId}>
               <PlusCircle className="mr-2" />
               Add Transaction
             </Button>

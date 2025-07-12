@@ -125,7 +125,6 @@ export const columns: ColumnDef<Transaction>[] = [
             setOpen={setIsEditSheetOpen}
             transaction={transaction}
           />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -135,10 +134,6 @@ export const columns: ColumnDef<Transaction>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => navigator.clipboard.writeText(transaction.id)}>
-                Copy Transaction ID
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setIsEditSheetOpen(true)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Transaction

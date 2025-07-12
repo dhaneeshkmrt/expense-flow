@@ -14,6 +14,7 @@ export type Category = {
   name: string;
   icon: React.ElementType | string;
   subcategories: Subcategory[];
+  tenantId: string;
   userId?: string;
   isDefault?: boolean;
 };
@@ -29,7 +30,8 @@ export type Transaction = {
   microcategory: string;
   paidBy: string;
   notes?: string;
-  userId: string;
+  tenantId: string;
+  userId?: string;
 };
 
 export type Settings = {

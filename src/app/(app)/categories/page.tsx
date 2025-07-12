@@ -15,7 +15,7 @@ import { MicrocategoryDialog } from '@/components/categories/microcategory-dialo
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories } = useApp();
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId } = useApp();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
@@ -101,7 +101,7 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
           <p className="text-muted-foreground">Manage your expense categories and subcategories.</p>
         </div>
-        <Button onClick={handleAddCategory}>
+        <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
           <PlusCircle className="mr-2" />
           Add Category
         </Button>
