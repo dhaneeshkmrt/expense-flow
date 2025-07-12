@@ -32,7 +32,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -40,6 +40,14 @@ import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { suggestTransactionCategories } from '@/ai/flows/categorize-transaction';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 
 const transactionSchema = z.object({
   date: z.date({
@@ -114,6 +122,11 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
     }
   }, [debouncedDescription, categories, form]);
 
+  // When category changes, reset subcategory
+  useEffect(() => {
+    form.setValue('subcategory', '');
+  }, [selectedCategory, form]);
+
 
   const onSubmit = (data: TransactionFormValues) => {
     addTransaction({
@@ -131,7 +144,7 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent className="sm:max-w-lg">
+      <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Add a New Transaction</SheetTitle>
           <SheetDescription>
@@ -224,24 +237,60 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
                 control={form.control}
                 name="category"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel className="flex items-center">
                       Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                     </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              'w-full justify-between',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value
+                              ? categories.find(
+                                  (cat) => cat.name === field.value
+                                )?.name
+                              : 'Select a category'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search category..." />
+                          <CommandList>
+                            <CommandEmpty>No category found.</CommandEmpty>
+                            <CommandGroup>
+                              {categories.map((cat) => (
+                                <CommandItem
+                                  value={cat.name}
+                                  key={cat.id}
+                                  onSelect={() => {
+                                    form.setValue('category', cat.name, { shouldValidate: true })
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      cat.name === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  {cat.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -250,22 +299,59 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
                 control={form.control}
                 name="subcategory"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="flex flex-col">
                     <FormLabel>Subcategory</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCategory}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a subcategory" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {subcategories.map((subcat) => (
-                          <SelectItem key={subcat.id} value={subcat.name}>
-                            {subcat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              'w-full justify-between',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                            disabled={!selectedCategory}
+                          >
+                            {field.value
+                              ? subcategories.find(
+                                  (sub) => sub.name === field.value
+                                )?.name
+                              : 'Select a subcategory'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                           <CommandInput placeholder="Search subcategory..." />
+                           <CommandList>
+                            <CommandEmpty>No subcategory found.</CommandEmpty>
+                            <CommandGroup>
+                              {subcategories.map((sub) => (
+                                <CommandItem
+                                  value={sub.name}
+                                  key={sub.id}
+                                  onSelect={() => {
+                                    form.setValue('subcategory', sub.name, { shouldValidate: true })
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      sub.name === field.value
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  {sub.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                           </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
