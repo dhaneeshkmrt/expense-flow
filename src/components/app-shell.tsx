@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -54,8 +55,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
         <SidebarContent>
           <SidebarMenu>
-            {navItems.map((item) => (
-              item.subItems ? (
+            {navItems.map((item) => {
+              const isDashboard = item.label === 'Dashboard';
+              const label = isDashboard && selectedTenant ? `Dashboard - ${selectedTenant.name}` : item.label;
+
+              return item.subItems ? (
                 <Collapsible key={item.label} open={openAdmin} onOpenChange={setOpenAdmin}>
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
@@ -94,15 +98,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                    <Link href={item.href}>
                         <SidebarMenuButton
                             isActive={pathname === item.href}
-                            tooltip={item.label}
+                            tooltip={label}
                         >
                             <item.icon />
-                            <span>{item.label}</span>
+                            <span>{label}</span>
                         </SidebarMenuButton>
                    </Link>
                 </SidebarMenuItem>
               )
-            ))}
+            })}
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter />
