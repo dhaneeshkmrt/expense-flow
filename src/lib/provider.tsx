@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import type { Transaction, Category, Subcategory, Microcategory, Settings } from './types';
+import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, TenantMember } from './types';
 import { categories as initialCategories } from './data';
 import {
   Briefcase,
@@ -20,7 +20,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc } from 'firebase/firestore';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -53,6 +53,7 @@ interface AppContextType {
   transactions: Transaction[];
   categories: Category[];
   settings: Settings;
+  tenants: Tenant[];
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
@@ -66,9 +67,13 @@ interface AppContextType {
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
   updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
+  addTenant: (tenant: Omit<Tenant, 'id'>) => Promise<void>;
+  editTenant: (tenantId: string, tenant: Omit<Tenant, 'id'>) => Promise<void>;
+  deleteTenant: (tenantId: string) => Promise<void>;
   loading: boolean;
   loadingCategories: boolean;
   loadingSettings: boolean;
+  loadingTenants: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -79,9 +84,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<Settings>({ currency: '₹' });
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [loadingTenants, setLoadingTenants] = useState(true);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -146,14 +153,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setLoadingSettings(true);
         try {
             const settingsRef = doc(db, 'settings', SETTINGS_ID);
-            const docSnap = await getDocs(collection(db, 'settings'));
+            const docSnap = await getDoc(settingsRef);
 
-            if (docSnap.empty) {
+            if (!docSnap.exists()) {
                 const defaultSettings: Settings = { currency: '₹' };
                 await setDoc(settingsRef, defaultSettings);
                 setSettings(defaultSettings);
             } else {
-                const settingsData = docSnap.docs[0].data() as Settings;
+                const settingsData = docSnap.data() as Settings;
                 setSettings(settingsData);
             }
         } catch (error) {
@@ -163,9 +170,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const fetchTenants = async () => {
+        setLoadingTenants(true);
+        try {
+            const querySnapshot = await getDocs(query(collection(db, "tenants"), orderBy("name")));
+            const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+            setTenants(fetchedTenants);
+        } catch (error) {
+            console.error("Error fetching tenants: ", error);
+        } finally {
+            setLoadingTenants(false);
+        }
+    };
+
     fetchTransactions();
     fetchCategories();
     fetchSettings();
+    fetchTenants();
   }, []);
 
 
@@ -362,11 +383,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
   };
 
+  const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
+    try {
+        const docRef = await addDoc(collection(db, 'tenants'), tenantData);
+        setTenants(prev => [...prev, { id: docRef.id, ...tenantData }].sort((a,b) => a.name.localeCompare(b.name)));
+    } catch(e) {
+        console.error("Error adding tenant: ", e);
+    }
+  };
+
+  const editTenant = async (tenantId: string, tenantData: Omit<Tenant, 'id'>) => {
+    try {
+        const tenantRef = doc(db, 'tenants', tenantId);
+        await updateDoc(tenantRef, tenantData);
+        setTenants(prev => prev.map(t => t.id === tenantId ? { id: tenantId, ...tenantData } : t).sort((a,b) => a.name.localeCompare(b.name)));
+    } catch(e) {
+        console.error("Error updating tenant: ", e);
+    }
+  };
+
+  const deleteTenant = async (tenantId: string) => {
+    try {
+        await deleteDoc(doc(db, 'tenants', tenantId));
+        setTenants(prev => prev.filter(t => t.id !== tenantId));
+    } catch(e) {
+        console.error("Error deleting tenant: ", e);
+    }
+  };
+
 
   const contextValue = useMemo(() => ({
     transactions,
     categories,
     settings,
+    tenants,
     addTransaction,
     editTransaction,
     deleteTransaction,
@@ -380,10 +430,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     editMicrocategory,
     deleteMicrocategory,
     updateSettings,
+    addTenant,
+    editTenant,
+    deleteTenant,
     loading,
     loadingCategories,
-    loadingSettings
-  }), [transactions, categories, settings, loading, loadingCategories, loadingSettings]);
+    loadingSettings,
+    loadingTenants,
+  }), [transactions, categories, settings, tenants, loading, loadingCategories, loadingSettings, loadingTenants]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

@@ -35,3 +35,16 @@ export type Transaction = {
 export type Settings = {
   currency: string;
 };
+
+export type TenantMember = {
+  name: string;
+  mobileNo: string;
+};
+
+export type Tenant = {
+  id: string;
+  name: string;
+  mobileNo: string;
+  address: string;
+  members: TenantMember[];
+};
