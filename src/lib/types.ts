@@ -12,8 +12,10 @@ export type Subcategory = {
 export type Category = {
   id: string;
   name: string;
-  icon: React.ElementType | string; // Allow string for storing in DB
+  icon: React.ElementType | string;
   subcategories: Subcategory[];
+  userId?: string;
+  isDefault?: boolean;
 };
 
 export type Transaction = {
@@ -27,4 +29,5 @@ export type Transaction = {
   microcategory: string;
   paidBy: string;
   notes?: string;
+  userId: string;
 };

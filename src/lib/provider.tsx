@@ -20,7 +20,8 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, where, getDoc } from 'firebase/firestore';
+import { useAuth } from './auth-provider';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -39,13 +40,11 @@ const iconMap: { [key: string]: React.ElementType } = {
   HelpCircle,
 };
 
-// Helper to convert icon component to string for DB
 const getIconName = (iconComponent: React.ElementType) => {
     const iconEntry = Object.entries(iconMap).find(([, val]) => val === iconComponent);
     return iconEntry ? iconEntry[0] : 'HelpCircle';
 }
 
-// Helper to convert icon string from DB to component
 const getIconComponent = (iconName: string): React.ElementType => {
     return iconMap[iconName] || HelpCircle;
 };
@@ -54,10 +53,10 @@ const getIconComponent = (iconName: string): React.ElementType => {
 interface AppContextType {
   transactions: Transaction[];
   categories: Category[];
-  addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
-  editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
+  editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'userId'> & { icon: string }) => Promise<void>;
   editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon'>>) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
@@ -73,16 +72,28 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
+  const userId = user?.uid;
+
   useEffect(() => {
+    if (authLoading) return;
+    if (!userId) {
+      setTransactions([]);
+      setCategories([]);
+      setLoading(false);
+      setLoadingCategories(false);
+      return;
+    }
+
     const fetchTransactions = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, "transactions"), orderBy("date", "desc"));
+        const q = query(collection(db, "transactions"), where("userId", "==", userId), orderBy("date", "desc"));
         const querySnapshot = await getDocs(q);
         const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         setTransactions(fetchedTransactions);
@@ -97,25 +108,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoadingCategories(true);
       try {
         const categoriesCollection = collection(db, 'categories');
-        const querySnapshot = await getDocs(categoriesCollection);
+        const userCategoriesQuery = query(categoriesCollection, where("userId", "==", userId));
+        let querySnapshot = await getDocs(userCategoriesQuery);
 
         if (querySnapshot.empty) {
-          // If no categories in DB, upload the initial ones
-          const batch = writeBatch(db);
-          initialCategories.forEach((category) => {
-            const docRef = doc(db, 'categories', category.id);
-            const categoryForDb = {
-              ...category,
-              icon: getIconName(category.icon),
-              subcategories: category.subcategories.map(sub => ({...sub, microcategories: []}))
-            };
-            batch.set(docRef, categoryForDb);
-          });
-          await batch.commit();
-          const categoriesWithComponents = initialCategories.map(c => ({...c, subcategories: c.subcategories.map(s => ({...s, microcategories: []}))}));
-          setCategories(categoriesWithComponents);
-        } else {
-          const fetchedCategories = querySnapshot.docs.map(doc => {
+          // Check if default categories exist
+          const defaultCatDoc = await getDoc(doc(db, 'categories', 'default_income'));
+           if (!defaultCatDoc.exists()) {
+             // If no categories in DB, upload the initial ones as default
+              const batch = writeBatch(db);
+              initialCategories.forEach((category) => {
+                  const docRef = doc(db, 'categories', `default_${category.id}`);
+                  const categoryForDb = {
+                      ...category,
+                      icon: getIconName(category.icon),
+                      subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
+                      isDefault: true,
+                  };
+                  batch.set(docRef, categoryForDb);
+              });
+              await batch.commit();
+            }
+
+            // Now fetch all default categories
+            const defaultCategoriesQuery = query(categoriesCollection, where("isDefault", "==", true));
+            querySnapshot = await getDocs(defaultCategoriesQuery);
+        }
+
+        const fetchedCategories = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
               id: doc.id,
@@ -127,8 +147,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               })),
             } as Category;
           });
-          setCategories(fetchedCategories);
-        }
+        setCategories(fetchedCategories);
+
       } catch (error) {
         console.error("Error fetching categories: ", error);
       } finally {
@@ -138,7 +158,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     fetchTransactions();
     fetchCategories();
-  }, []);
+  }, [userId, authLoading]);
 
 
   const findCategory = (categoryId: string) => {
@@ -156,21 +176,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await updateDoc(categoryRef, categoryForDb);
   }
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'userId'>) => {
+    if(!userId) return;
+    const transactionWithUser = {...transaction, userId};
     try {
-      const docRef = await addDoc(collection(db, "transactions"), transaction);
-      setTransactions(prev => [{ ...transaction, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      const docRef = await addDoc(collection(db, "transactions"), transactionWithUser);
+      setTransactions(prev => [{ ...transactionWithUser, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (e) {
       console.error("Error adding document: ", e);
     }
   };
 
-  const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id'>) => {
+  const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'userId'>) => {
+     if(!userId) return;
+    const transactionWithUser = {...transactionUpdate, userId};
     try {
         const transactionRef = doc(db, "transactions", transactionId);
-        await updateDoc(transactionRef, transactionUpdate);
+        await updateDoc(transactionRef, transactionWithUser);
         setTransactions(prev => 
-            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionUpdate } : t)
+            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionWithUser } : t)
                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         );
     } catch (e) {
@@ -188,8 +212,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon'> & { icon: string }) => {
-    const id = categoryData.name.toLowerCase().replace(/\s+/g, '_');
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'userId'> & { icon: string }) => {
+    if(!userId) return;
+    const id = `${userId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newCategory: Category = {
       ...categoryData,
       id,
@@ -200,7 +225,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...categoryData,
         id,
         subcategories: [],
-        icon: categoryData.icon
+        icon: categoryData.icon,
+        userId: userId,
+        isDefault: false,
     }
 
     await addDoc(collection(db, 'categories'), categoryForDb);
@@ -208,12 +235,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon'>>) => {
+    if(!userId) return;
     const categoriesCopy = [...categories];
     const categoryIndex = categoriesCopy.findIndex(c => c.id === categoryId);
     if (categoryIndex === -1) return;
 
     const oldCategory = categoriesCopy[categoryIndex];
-    const iconName = typeof categoryUpdate.icon === 'string' ? categoryUpdate.icon : getIconName(oldCategory.icon);
     
     const updatedCategory = { 
         ...oldCategory, 
@@ -234,12 +261,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const deleteCategory = async (categoryId: string) => {
+    if(!userId) return;
     const categoryRef = doc(db, 'categories', categoryId);
     await deleteDoc(categoryRef);
     setCategories(prev => prev.filter(cat => cat.id !== categoryId));
   };
   
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
+    if(!userId) return;
     const category = findCategory(categoryId);
     const id = subcategoryData.name.toLowerCase().replace(/\s+/g, '_');
     const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
@@ -254,6 +283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
+     if(!userId) return;
     const category = findCategory(categoryId);
     const updatedCategory = {
         ...category,
@@ -266,6 +296,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteSubcategory = async (categoryId: string, subcategoryId: string) => {
+     if(!userId) return;
     const category = findCategory(categoryId);
     const updatedCategory = {
         ...category,
@@ -276,6 +307,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const addMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryData: Omit<Microcategory, 'id'>) => {
+    if(!userId) return;
     const category = findCategory(categoryId);
     const id = microcategoryData.name.toLowerCase().replace(/\s+/g, '_');
     const newMicrocategory: Microcategory = { ...microcategoryData, id };
@@ -295,6 +327,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
   
   const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Pick<Microcategory, 'name'>) => {
+    if(!userId) return;
     const category = findCategory(categoryId);
     const updatedCategory = {
         ...category,
@@ -311,6 +344,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string) => {
+    if(!userId) return;
     const category = findCategory(categoryId);
     const updatedCategory = {
         ...category,
@@ -342,9 +376,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addMicrocategory,
     editMicrocategory,
     deleteMicrocategory,
-    loading,
-    loadingCategories,
-  }), [transactions, categories, loading, loadingCategories]);
+    loading: authLoading || loading,
+    loadingCategories: authLoading || loadingCategories,
+  }), [transactions, categories, loading, loadingCategories, authLoading, userId]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

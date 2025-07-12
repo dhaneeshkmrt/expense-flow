@@ -64,7 +64,7 @@ interface AddTransactionSheetProps {
   children: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
-  transaction?: Transaction;
+  transaction?: Omit<Transaction, 'userId'>;
 }
 
 export default function AddTransactionSheet({
@@ -105,7 +105,7 @@ export default function AddTransactionSheet({
 
   useEffect(() => {
     if (open) {
-      form.reset(isEditing ? {
+      form.reset(isEditing && transaction ? {
         ...transaction,
         date: parseISO(transaction.date),
         amount: transaction.amount,
@@ -179,7 +179,7 @@ export default function AddTransactionSheet({
       form.setValue('subcategory', '');
       form.setValue('microcategory', '');
     }
-  }, [selectedCategoryName, form]);
+  }, [selectedCategoryName, form, categories]);
   
   useEffect(() => {
       if (!form.formState.isDirty) return;
@@ -188,7 +188,7 @@ export default function AddTransactionSheet({
       if(!newMicrocategories.some(m => m.name === currentMicrocategory)) {
           form.setValue('microcategory', '');
       }
-  }, [selectedSubcategoryName, form, selectedCategoryName]);
+  }, [selectedSubcategoryName, form, selectedCategoryName, categories]);
 
   const onSubmit = async (data: TransactionFormValues) => {
     setIsSubmitting(true);
@@ -197,7 +197,7 @@ export default function AddTransactionSheet({
         date: format(data.date, 'yyyy-MM-dd'),
     };
     
-    if (isEditing) {
+    if (isEditing && transaction) {
         await editTransaction(transaction.id, submissionData);
         toast({
             title: 'Transaction Updated',

@@ -1,6 +1,7 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
+// WARNING: Do not expose your keys when deploying to production
 const firebaseConfig = {
   apiKey: "AIzaSyBnhiJ4H7QFRJve75x_zuQj-HFk34u1Pe0",
   authDomain: "expenseflow-54862.firebaseapp.com",
@@ -11,8 +12,14 @@ const firebaseConfig = {
   measurementId: "G-LW7QDMHECM"
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0];
+}
+
 const db = getFirestore(app);
 
-export { db };
+export { app, db };
