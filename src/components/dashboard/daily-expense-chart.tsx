@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, isWithinInterval, eachDayOfInterval, getDate, parseISO } from 'date-fns';
@@ -41,9 +42,19 @@ export function DailyExpenseChart() {
 
   }, [transactions]);
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value).replace('$', settings.currency);
+  };
+
+
   return (
     <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={data}>
+      <BarChart data={data} margin={{ top: 20, right: 0, left: 0, bottom: 5 }}>
         <XAxis 
             dataKey="name" 
             stroke="#888888" 
@@ -69,7 +80,14 @@ export function DailyExpenseChart() {
           formatter={(value: number, name, props) => [`${settings.currency}${value.toFixed(2)}`, `Day ${props.payload.name}`]}
           labelFormatter={() => ''}
         />
-        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
+            <LabelList 
+                dataKey="total" 
+                position="top" 
+                formatter={(value: number) => value > 0 ? formatCurrency(value) : ''}
+                fontSize={11}
+            />
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   );
