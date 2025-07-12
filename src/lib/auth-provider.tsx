@@ -14,17 +14,13 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Moved auth and provider initialization inside the provider component
-// to ensure they are only created on the client-side.
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
+    const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
       setLoading(false);
@@ -35,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     setLoading(true);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
       // onAuthStateChanged will handle the user state update
@@ -46,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSignOut = async () => {
+    const auth = getAuth(app);
     try {
       await signOut(auth);
       // onAuthStateChanged will handle the user state update
