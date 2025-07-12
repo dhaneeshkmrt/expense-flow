@@ -22,11 +22,11 @@ import { format } from 'date-fns';
 
 type CsvRow = {
   'Date': string;
-  'Cate': string;
-  'sub': string;
+  'Category': string;
+  'Sub Category': string;
   'Amount': string;
   'Paid by': string;
-  'Desc': string;
+  'Description': string;
   'Notes'?: string;
 };
 
@@ -90,8 +90,8 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
         let importError: string | null = null;
 
         for (const row of results.data) {
-          const categoryName = row['Cate']?.trim();
-          const subcategoryName = row['sub']?.trim();
+          const categoryName = row['Category']?.trim();
+          const subcategoryName = row['Sub Category']?.trim();
 
           if (!categoryName || !subcategoryName) {
             continue; // Skip rows without category or subcategory
@@ -110,7 +110,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
           validTransactions.push({
             date: parseDate(row['Date']),
             time: '00:00', // Default time
-            description: row['Desc'] || 'Imported Transaction',
+            description: row['Description'] || 'Imported Transaction',
             amount: parseAmount(row['Amount']),
             category: categoryName,
             subcategory: subcategoryName,
@@ -176,7 +176,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
         <DialogHeader>
           <DialogTitle>Import Transactions from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with your transaction data. The format should be: Date, Cate, sub, Amount, Paid by, Desc, Notes.
+            Upload a CSV file with your transaction data. The format should be: Date, Category, Sub Category, Amount, Paid by, Description, Notes.
           </DialogDescription>
         </DialogHeader>
 
