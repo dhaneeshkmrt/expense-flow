@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useEffect, useCallback } from 'react';
 import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, TenantMember } from './types';
-import { categories as initialCategories } from './data';
+import { categories as defaultCategories, defaultSettings } from './data';
 import {
   Briefcase,
   Gift,
@@ -88,8 +88,6 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const defaultSettings: Omit<Settings, 'tenantId'> = { currency: '₹' };
-
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
@@ -103,6 +101,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [loadingTenants, setLoadingTenants] = useState(true);
 
   const loading = loadingTransactions || loadingCategories || loadingSettings || loadingTenants;
+
+  const seedDefaultCategories = useCallback(async (tenantId: string) => {
+    const batch = writeBatch(db);
+    defaultCategories.forEach((category) => {
+        const categoryIdName = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        const docRef = doc(db, 'categories', `${tenantId}_${categoryIdName}`);
+        const categoryForDb = {
+            ...category,
+            tenantId: tenantId,
+            icon: getIconName(category.icon),
+            subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
+        };
+        batch.set(docRef, categoryForDb);
+    });
+    await batch.commit();
+  }, []);
+
+  const seedDefaultSettings = useCallback(async (tenantId: string) => {
+    const settingsRef = doc(db, 'settings', tenantId);
+    const newSettings = { ...defaultSettings, tenantId };
+    await setDoc(settingsRef, newSettings);
+    return newSettings;
+  }, []);
 
   const fetchTransactions = useCallback(async (tenantId: string) => {
     setLoadingTransactions(true);
@@ -119,21 +140,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const seedDefaultCategories = useCallback(async (tenantId: string) => {
-    const batch = writeBatch(db);
-    initialCategories.forEach((category) => {
-        const categoryIdName = category.name.toLowerCase().replace(/\s+/g, '_');
-        const docRef = doc(db, 'categories', `${tenantId}_${categoryIdName}`);
-        const categoryForDb = {
-            ...category,
-            tenantId: tenantId,
-            icon: getIconName(category.icon),
-            subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-        };
-        batch.set(docRef, categoryForDb);
-    });
-    await batch.commit();
-  }, []);
 
   const fetchCategories = useCallback(async (tenantId: string) => {
     setLoadingCategories(true);
@@ -176,8 +182,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const docSnap = await getDoc(settingsRef);
 
         if (!docSnap.exists()) {
-            const newSettings = { ...defaultSettings, tenantId };
-            await setDoc(settingsRef, newSettings);
+            const newSettings = await seedDefaultSettings(tenantId);
             setSettings(newSettings);
         } else {
             setSettings(docSnap.data() as Settings);
@@ -187,7 +192,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
         setLoadingSettings(false);
     }
-  }, []);
+  }, [seedDefaultSettings]);
 
   useEffect(() => {
     const fetchTenants = async () => {
@@ -454,7 +459,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     try {
         const docRef = await addDoc(collection(db, 'tenants'), tenantData);
         const newTenant = { id: docRef.id, ...tenantData };
+
+        await seedDefaultCategories(newTenant.id);
+        await seedDefaultSettings(newTenant.id);
+
         setTenants(prev => [...prev, newTenant].sort((a,b) => a.name.localeCompare(b.name)));
+        
         if (!selectedTenantId) {
             setSelectedTenantId(newTenant.id);
         }
