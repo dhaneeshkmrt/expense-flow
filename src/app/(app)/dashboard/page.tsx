@@ -4,6 +4,7 @@ import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
 import { Download, PlusCircle } from 'lucide-react';
+import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 
 export default function DashboardPage() {
   return (
@@ -29,44 +30,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Spent (July)</CardTitle>
-            <CardDescription>Total expenses for the current month.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">$1,250.78</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Avg. Transaction</CardTitle>
-            <CardDescription>Average amount per transaction.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">$89.34</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Category</CardTitle>
-            <CardDescription>The category you spent the most on.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">Shopping</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Transactions</CardTitle>
-            <CardDescription>Total number of transactions.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-4xl font-bold">10</p>
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardStats />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">

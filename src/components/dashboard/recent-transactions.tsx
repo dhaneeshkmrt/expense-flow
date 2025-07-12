@@ -4,7 +4,7 @@ import { useApp } from '@/lib/provider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export function RecentTransactions() {
-  const { transactions, categories } = useApp();
+  const { transactions, categories, settings } = useApp();
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
@@ -13,6 +13,13 @@ export function RecentTransactions() {
       return <Icon className="w-4 h-4" />;
     }
     return null;
+  };
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount).replace('$', settings.currency);
   };
 
   return (
@@ -29,7 +36,7 @@ export function RecentTransactions() {
             <p className="text-sm text-muted-foreground">{transaction.category}</p>
           </div>
           <div className="ml-auto font-medium">
-            -${transaction.amount.toFixed(2)}
+            -{formatCurrency(transaction.amount)}
           </div>
         </div>
       ))}

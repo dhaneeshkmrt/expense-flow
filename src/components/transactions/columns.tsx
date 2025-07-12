@@ -71,12 +71,15 @@ export const columns: ColumnDef<Transaction>[] = [
         </div>
       );
     },
-    cell: ({ row }) => {
+    cell: function AmountCell({ row }) {
+      const { settings } = useApp();
       const amount = parseFloat(row.getValue('amount'));
+      
       const formatted = new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
-      }).format(amount);
+        currency: 'USD', // The currency code doesn't matter here as we override the symbol.
+      }).format(amount).replace('$', settings.currency);
+
       return <div className="text-right font-medium">{formatted}</div>;
     },
   },
@@ -121,9 +124,7 @@ export const columns: ColumnDef<Transaction>[] = [
             open={isEditSheetOpen}
             setOpen={setIsEditSheetOpen}
             transaction={transaction}
-          >
-            {/* The sheet is triggered programmatically, so it doesn't need a child trigger element here. */}
-          </AddTransactionSheet>
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

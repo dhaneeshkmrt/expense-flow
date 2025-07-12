@@ -5,7 +5,7 @@ import { useApp } from '@/lib/provider';
 import { useMemo } from 'react';
 
 export function OverviewChart() {
-  const { transactions, categories } = useApp();
+  const { transactions, categories, settings } = useApp();
 
   const data = useMemo(() => {
     const categoryTotals = new Map<string, number>();
@@ -26,7 +26,7 @@ export function OverviewChart() {
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
         <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+        <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${settings.currency}${value}`} />
         <Tooltip
           contentStyle={{
             backgroundColor: 'hsl(var(--card))',
@@ -34,6 +34,7 @@ export function OverviewChart() {
             borderRadius: 'var(--radius)',
           }}
           cursor={{ fill: 'hsl(var(--muted))' }}
+          formatter={(value: number) => [`${settings.currency}${value.toFixed(2)}`, 'Total']}
         />
         <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
       </BarChart>

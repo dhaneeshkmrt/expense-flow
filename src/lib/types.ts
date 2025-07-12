@@ -31,3 +31,7 @@ export type Transaction = {
   notes?: string;
   userId: string;
 };
+
+export type Settings = {
+  currency: string;
+};

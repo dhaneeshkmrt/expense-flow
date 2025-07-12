@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import type { Transaction, Category, Subcategory, Microcategory } from './types';
+import type { Transaction, Category, Subcategory, Microcategory, Settings } from './types';
 import { categories as initialCategories } from './data';
 import {
   Briefcase,
@@ -20,7 +20,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, where, getDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc } from 'firebase/firestore';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -52,6 +52,7 @@ const getIconComponent = (iconName: string): React.ElementType => {
 interface AppContextType {
   transactions: Transaction[];
   categories: Category[];
+  settings: Settings;
   addTransaction: (transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
@@ -64,20 +65,23 @@ interface AppContextType {
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
+  updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
   loading: boolean;
   loadingCategories: boolean;
+  loadingSettings: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// A mock user ID to use since we've removed authentication
-const MOCK_USER_ID = 'local_user';
+const SETTINGS_ID = 'app_settings';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [settings, setSettings] = useState<Settings>({ currency: '₹' });
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingSettings, setLoadingSettings] = useState(true);
 
   useEffect(() => {
     const fetchTransactions = async () => {
@@ -86,7 +90,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const querySnapshot = await getDocs(collection(db, "transactions"));
         const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
         
-        // Sort transactions by date client-side
         fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
         setTransactions(fetchedTransactions);
@@ -111,7 +114,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     ...category,
                     icon: getIconName(category.icon),
                     subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-                    userId: MOCK_USER_ID
                 };
                 batch.set(docRef, categoryForDb);
             });
@@ -140,8 +142,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const fetchSettings = async () => {
+        setLoadingSettings(true);
+        try {
+            const settingsRef = doc(db, 'settings', SETTINGS_ID);
+            const docSnap = await getDocs(collection(db, 'settings'));
+
+            if (docSnap.empty) {
+                const defaultSettings: Settings = { currency: '₹' };
+                await setDoc(settingsRef, defaultSettings);
+                setSettings(defaultSettings);
+            } else {
+                const settingsData = docSnap.docs[0].data() as Settings;
+                setSettings(settingsData);
+            }
+        } catch (error) {
+            console.error("Error fetching settings: ", error);
+        } finally {
+            setLoadingSettings(false);
+        }
+    };
+
     fetchTransactions();
     fetchCategories();
+    fetchSettings();
   }, []);
 
 
@@ -161,22 +185,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'userId'>) => {
-    const transactionWithUser = {...transaction, userId: MOCK_USER_ID};
+    const transactionData = {...transaction };
     try {
-      const docRef = await addDoc(collection(db, "transactions"), transactionWithUser);
-      setTransactions(prev => [{ ...transactionWithUser, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      const docRef = await addDoc(collection(db, "transactions"), transactionData);
+      setTransactions(prev => [{ ...transactionData, id: docRef.id, userId: '' }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (e) {
       console.error("Error adding document: ", e);
     }
   };
 
   const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'userId'>) => {
-    const transactionWithUser = {...transactionUpdate, userId: MOCK_USER_ID};
+    const transactionData = {...transactionUpdate };
     try {
         const transactionRef = doc(db, "transactions", transactionId);
-        await updateDoc(transactionRef, transactionWithUser);
+        await updateDoc(transactionRef, transactionData);
         setTransactions(prev => 
-            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionWithUser } : t)
+            prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionData, userId: '' } : t)
                .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         );
     } catch (e) {
@@ -206,7 +230,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         name: categoryData.name,
         icon: categoryData.icon,
         subcategories: [],
-        userId: MOCK_USER_ID
     }
 
     const docRef = doc(db, 'categories', id);
@@ -329,10 +352,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
+  const updateSettings = async (newSettings: Partial<Settings>) => {
+      try {
+          const settingsRef = doc(db, 'settings', SETTINGS_ID);
+          await setDoc(settingsRef, newSettings, { merge: true });
+          setSettings(prev => ({...prev, ...newSettings}));
+      } catch (error) {
+          console.error("Error updating settings: ", error);
+      }
+  };
+
 
   const contextValue = useMemo(() => ({
     transactions,
     categories,
+    settings,
     addTransaction,
     editTransaction,
     deleteTransaction,
@@ -345,9 +379,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addMicrocategory,
     editMicrocategory,
     deleteMicrocategory,
-    loading: loading,
-    loadingCategories: loadingCategories,
-  }), [transactions, categories, loading, loadingCategories]);
+    updateSettings,
+    loading,
+    loadingCategories,
+    loadingSettings
+  }), [transactions, categories, settings, loading, loadingCategories, loadingSettings]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
