@@ -82,18 +82,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const userId = MOCK_USER_ID;
 
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      setLoadingCategories(false);
-      return;
-    }
-
     const fetchTransactions = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, "transactions"), where("userId", "==", userId), orderBy("date", "desc"));
+        const q = query(collection(db, "transactions"), where("userId", "==", userId));
         const querySnapshot = await getDocs(q);
         const fetchedTransactions = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+        
+        // Sort transactions by date client-side
+        fetchedTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
         setTransactions(fetchedTransactions);
       } catch (error) {
         console.error("Error fetching transactions: ", error);
@@ -407,3 +405,5 @@ export function useApp() {
   }
   return context;
 }
+
+    
