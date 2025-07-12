@@ -30,10 +30,13 @@ export const columns: ColumnDef<Transaction>[] = [
     },
     cell: ({ row }) => {
       const date = new Date(row.getValue('date'));
-      // The original date is in UTC, so we need to adjust for the timezone
-      // to avoid off-by-one day errors.
       const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
-      return format(utcDate, 'PPP');
+      return <span>{format(utcDate, 'PPP')}</span>;
+    },
+     filterFn: (row, id, value) => {
+      const date = new Date(row.getValue(id));
+      const [start, end] = value;
+      return date >= start && date <= end;
     },
   },
   {
@@ -66,11 +69,17 @@ export const columns: ColumnDef<Transaction>[] = [
     accessorKey: 'category',
     header: 'Category',
     cell: ({ row }) => <Badge variant="secondary">{row.getValue('category')}</Badge>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
   },
   {
     accessorKey: 'subcategory',
     header: 'Subcategory',
     cell: ({ row }) => <Badge variant="outline">{row.getValue('subcategory')}</Badge>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
   },
   {
     accessorKey: 'paidBy',
