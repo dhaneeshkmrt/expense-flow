@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { columns } from '@/components/tenants/columns';
+import { columns as createTenantColumns } from '@/components/tenants/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import { TenantDialog } from '@/components/tenants/tenant-dialog';
 import type { Tenant } from '@/lib/types';
@@ -19,6 +19,11 @@ export default function TenantsPage() {
     setSelectedTenant(null);
     setDialogOpen(true);
   };
+
+  const tenantColumns = useMemo(
+    () => createTenantColumns(setSelectedTenant, setDialogOpen),
+    [setSelectedTenant, setDialogOpen]
+  );
 
   if (loadingTenants) {
     return (
@@ -52,7 +57,7 @@ export default function TenantsPage() {
           Add Tenant
         </Button>
       </div>
-      <DataTable columns={columns} data={tenants} />
+      <DataTable columns={tenantColumns} data={tenants} />
       <TenantDialog open={dialogOpen} setOpen={setDialogOpen} tenant={selectedTenant} setSelectedTenant={setSelectedTenant} />
     </div>
   );
