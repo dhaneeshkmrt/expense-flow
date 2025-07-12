@@ -25,9 +25,9 @@ type CsvRow = {
   'Date': string;
   'Category': string;
   'Sub Category': string;
-  'Amount ': string; // Note the space in the key
+  'Amount': string;
   'Paid by': string;
-  'Description': string;
+  'Desc': string;
   'Notes'?: string;
 };
 
@@ -101,8 +101,8 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
           validTransactions.push({
             date: parseDate(row['Date']),
             time: '00:00', // Default time
-            description: row['Description'] || 'Imported Transaction',
-            amount: parseAmount(row['Amount ']),
+            description: row['Desc'] || 'Imported Transaction',
+            amount: parseAmount(row['Amount']),
             category: categoryName,
             subcategory: subcategoryName || 'N/A',
             microcategory: '', // Keep microcategory empty as it's not in the CSV
@@ -167,7 +167,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
         <DialogHeader>
           <DialogTitle>Import Transactions from CSV</DialogTitle>
           <DialogDescription>
-            Upload a CSV file with your transaction data. The format should be: Date, Category, Sub Category, Amount, Paid by, Description, Notes.
+            Upload a CSV file with your transaction data. The format should be: Date, Category, Sub Category, Amount, Paid by, Desc, Notes.
           </DialogDescription>
         </DialogHeader>
 
