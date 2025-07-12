@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
@@ -109,7 +110,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
             amount: parseAmount(row['Amount']),
             category: categoryName,
             subcategory: subcategoryName || 'N/A',
-            microcategory: subcategoryName || 'N/A', // Using subcategory as microcategory
+            microcategory: '', // Keep microcategory empty as it's not in the CSV
             paidBy: row['Paid by']?.trim() || 'N/A',
             notes: row['Notes'] || '',
           });
