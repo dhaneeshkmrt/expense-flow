@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Download, PlusCircle } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { useApp } from '@/lib/provider';
+import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
 
 export default function DashboardPage() {
   const { selectedTenantId } = useApp();
@@ -35,10 +36,10 @@ export default function DashboardPage() {
 
       <DashboardStats />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Monthly Expense Overview</CardTitle>
+            <CardTitle>Category Expense Overview</CardTitle>
             <CardDescription>Your spending by category for this month.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -47,6 +48,16 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader>
+            <CardTitle>Daily Expense Overview</CardTitle>
+            <CardDescription>Your spending by day for this month.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DailyExpenseChart />
+          </CardContent>
+        </Card>
+      </div>
+      <Card>
+          <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
             <CardDescription>Your latest 5 transactions.</CardDescription>
           </CardHeader>
@@ -54,7 +65,6 @@ export default function DashboardPage() {
             <RecentTransactions />
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

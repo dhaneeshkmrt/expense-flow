@@ -3,17 +3,24 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo } from 'react';
+import { isWithinInterval, startOfMonth, parseISO } from 'date-fns';
 
 export function OverviewChart() {
   const { transactions, categories, settings } = useApp();
 
   const data = useMemo(() => {
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    
     const categoryTotals = new Map<string, number>();
     categories.forEach(cat => categoryTotals.set(cat.name, 0));
 
     transactions.forEach(txn => {
-      const currentTotal = categoryTotals.get(txn.category) || 0;
-      categoryTotals.set(txn.category, currentTotal + txn.amount);
+        const transactionDate = parseISO(txn.date);
+        if (isWithinInterval(transactionDate, { start: monthStart, end: today })) {
+            const currentTotal = categoryTotals.get(txn.category) || 0;
+            categoryTotals.set(txn.category, currentTotal + txn.amount);
+        }
     });
 
     return Array.from(categoryTotals.entries())
