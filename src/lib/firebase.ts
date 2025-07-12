@@ -1,10 +1,12 @@
-import { initializeApp, getApp, getApps } from 'firebase/app';
+
+import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-// --- IMPORTANT ---
-// Hardcoded Firebase config to resolve environment variable loading issues.
-// In a production environment, these should be loaded from secure environment variables.
+// TODO: Replace the following with your app's Firebase project configuration
+// For more information on how to get this, visit:
+// https://firebase.google.com/docs/web/setup#available-libraries
+
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -14,8 +16,15 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
+
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0];
+}
+
 const db = getFirestore(app);
 const auth = getAuth(app);
 
