@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, updateProfile } from 'firebase/auth';
-import { app } from './firebase'; 
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, User, updateProfile } from 'firebase/auth';
+import { auth } from './firebase'; 
 import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
@@ -19,7 +19,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const auth = getAuth(app);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -28,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, [auth]);
+  }, []);
 
   const signInWithEmail = async (email: string, pass: string) => {
     setLoading(true);
@@ -47,11 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
         const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-        if (auth.currentUser) {
-            await updateProfile(auth.currentUser, { displayName: name });
+        if (userCredential.user) {
+            await updateProfile(userCredential.user, { displayName: name });
         }
         // Force a reload of the user to get the new display name
-        await auth.currentUser?.reload();
+        await userCredential.user?.reload();
         setUser(auth.currentUser);
         router.push('/dashboard');
         return userCredential;

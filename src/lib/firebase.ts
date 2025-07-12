@@ -1,19 +1,22 @@
-import { initializeApp, getApps, getApp, type FirebaseOptions } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
-export const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyBnhiJ4H7QFRJve75x_zuQj-HFk34u1Pe0",
-  authDomain: "expenseflow-54862.firebaseapp.com",
-  projectId: "expenseflow-54862",
-  storageBucket: "expenseflow-54862.firebasestorage.app",
-  messagingSenderId: "457212274922",
-  appId: "1:457212274922:web:eec997b72d073022c0cf93",
-  measurementId: "G-LW7QDMHECM"
+// --- IMPORTANT ---
+// Hardcoded Firebase config to resolve environment variable loading issues.
+// In a production environment, these should be loaded from secure environment variables.
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
-
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
+const auth = getAuth(app);
 
-export { db, app };
+export { db, auth };
