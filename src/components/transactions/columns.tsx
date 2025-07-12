@@ -122,8 +122,7 @@ export const columns: ColumnDef<Transaction>[] = [
             setOpen={setIsEditSheetOpen}
             transaction={transaction}
           >
-            {/* This is a dummy trigger, the sheet is controlled by state */}
-            <></>
+            {/* The sheet is triggered programmatically, so it doesn't need a child trigger element here. */}
           </AddTransactionSheet>
 
           <DropdownMenu>

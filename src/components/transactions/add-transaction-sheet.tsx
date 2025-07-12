@@ -61,7 +61,7 @@ type TransactionFormValues = z.infer<typeof transactionSchema>;
 const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
 
 interface AddTransactionSheetProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   open?: boolean;
   setOpen?: (open: boolean) => void;
   transaction?: Omit<Transaction, 'userId'>;
@@ -223,7 +223,7 @@ export default function AddTransactionSheet({
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
