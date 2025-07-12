@@ -62,36 +62,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <CollapsibleContent>
                     <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
                         {item.subItems.map(subItem => (
-                             <Link key={subItem.href} href={subItem.href} passHref>
-                                <SidebarMenuButton
-                                    asChild
-                                    isActive={pathname === subItem.href}
-                                    className="h-8"
-                                    tooltip={subItem.label}
-                                >
-                                    <a>
-                                        <subItem.icon />
-                                        <span>{subItem.label}</span>
-                                    </a>
-                                </SidebarMenuButton>
-                             </Link>
+                             <SidebarMenuItem key={subItem.href}>
+                                <Link href={subItem.href} passHref legacyBehavior>
+                                    <SidebarMenuButton
+                                        asChild
+                                        isActive={pathname === subItem.href}
+                                        className="h-8"
+                                        tooltip={subItem.label}
+                                    >
+                                        <a>
+                                          <subItem.icon />
+                                          <span>{subItem.label}</span>
+                                        </a>
+                                    </SidebarMenuButton>
+                                </Link>
+                             </SidebarMenuItem>
                         ))}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
               ) : (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    href={item.href}
-                    asChild
-                    isActive={pathname === item.href}
-                    tooltip={item.label}
-                  >
-                    <a href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </a>
-                  </SidebarMenuButton>
+                   <Link href={item.href} passHref legacyBehavior>
+                        <SidebarMenuButton
+                            asChild
+                            isActive={pathname === item.href}
+                            tooltip={item.label}
+                        >
+                            <a>
+                                <item.icon />
+                                <span>{item.label}</span>
+                            </a>
+                        </SidebarMenuButton>
+                   </Link>
                 </SidebarMenuItem>
               )
             ))}
