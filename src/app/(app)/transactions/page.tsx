@@ -5,7 +5,7 @@ import { columns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TransactionsPage() {
@@ -45,7 +45,7 @@ export default function TransactionsPage() {
             </Button>
         </AddTransactionSheet>
       </div>
-      <DataTable columns={columns} data={transactions} />
+      <DataTable columns={columns} data={transactions} showFilters={true} />
     </div>
   );
 }

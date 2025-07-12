@@ -41,7 +41,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon, ChevronsUpDown } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/lib/provider';
@@ -50,9 +50,10 @@ import type { DateRange } from 'react-day-picker';
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  showFilters?: boolean;
 }
 
-export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData, TValue>) {
+export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories } = useApp();
   const [sorting, setSorting] = React.useState<SortingState>([
     { id: 'date', desc: true }
@@ -87,18 +88,26 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
   });
 
   React.useEffect(() => {
-    table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
-  }, [categoryFilter, table]);
+    if(showFilters) {
+      table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
+    }
+  }, [categoryFilter, table, showFilters]);
 
   React.useEffect(() => {
-    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
-  }, [subcategoryFilter, table]);
+    if(showFilters) {
+      table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
+    }
+  }, [subcategoryFilter, table, showFilters]);
 
   React.useEffect(() => {
-    table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
-  }, [microcategoryFilter, table]);
+    if(showFilters) {
+      table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
+    }
+  }, [microcategoryFilter, table, showFilters]);
 
   React.useEffect(() => {
+    if (!showFilters) return;
+
     let range: DateRange | undefined;
     const today = new Date();
     switch (period) {
@@ -127,12 +136,14 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
         range = undefined;
     }
     table.getColumn('date')?.setFilterValue(range);
-  }, [period, dateRange, table]);
+  }, [period, dateRange, table, showFilters]);
   
   // Set default period on mount
   React.useEffect(() => {
-    setPeriod('this-month');
-  },[]);
+    if(showFilters){
+        setPeriod('this-month');
+    }
+  },[showFilters]);
 
 
   const subcategories = React.useMemo(() => {
@@ -149,106 +160,108 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-2 py-4">
-        <Input
-          placeholder="Filter by description..."
-          value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
-          onChange={(event) => table.getColumn('description')?.setFilterValue(event.target.value)}
-          className="max-w-xs"
-        />
-        <Select value={categoryFilter} onValueChange={(value) => {
-          setCategoryFilter(value === 'all' ? '' : value);
-          setSubcategoryFilter('');
-          setMicrocategoryFilter('');
-        }}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={subcategoryFilter} onValueChange={(value) => {
-            setSubcategoryFilter(value === 'all' ? '' : value);
+       {showFilters && (
+        <div className="flex flex-wrap items-center gap-2 py-4">
+            <Input
+            placeholder="Filter by description..."
+            value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
+            onChange={(event) => table.getColumn('description')?.setFilterValue(event.target.value)}
+            className="max-w-xs"
+            />
+            <Select value={categoryFilter} onValueChange={(value) => {
+            setCategoryFilter(value === 'all' ? '' : value);
+            setSubcategoryFilter('');
             setMicrocategoryFilter('');
-        }} disabled={!categoryFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Subcategory" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Subcategories</SelectItem>
-            {subcategories.map((sub) => (
-              <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Micro-Sub" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Micros</SelectItem>
-            {microcategories.map((micro) => (
-              <SelectItem key={micro.id} value={micro.name}>{micro.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="this-week">This Week</SelectItem>
-            <SelectItem value="last-week">Last Week</SelectItem>
-            <SelectItem value="this-month">This Month</SelectItem>
-            <SelectItem value="last-month">Last Month</SelectItem>
-            <SelectItem value="custom">Custom Range</SelectItem>
-          </SelectContent>
-        </Select>
-        {period === 'custom' && (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                id="date"
-                variant={'outline'}
-                className={cn(
-                  'w-[300px] justify-start text-left font-normal',
-                  !dateRange && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRange?.from ? (
-                  dateRange.to ? (
-                    <>
-                      {format(dateRange.from, 'LLL dd, y')} -{' '}
-                      {format(dateRange.to, 'LLL dd, y')}
-                    </>
-                  ) : (
-                    format(dateRange.from, 'LLL dd, y')
-                  )
-                ) : (
-                  <span>Pick a date range</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                initialFocus
-                mode="range"
-                defaultMonth={dateRange?.from}
-                selected={dateRange}
-                onSelect={setDateRange}
-                numberOfMonths={2}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
-      </div>
+            }}>
+            <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                ))}
+            </SelectContent>
+            </Select>
+            <Select value={subcategoryFilter} onValueChange={(value) => {
+                setSubcategoryFilter(value === 'all' ? '' : value);
+                setMicrocategoryFilter('');
+            }} disabled={!categoryFilter}>
+            <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Subcategory" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Subcategories</SelectItem>
+                {subcategories.map((sub) => (
+                <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                ))}
+            </SelectContent>
+            </Select>
+            <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
+            <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Micro-Sub" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Micros</SelectItem>
+                {microcategories.map((micro) => (
+                <SelectItem key={micro.id} value={micro.name}>{micro.name}</SelectItem>
+                ))}
+            </SelectContent>
+            </Select>
+            <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select period" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="this-week">This Week</SelectItem>
+                <SelectItem value="last-week">Last Week</SelectItem>
+                <SelectItem value="this-month">This Month</SelectItem>
+                <SelectItem value="last-month">Last Month</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+            </Select>
+            {period === 'custom' && (
+            <Popover>
+                <PopoverTrigger asChild>
+                <Button
+                    id="date"
+                    variant={'outline'}
+                    className={cn(
+                    'w-[300px] justify-start text-left font-normal',
+                    !dateRange && 'text-muted-foreground'
+                    )}
+                >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                    dateRange.to ? (
+                        <>
+                        {format(dateRange.from, 'LLL dd, y')} -{' '}
+                        {format(dateRange.to, 'LLL dd, y')}
+                        </>
+                    ) : (
+                        format(dateRange.from, 'LLL dd, y')
+                    )
+                    ) : (
+                    <span>Pick a date range</span>
+                    )}
+                </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                />
+                </PopoverContent>
+            </Popover>
+            )}
+        </div>
+       )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>

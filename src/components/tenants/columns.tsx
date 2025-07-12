@@ -2,8 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Tenant } from '@/lib/types';
-import { ArrowUpDown, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,19 +16,14 @@ import {
 import { Badge } from '../ui/badge';
 import { useApp } from '@/lib/provider';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { TenantDialog } from './tenant-dialog';
 
-export const columns: ColumnDef<Tenant>[] = [
+export const columns = (
+    setSelectedTenant: (tenant: Tenant) => void,
+    setDialogOpen: (open: boolean) => void
+  ): ColumnDef<Tenant>[] => [
   {
     accessorKey: 'name',
-    header: ({ column }) => {
-      return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
-          Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: 'Name',
     cell: ({ row }) => <div className="font-medium">{row.getValue('name')}</div>,
   },
   {
@@ -58,17 +52,15 @@ export const columns: ColumnDef<Tenant>[] = [
     id: 'actions',
     cell: function Actions({ row }) {
       const tenant = row.original;
-      const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
       const { deleteTenant } = useApp();
+      
+      const handleEdit = () => {
+        setSelectedTenant(tenant);
+        setDialogOpen(true);
+      };
 
       return (
         <>
-          <TenantDialog
-            open={isEditDialogOpen}
-            setOpen={setIsEditDialogOpen}
-            tenant={tenant}
-          />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-8 w-8 p-0">
@@ -78,7 +70,7 @@ export const columns: ColumnDef<Tenant>[] = [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
+              <DropdownMenuItem onClick={handleEdit}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Tenant
               </DropdownMenuItem>

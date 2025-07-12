@@ -26,7 +26,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Tenant } from '@/lib/types';
 import { PlusCircle, Trash2 } from 'lucide-react';
-import { Separator } from '../ui/separator';
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -44,9 +43,10 @@ interface TenantDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
   tenant?: Tenant | null;
+  setSelectedTenant: (tenant: Tenant | null) => void;
 }
 
-export function TenantDialog({ open, setOpen, tenant }: TenantDialogProps) {
+export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: TenantDialogProps) {
   const { addTenant, editTenant } = useApp();
   const isEditing = !!tenant;
 
@@ -66,7 +66,7 @@ export function TenantDialog({ open, setOpen, tenant }: TenantDialogProps) {
   });
 
   useEffect(() => {
-    if (tenant) {
+    if (open && tenant) {
       form.reset({
         name: tenant.name,
         mobileNo: tenant.mobileNo,
@@ -93,11 +93,17 @@ export function TenantDialog({ open, setOpen, tenant }: TenantDialogProps) {
     } else {
       addTenant(tenantData);
     }
+    handleClose();
+  };
+  
+  const handleClose = () => {
     setOpen(false);
+    setSelectedTenant(null);
+    form.reset();
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Tenant' : 'Add New Tenant'}</DialogTitle>

@@ -53,7 +53,7 @@ export default function TenantsPage() {
         </Button>
       </div>
       <DataTable columns={columns} data={tenants} />
-      <TenantDialog open={dialogOpen} setOpen={setDialogOpen} tenant={selectedTenant} />
+      <TenantDialog open={dialogOpen} setOpen={setDialogOpen} tenant={selectedTenant} setSelectedTenant={setSelectedTenant} />
     </div>
   );
 }
