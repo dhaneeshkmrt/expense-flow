@@ -25,7 +25,7 @@ type CsvRow = {
   'Date': string;
   'Category': string;
   'Sub Category': string;
-  'Amount': string;
+  'Amount ': string; // Note the space in the key
   'Paid by': string;
   'Description': string;
   'Notes'?: string;
@@ -97,17 +97,12 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
           if (!categoryName) {
             continue; // Skip rows without category
           }
-
-          if (!categoryMap.has(categoryName.toLowerCase())) {
-            importError = `Category "${categoryName}" does not exist. Please add it before importing.`;
-            break;
-          }
-         
+          
           validTransactions.push({
             date: parseDate(row['Date']),
             time: '00:00', // Default time
             description: row['Description'] || 'Imported Transaction',
-            amount: parseAmount(row['Amount']),
+            amount: parseAmount(row['Amount ']),
             category: categoryName,
             subcategory: subcategoryName || 'N/A',
             microcategory: '', // Keep microcategory empty as it's not in the CSV
