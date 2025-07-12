@@ -50,11 +50,13 @@ const transactionSchema = z.object({
   amount: z.coerce.number().positive('Amount must be positive.'),
   category: z.string().min(1, 'Please select a category.'),
   subcategory: z.string().min(1, 'Please select a subcategory.'),
-  paidBy: z.string().min(2, 'Payer information is required.'),
+  paidBy: z.string().min(1, 'Please select a payer.'),
   notes: z.string().optional(),
 });
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
+
+const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
 
 export default function AddTransactionSheet({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -276,9 +278,20 @@ export default function AddTransactionSheet({ children }: { children: React.Reac
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Paid By</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Credit Card" {...field} />
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a payer" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {paidByOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
