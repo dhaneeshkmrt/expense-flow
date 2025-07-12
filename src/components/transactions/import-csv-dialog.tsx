@@ -53,6 +53,7 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
 
   const parseAmount = (amountStr: string): number => {
     if (!amountStr) return 0;
+    // Remove currency symbols (like ₹) and commas, then parse as float
     const cleaned = amountStr.replace(/[₹,]/g, '');
     return parseFloat(cleaned) || 0;
   };
