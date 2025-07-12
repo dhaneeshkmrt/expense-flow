@@ -3,19 +3,15 @@ import {
   CircleDollarSign,
   Calendar,
   Utensils,
-  Sparkles,
   Gift,
   HeartPulse,
   Plane,
   ShieldAlert,
   Home,
-  GraduationCap,
-  Factory,
   Briefcase,
   User,
   Building,
   Apple,
-  Bike,
 } from 'lucide-react';
 
 // This data is used to seed the database on first run if it's empty.
