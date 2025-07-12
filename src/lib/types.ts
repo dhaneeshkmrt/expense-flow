@@ -45,6 +45,6 @@ export type Tenant = {
   id: string;
   name: string;
   mobileNo?: string;
-  address: string;
+  address?: string;
   members: TenantMember[];
 };

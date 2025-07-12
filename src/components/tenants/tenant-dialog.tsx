@@ -30,7 +30,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   mobileNo: z.string().optional(),
-  address: z.string().min(5, 'Address must be at least 5 characters.'),
+  address: z.string().optional(),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
     mobileNo: z.string().optional(),
@@ -144,7 +144,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               name="address"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Address</FormLabel>
+                  <FormLabel>Address (Optional)</FormLabel>
                   <FormControl>
                     <Textarea placeholder="e.g., 123 Main St, Anytown" {...field} />
                   </FormControl>
