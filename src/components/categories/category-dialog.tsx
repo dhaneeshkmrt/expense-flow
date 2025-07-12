@@ -40,6 +40,10 @@ import {
     CircleDollarSign,
     Factory,
     HelpCircle,
+    Building,
+    User,
+    Calendar,
+    Apple
 } from 'lucide-react';
 
 const iconList = [
@@ -57,12 +61,17 @@ const iconList = [
     { name: 'CircleDollarSign', component: CircleDollarSign },
     { name: 'Factory', component: Factory },
     { name: 'HelpCircle', component: HelpCircle },
+    { name: 'Building', component: Building },
+    { name: 'User', component: User },
+    { name: 'Calendar', component: Calendar },
+    { name: 'Apple', component: Apple },
 ];
 
 
 const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters.'),
   icon: z.string().min(1, 'Please select an icon.'),
+  budget: z.coerce.number().min(0, 'Budget must be a positive number.').optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -82,18 +91,22 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
     defaultValues: {
       name: '',
       icon: '',
+      budget: 0,
     },
   });
 
   useEffect(() => {
-    if (isEditing && category) {
-      const iconName = Object.entries(iconList).find(([_, val]) => val.component === category.icon)?.[1].name;
-      form.reset({
-        name: category.name,
-        icon: iconName || '',
-      });
-    } else {
-      form.reset({ name: '', icon: '' });
+    if (open) {
+      if (isEditing && category) {
+        const iconName = iconList.find(icon => icon.component === category.icon)?.name;
+        form.reset({
+          name: category.name,
+          icon: iconName || '',
+          budget: category.budget || 0,
+        });
+      } else {
+        form.reset({ name: '', icon: '', budget: 0 });
+      }
     }
   }, [category, isEditing, open, form]);
 
@@ -156,6 +169,19 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
                         })}
                       </SelectContent>
                     </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="budget"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category Budget (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="e.g., 500" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

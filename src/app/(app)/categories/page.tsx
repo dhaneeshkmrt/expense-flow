@@ -15,7 +15,7 @@ import { MicrocategoryDialog } from '@/components/categories/microcategory-dialo
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId } = useApp();
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, settings } = useApp();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
@@ -65,6 +65,13 @@ export default function CategoriesPage() {
     setMicrocategoryDialogOpen(true);
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    }).format(amount).replace('$', settings.currency);
+  };
+
   if (loadingCategories) {
       return (
         <div className="flex flex-col gap-6">
@@ -111,11 +118,18 @@ export default function CategoriesPage() {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
           return (
             <Card key={category.id}>
-              <CardHeader className="flex-row items-center justify-between">
-                <CardTitle className="flex items-center gap-3">
-                  {Icon && <Icon className="w-6 h-6 text-primary" />}
-                  <span>{category.name}</span>
-                </CardTitle>
+              <CardHeader className="flex-row items-start justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-3">
+                        {Icon && <Icon className="w-6 h-6 text-primary" />}
+                        <span>{category.name}</span>
+                    </CardTitle>
+                    {category.budget && category.budget > 0 && (
+                        <p className="text-sm text-muted-foreground mt-2">
+                            Budget: <span className="font-semibold">{formatCurrency(category.budget)}</span>
+                        </p>
+                    )}
+                </div>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditCategory(category)}>
                     <Edit className="h-4 w-4" />

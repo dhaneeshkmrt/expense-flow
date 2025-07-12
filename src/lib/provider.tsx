@@ -67,8 +67,8 @@ interface AppContextType {
   addTransaction: (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => Promise<void>;
-  editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon'>>) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string, budget?: number }) => Promise<void>;
+  editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon' | 'budget'>>) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
   editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => Promise<void>;
@@ -78,7 +78,7 @@ interface AppContextType {
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
   addTenant: (tenant: Omit<Tenant, 'id'>) => Promise<void>;
-  editTenant: (tenantId: string, tenant: Omit<Tenant, 'id'>) => Promise<void>;
+  editTenant: (tenantId: string, tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
   loading: boolean;
   loadingCategories: boolean;
@@ -164,6 +164,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               microcategories: sub.microcategories || []
             })),
             tenantId: data.tenantId,
+            budget: data.budget,
           } as Category;
         });
       setAllCategories(fetchedCategories);
@@ -304,7 +305,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => {
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string, budget?: number }) => {
     if (!selectedTenantId) {
         alert("Please select a tenant first.");
         return;
@@ -320,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const categoryForDb = {
         name: categoryData.name,
         icon: categoryData.icon,
+        budget: categoryData.budget || 0,
         subcategories: [],
         tenantId: selectedTenantId,
     }
@@ -329,9 +331,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAllCategories(prev => [...prev, newCategoryForState]);
   };
 
-  const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon'>>) => {
+  const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon' | 'budget'>>) => {
     const dbUpdate: any = {};
     if(categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
+    if(categoryUpdate.budget !== undefined) dbUpdate.budget = categoryUpdate.budget;
     if(typeof categoryUpdate.icon === 'string') dbUpdate.icon = categoryUpdate.icon;
     else if (categoryUpdate.icon) dbUpdate.icon = getIconName(categoryUpdate.icon);
 
@@ -342,9 +345,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     setAllCategories(prev => prev.map(c => {
         if (c.id === categoryId) {
-            const updatedCat = {...c};
-            if(categoryUpdate.name) updatedCat.name = categoryUpdate.name;
-            if(categoryUpdate.icon) updatedCat.icon = typeof categoryUpdate.icon === 'string' ? getIconComponent(categoryUpdate.icon) : categoryUpdate.icon;
+            const updatedCat = {...c, ...categoryUpdate};
+            if(categoryUpdate.icon && typeof categoryUpdate.icon === 'string') {
+              updatedCat.icon = getIconComponent(categoryUpdate.icon);
+            }
             return updatedCat;
         }
         return c;
@@ -473,11 +477,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const editTenant = async (tenantId: string, tenantData: Omit<Tenant, 'id'>) => {
+  const editTenant = async (tenantId: string, tenantData: Partial<Omit<Tenant, 'id'>>) => {
     try {
         const tenantRef = doc(db, 'tenants', tenantId);
         await updateDoc(tenantRef, tenantData);
-        setTenants(prev => prev.map(t => t.id === tenantId ? { id: tenantId, ...tenantData } : t).sort((a,b) => a.name.localeCompare(b.name)));
+        setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, ...tenantData } : t).sort((a,b) => a.name.localeCompare(b.name)));
     } catch(e) {
         console.error("Error updating tenant: ", e);
     }
