@@ -128,6 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                   icon: getIconName(category.icon),
                   subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
               };
+              delete categoryForDb.id;
               batch.set(docRef, categoryForDb);
           });
           await batch.commit();
@@ -196,7 +197,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     fetchSettings();
     fetchTenants();
-  }, [selectedTenantId]);
+  }, []);
 
   useEffect(() => {
     if (selectedTenantId) {
@@ -476,10 +477,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingCategories: loadingCategories,
     loadingSettings,
     loadingTenants,
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
       allTransactions, allCategories, settings, tenants, selectedTenantId, 
-      loading, loadingCategories, loadingSettings, loadingTenants,
-      fetchCategories, fetchTransactions
+      loading, loadingCategories, loadingSettings, loadingTenants
     ]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
