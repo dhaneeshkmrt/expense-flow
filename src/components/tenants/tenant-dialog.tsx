@@ -29,11 +29,11 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
-  mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
+  mobileNo: z.string().optional(),
   address: z.string().min(5, 'Address must be at least 5 characters.'),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
-    mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
+    mobileNo: z.string().optional(),
   })).optional(),
 });
 
@@ -131,7 +131,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               name="mobileNo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mobile Number</FormLabel>
+                  <FormLabel>Mobile Number (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., 9876543210" {...field} />
                   </FormControl>
@@ -185,7 +185,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                       name={`members.${index}.mobileNo`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Member Mobile</FormLabel>
+                          <FormLabel>Member Mobile (Optional)</FormLabel>
                           <FormControl>
                             <Input {...field} placeholder="e.g., 9876543211"/>
                           </FormControl>

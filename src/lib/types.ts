@@ -38,13 +38,13 @@ export type Settings = {
 
 export type TenantMember = {
   name: string;
-  mobileNo: string;
+  mobileNo?: string;
 };
 
 export type Tenant = {
   id: string;
   name: string;
-  mobileNo: string;
+  mobileNo?: string;
   address: string;
   members: TenantMember[];
 };
