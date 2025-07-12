@@ -96,35 +96,4 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
       { id: 'home_construction', name: 'Construction', microcategories: [] },
     ],
   },
-  {
-    name: 'DK professional',
-    icon: GraduationCap,
-    subcategories: [
-      { id: 'dk_professional_subscriptions', name: 'Subscriptions', microcategories: [] },
-    ],
-  },
-  {
-    name: 'Nisha',
-    icon: Sparkles,
-    subcategories: [
-      { id: 'nisha_invesment', name: 'Invesment', microcategories: [] },
-      { id: 'nisha_personal_grooming', name: 'Personal Grooming', microcategories: [] },
-    ],
-  },
-  {
-    name: 'Dk',
-    icon: Sparkles,
-    subcategories: [
-      { id: 'dk_invesment', name: 'Invesment', microcategories: [] },
-      { id: 'dk_personal_grooming', name: 'Personal Grooming', microcategories: [] },
-    ],
-  },
-  {
-    name: 'WFO',
-    icon: Factory,
-    subcategories: [
-      { id: 'wfo_travel', name: 'Travel', microcategories: [] },
-      { id: 'wfo_food', name: 'Food', microcategories: [] },
-    ],
-  },
 ];
