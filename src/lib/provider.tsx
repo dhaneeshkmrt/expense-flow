@@ -76,7 +76,7 @@ interface AppContextType {
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
-  updateSettings: (newSettings: Partial<Settings>) => Promise<void>;
+  updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
   addTenant: (tenant: Omit<Tenant, 'id'>) => Promise<void>;
   editTenant: (tenantId: string, tenant: Omit<Tenant, 'id'>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
@@ -88,12 +88,12 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-const SETTINGS_ID = 'app_settings';
+const defaultSettings: Omit<Settings, 'tenantId'> = { currency: '₹' };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
-  const [settings, setSettings] = useState<Settings>({ currency: '₹' });
+  const [settings, setSettings] = useState<Settings>({ ...defaultSettings, tenantId: '' });
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
@@ -168,29 +168,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setLoadingCategories(false);
     }
   }, [tenants, seedDefaultCategories]);
+  
+  const fetchSettings = useCallback(async (tenantId: string) => {
+    setLoadingSettings(true);
+    try {
+        const settingsRef = doc(db, 'settings', tenantId);
+        const docSnap = await getDoc(settingsRef);
+
+        if (!docSnap.exists()) {
+            const newSettings = { ...defaultSettings, tenantId };
+            await setDoc(settingsRef, newSettings);
+            setSettings(newSettings);
+        } else {
+            setSettings(docSnap.data() as Settings);
+        }
+    } catch (error) {
+        console.error("Error fetching settings: ", error);
+    } finally {
+        setLoadingSettings(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-        setLoadingSettings(true);
-        try {
-            const settingsRef = doc(db, 'settings', SETTINGS_ID);
-            const docSnap = await getDoc(settingsRef);
-
-            if (!docSnap.exists()) {
-                const defaultSettings: Settings = { currency: '₹' };
-                await setDoc(settingsRef, defaultSettings);
-                setSettings(defaultSettings);
-            } else {
-                const settingsData = docSnap.data() as Settings;
-                setSettings(settingsData);
-            }
-        } catch (error) {
-            console.error("Error fetching settings: ", error);
-        } finally {
-            setLoadingSettings(false);
-        }
-    };
-
     const fetchTenants = async () => {
         setLoadingTenants(true);
         try {
@@ -227,7 +226,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
     
-    fetchSettings();
     fetchTenants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -237,11 +235,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('selectedTenantId', selectedTenantId);
       fetchTransactions(selectedTenantId);
       fetchCategories(selectedTenantId);
+      fetchSettings(selectedTenantId);
     } else {
         setAllTransactions([]);
         setAllCategories([]);
+        setSettings({ ...defaultSettings, tenantId: ''});
     }
-  }, [selectedTenantId, fetchTransactions, fetchCategories]);
+  }, [selectedTenantId, fetchTransactions, fetchCategories, fetchSettings]);
 
 
   const findCategory = (categoryId: string) => {
@@ -439,9 +439,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAllCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
-  const updateSettings = async (newSettings: Partial<Settings>) => {
+  const updateSettings = async (newSettings: Partial<Omit<Settings, 'tenantId'>>) => {
+      if (!selectedTenantId) return;
       try {
-          const settingsRef = doc(db, 'settings', SETTINGS_ID);
+          const settingsRef = doc(db, 'settings', selectedTenantId);
           await setDoc(settingsRef, newSettings, { merge: true });
           setSettings(prev => ({...prev, ...newSettings}));
       } catch (error) {

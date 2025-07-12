@@ -36,6 +36,7 @@ export type Transaction = {
 
 export type Settings = {
   currency: string;
+  tenantId: string;
 };
 
 export type TenantMember = {

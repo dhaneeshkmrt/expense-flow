@@ -13,8 +13,8 @@ import { Loader2 } from 'lucide-react';
 import type { Settings } from '@/lib/types';
 
 export default function SettingsPage() {
-  const { settings, updateSettings, loadingSettings } = useApp();
-  const { register, handleSubmit, reset, formState: { isSubmitting, isDirty } } = useForm<Settings>();
+  const { settings, updateSettings, loadingSettings, selectedTenantId } = useApp();
+  const { register, handleSubmit, reset, formState: { isSubmitting, isDirty } } = useForm<Omit<Settings, 'tenantId'>>();
 
   useEffect(() => {
     if (settings) {
@@ -22,7 +22,15 @@ export default function SettingsPage() {
     }
   }, [settings, reset]);
 
-  const onSubmit = async (data: Settings) => {
+  const onSubmit = async (data: Omit<Settings, 'tenantId'>) => {
+    if (!selectedTenantId) {
+        toast({
+            title: 'No Tenant Selected',
+            description: 'Please select a tenant before saving settings.',
+            variant: 'destructive',
+        });
+        return;
+    }
     await updateSettings(data);
     toast({
       title: 'Settings Saved',
@@ -66,9 +74,10 @@ export default function SettingsPage() {
                 id="currency"
                 {...register('currency')}
                 className="w-full md:w-1/3"
+                disabled={!selectedTenantId}
               />
             </div>
-            <Button type="submit" disabled={isSubmitting || !isDirty}>
+            <Button type="submit" disabled={isSubmitting || !isDirty || !selectedTenantId}>
               {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
               Save Settings
             </Button>
