@@ -1,8 +1,10 @@
+
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Transaction } from '@/lib/types';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
+import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +28,13 @@ export const columns: ColumnDef<Transaction>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => new Date(row.getValue('date')).toLocaleDateString(),
+    cell: ({ row }) => {
+      const date = new Date(row.getValue('date'));
+      // The original date is in UTC, so we need to adjust for the timezone
+      // to avoid off-by-one day errors.
+      const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
+      return format(utcDate, 'PPP');
+    },
   },
   {
     accessorKey: 'description',
