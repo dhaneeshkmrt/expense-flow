@@ -5,44 +5,94 @@ import { useApp } from '@/lib/provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { SubcategoryDialog } from '@/components/categories/subcategory-dialog';
-import type { Category, Subcategory } from '@/lib/types';
+import type { Category, Subcategory, Microcategory } from '@/lib/types';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { MicrocategoryDialog } from '@/components/categories/microcategory-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory } = useApp();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories } = useApp();
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
+  const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
+
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
-  const [isCategoryDialog, setIsCategoryDialog] = useState(false);
+  const [selectedMicrocategory, setSelectedMicrocategory] = useState<Microcategory | null>(null);
+  const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+
+  const toggleCollapsible = (id: string) => {
+    setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));
+  };
 
   const handleAddCategory = () => {
     setSelectedCategory(null);
-    setIsCategoryDialog(true);
-    setDialogOpen(true);
+    setCategoryDialogOpen(true);
   };
 
   const handleEditCategory = (category: Category) => {
     setSelectedCategory(category);
-    setIsCategoryDialog(true);
-    setDialogOpen(true);
+    setCategoryDialogOpen(true);
   };
 
   const handleAddSubcategory = (category: Category) => {
     setSelectedCategory(category);
     setSelectedSubcategory(null);
-    setIsCategoryDialog(false);
-    setDialogOpen(true);
+    setSubcategoryDialogOpen(true);
   };
 
   const handleEditSubcategory = (category: Category, subcategory: Subcategory) => {
     setSelectedCategory(category);
     setSelectedSubcategory(subcategory);
-    setIsCategoryDialog(false);
-    setDialogOpen(true);
+    setSubcategoryDialogOpen(true);
   };
+  
+  const handleAddMicrocategory = (category: Category, subcategory: Subcategory) => {
+    setSelectedCategory(category);
+    setSelectedSubcategory(subcategory);
+    setSelectedMicrocategory(null);
+    setMicrocategoryDialogOpen(true);
+  };
+  
+  const handleEditMicrocategory = (category: Category, subcategory: Subcategory, microcategory: Microcategory) => {
+    setSelectedCategory(category);
+    setSelectedSubcategory(subcategory);
+    setSelectedMicrocategory(microcategory);
+    setMicrocategoryDialogOpen(true);
+  };
+
+  if (loadingCategories) {
+      return (
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="mt-2 h-5 w-72" />
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map(i => (
+                <Card key={i}>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-1/2" />
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-16 w-full" />
+                    </CardContent>
+                    <CardFooter>
+                        <Skeleton className="h-8 w-1/3" />
+                    </CardFooter>
+                </Card>
+            ))}
+          </div>
+        </div>
+      );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,14 +106,14 @@ export default function CategoriesPage() {
           Add Category
         </Button>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
-          const Icon = category.icon;
+          const Icon = typeof category.icon === 'string' ? () => null : category.icon;
           return (
             <Card key={category.id}>
               <CardHeader className="flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-3">
-                  <Icon className="w-6 h-6 text-primary" />
+                  {Icon && <Icon className="w-6 h-6 text-primary" />}
                   <span>{category.name}</span>
                 </CardTitle>
                 <div className="flex items-center gap-1">
@@ -91,43 +141,87 @@ export default function CategoriesPage() {
                     </AlertDialog>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {category.subcategories.map((sub) => (
-                    <div key={sub.id} className="group relative">
-                      <Badge variant="secondary" className="pr-7">
-                        {sub.name}
-                      </Badge>
-                      <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover:opacity-100">
-                        <button onClick={() => handleEditSubcategory(category, sub)} className="mr-3 text-xs">
-                          <Edit className="h-3 w-3" />
-                        </button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                             <button className="mr-1 text-destructive">
-                               <Trash2 className="h-3 w-3" />
+              <CardContent className="space-y-2">
+                {category.subcategories.map((sub) => (
+                  <Collapsible key={sub.id} open={openCollapsibles[sub.id]} onOpenChange={() => toggleCollapsible(sub.id)} className="group/sub">
+                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                        <CollapsibleTrigger asChild>
+                            <button className="flex items-center gap-2">
+                                <span className="font-semibold">{sub.name}</span>
+                                {sub.microcategories && sub.microcategories.length > 0 && (
+                                    openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                )}
                             </button>
-                          </AlertDialogTrigger>
-                           <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete the <strong>{sub.name}</strong> subcategory.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteSubcategory(category.id, sub.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+                        </CollapsibleTrigger>
+                        <div className="flex items-center opacity-0 group-hover/sub:opacity-100">
+                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMicrocategory(category, sub)}>
+                                <PlusCircle className="h-3 w-3" />
+                             </Button>
+                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubcategory(category, sub)}>
+                                <Edit className="h-3 w-3" />
+                            </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive">
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the <strong>{sub.name}</strong> subcategory and all its micro-subcategories.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteSubcategory(category.id, sub.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </div>
                     </div>
-                  ))}
-                  {category.subcategories.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No subcategories yet.</p>
-                  )}
-                </div>
+                    <CollapsibleContent>
+                        <div className="flex flex-wrap gap-1 pl-6 pr-2 py-2">
+                            {(sub.microcategories || []).map((micro) => (
+                                <div key={micro.id} className="group/micro relative">
+                                    <Badge variant="secondary" className="pr-7">
+                                        {micro.name}
+                                    </Badge>
+                                    <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover/micro:opacity-100 bg-secondary/50 rounded-full">
+                                        <button onClick={() => handleEditMicrocategory(category, sub, micro)} className="mr-3 text-xs">
+                                            <Edit className="h-3 w-3" />
+                                        </button>
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <button className="mr-1 text-destructive">
+                                                <Trash2 className="h-3 w-3" />
+                                                </button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete the <strong>{micro.name}</strong> micro-subcategory.
+                                                </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => deleteMicrocategory(category.id, sub.id, micro.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    </div>
+                                </div>
+                            ))}
+                            {(sub.microcategories || []).length === 0 && <p className="text-xs text-muted-foreground">No micro-subcategories.</p>}
+                        </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+                {category.subcategories.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No subcategories yet.</p>
+                )}
               </CardContent>
               <CardFooter>
                 <Button variant="ghost" size="sm" onClick={() => handleAddSubcategory(category)}>
@@ -139,11 +233,10 @@ export default function CategoriesPage() {
           );
         })}
       </div>
-      {isCategoryDialog ? (
-        <CategoryDialog open={dialogOpen} setOpen={setDialogOpen} category={selectedCategory} />
-      ) : (
-        <SubcategoryDialog open={dialogOpen} setOpen={setDialogOpen} category={selectedCategory} subcategory={selectedSubcategory} />
-      )}
+      
+      <CategoryDialog open={categoryDialogOpen} setOpen={setCategoryDialogOpen} category={selectedCategory} />
+      <SubcategoryDialog open={subcategoryDialogOpen} setOpen={setSubcategoryDialogOpen} category={selectedCategory} subcategory={selectedSubcategory} />
+      <MicrocategoryDialog open={microcategoryDialogOpen} setOpen={setMicrocategoryDialogOpen} category={selectedCategory} subcategory={selectedSubcategory} microcategory={selectedMicrocategory} />
     </div>
   );
 }

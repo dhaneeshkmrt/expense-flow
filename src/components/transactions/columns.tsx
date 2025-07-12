@@ -1,4 +1,3 @@
-
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
@@ -93,6 +92,14 @@ export const columns: ColumnDef<Transaction>[] = [
     accessorKey: 'subcategory',
     header: 'Subcategory',
     cell: ({ row }) => <Badge variant="outline">{row.getValue('subcategory')}</Badge>,
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id));
+    },
+  },
+    {
+    accessorKey: 'microcategory',
+    header: 'Micro-Subcategory',
+    cell: ({ row }) => <Badge variant="outline">{row.getValue('microcategory')}</Badge>,
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },

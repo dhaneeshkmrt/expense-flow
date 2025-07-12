@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -24,14 +23,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Loader2, ChevronsUpDown, Check } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -60,6 +51,7 @@ const transactionSchema = z.object({
   amount: z.coerce.number().positive('Amount must be positive.'),
   category: z.string().min(1, 'Please select a category.'),
   subcategory: z.string().min(1, 'Please select a subcategory.'),
+  microcategory: z.string().min(1, 'Please select a micro-subcategory.'),
   paidBy: z.string().min(1, 'Please select a payer.'),
   notes: z.string().optional(),
 });
@@ -105,6 +97,7 @@ export default function AddTransactionSheet({
         amount: 0,
         category: '',
         subcategory: '',
+        microcategory: '',
         paidBy: '',
         notes: '',
     },
@@ -124,21 +117,30 @@ export default function AddTransactionSheet({
         amount: 0,
         category: '',
         subcategory: '',
+        microcategory: '',
         paidBy: '',
         notes: '',
       });
     }
   }, [open, isEditing, transaction, form]);
 
-
-  const selectedCategory = form.watch('category');
+  const selectedCategoryName = form.watch('category');
+  const selectedSubcategoryName = form.watch('subcategory');
   const descriptionToDebounce = form.watch('description');
   const debouncedDescription = useDebounce(descriptionToDebounce, 500);
 
+  const selectedCategory = useMemo(() => {
+    return categories.find((c) => c.name === selectedCategoryName);
+  }, [selectedCategoryName, categories]);
+
   const subcategories = useMemo(() => {
-    const category = categories.find((c) => c.name === selectedCategory);
-    return category ? category.subcategories : [];
-  }, [selectedCategory, categories]);
+    return selectedCategory ? selectedCategory.subcategories : [];
+  }, [selectedCategory]);
+
+  const microcategories = useMemo(() => {
+      const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
+      return subcategory ? (subcategory.microcategories || []) : [];
+  }, [selectedSubcategoryName, subcategories]);
 
   useEffect(() => {
     if (!isEditing && debouncedDescription.length > 5) {
@@ -172,12 +174,21 @@ export default function AddTransactionSheet({
   useEffect(() => {
     if (!form.formState.isDirty) return;
     const currentSubcategory = form.getValues('subcategory');
-    const newSubcategories = categories.find(c => c.name === selectedCategory)?.subcategories || [];
+    const newSubcategories = categories.find(c => c.name === selectedCategoryName)?.subcategories || [];
     if (!newSubcategories.some(s => s.name === currentSubcategory)) {
       form.setValue('subcategory', '');
+      form.setValue('microcategory', '');
     }
-  }, [selectedCategory, form]);
-
+  }, [selectedCategoryName, form]);
+  
+  useEffect(() => {
+      if (!form.formState.isDirty) return;
+      const currentMicrocategory = form.getValues('microcategory');
+      const newMicrocategories = categories.find(c => c.name === selectedCategoryName)?.subcategories.find(s => s.name === selectedSubcategoryName)?.microcategories || [];
+      if(!newMicrocategories.some(m => m.name === currentMicrocategory)) {
+          form.setValue('microcategory', '');
+      }
+  }, [selectedSubcategoryName, form, selectedCategoryName]);
 
   const onSubmit = async (data: TransactionFormValues) => {
     setIsSubmitting(true);
@@ -210,16 +221,13 @@ export default function AddTransactionSheet({
     ? 'Update the details of your transaction below.'
     : 'Enter the details of your transaction below.';
 
-
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent className="sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
-          <SheetDescription>
-            {sheetDescription}
-          </SheetDescription>
+          <SheetDescription>{sheetDescription}</SheetDescription>
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -235,10 +243,7 @@ export default function AddTransactionSheet({
                         <FormControl>
                           <Button
                             variant={'outline'}
-                            className={cn(
-                              'w-full pl-3 text-left font-normal',
-                              !field.value && 'text-muted-foreground'
-                            )}
+                            className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
                           >
                             {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -246,13 +251,7 @@ export default function AddTransactionSheet({
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                          initialFocus
-                        />
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
                       </PopoverContent>
                     </Popover>
                     <FormMessage />
@@ -302,7 +301,7 @@ export default function AddTransactionSheet({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
                 name="category"
@@ -314,19 +313,8 @@ export default function AddTransactionSheet({
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className={cn(
-                              'w-full justify-between',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                          >
-                            {field.value
-                              ? categories.find(
-                                  (cat) => cat.name === field.value
-                                )?.name
-                              : 'Select a category'}
+                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
+                            {field.value ? categories.find((cat) => cat.name === field.value)?.name : 'Select a category'}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
@@ -338,21 +326,8 @@ export default function AddTransactionSheet({
                             <CommandEmpty>No category found.</CommandEmpty>
                             <CommandGroup>
                               {categories.map((cat) => (
-                                <CommandItem
-                                  value={cat.name}
-                                  key={cat.id}
-                                  onSelect={() => {
-                                    form.setValue('category', cat.name, { shouldValidate: true })
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      cat.name === field.value
-                                        ? 'opacity-100'
-                                        : 'opacity-0'
-                                    )}
-                                  />
+                                <CommandItem value={cat.name} key={cat.id} onSelect={() => { form.setValue('category', cat.name, { shouldValidate: true }) }}>
+                                  <Check className={cn('mr-2 h-4 w-4', cat.name === field.value ? 'opacity-100' : 'opacity-0')} />
                                   {cat.name}
                                 </CommandItem>
                               ))}
@@ -374,20 +349,8 @@ export default function AddTransactionSheet({
                      <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className={cn(
-                              'w-full justify-between',
-                              !field.value && 'text-muted-foreground'
-                            )}
-                            disabled={!selectedCategory}
-                          >
-                            {field.value
-                              ? subcategories.find(
-                                  (sub) => sub.name === field.value
-                                )?.name
-                              : 'Select a subcategory'}
+                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedCategoryName}>
+                            {field.value ? subcategories.find((sub) => sub.name === field.value)?.name : 'Select a subcategory'}
                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                           </Button>
                         </FormControl>
@@ -399,22 +362,45 @@ export default function AddTransactionSheet({
                             <CommandEmpty>No subcategory found.</CommandEmpty>
                             <CommandGroup>
                               {subcategories.map((sub) => (
-                                <CommandItem
-                                  value={sub.name}
-                                  key={sub.id}
-                                  onSelect={() => {
-                                    form.setValue('subcategory', sub.name, { shouldValidate: true })
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      'mr-2 h-4 w-4',
-                                      sub.name === field.value
-                                        ? 'opacity-100'
-                                        : 'opacity-0'
-                                    )}
-                                  />
+                                <CommandItem value={sub.name} key={sub.id} onSelect={() => { form.setValue('subcategory', sub.name, { shouldValidate: true }) }}>
+                                  <Check className={cn('mr-2 h-4 w-4', sub.name === field.value ? 'opacity-100' : 'opacity-0')} />
                                   {sub.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                           </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="microcategory"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Micro-Subcategory</FormLabel>
+                     <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedSubcategoryName}>
+                            {field.value ? microcategories.find((micro) => micro.name === field.value)?.name : 'Select a micro-subcategory'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                           <CommandInput placeholder="Search micro-subcategory..." />
+                           <CommandList>
+                            <CommandEmpty>No micro-subcategory found.</CommandEmpty>
+                            <CommandGroup>
+                              {microcategories.map((micro) => (
+                                <CommandItem value={micro.name} key={micro.id} onSelect={() => { form.setValue('microcategory', micro.name, { shouldValidate: true }) }}>
+                                  <Check className={cn('mr-2 h-4 w-4', micro.name === field.value ? 'opacity-100' : 'opacity-0')} />
+                                  {micro.name}
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -434,20 +420,32 @@ export default function AddTransactionSheet({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Paid By</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a payer" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {paidByOptions.map((option) => (
-                        <SelectItem key={option} value={option}>
-                          {option.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                   <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
+                            {field.value ? field.value.toUpperCase() : 'Select a payer'}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                           <CommandInput placeholder="Select a payer..." />
+                           <CommandList>
+                            <CommandEmpty>No payer found.</CommandEmpty>
+                            <CommandGroup>
+                              {paidByOptions.map((option) => (
+                                <CommandItem value={option} key={option} onSelect={() => { form.setValue('paidBy', option, { shouldValidate: true }) }}>
+                                  <Check className={cn('mr-2 h-4 w-4', option === field.value ? 'opacity-100' : 'opacity-0')} />
+                                  {option.toUpperCase()}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                           </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   <FormMessage />
                 </FormItem>
               )}
@@ -460,7 +458,7 @@ export default function AddTransactionSheet({
                 <FormItem>
                   <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Any additional notes..." {...field} />
+                    <Input placeholder="Any additional notes..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

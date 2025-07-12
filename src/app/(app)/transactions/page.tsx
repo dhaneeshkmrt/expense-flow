@@ -9,9 +9,9 @@ import { PlusCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function TransactionsPage() {
-  const { transactions, loading } = useApp();
+  const { transactions, loading, loadingCategories } = useApp();
 
-  if (loading) {
+  if (loading || loadingCategories) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">

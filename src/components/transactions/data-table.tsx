@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -64,6 +63,7 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
 
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
+  const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
   const [period, setPeriod] = React.useState<string>('this-month');
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
 
@@ -93,6 +93,10 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
   React.useEffect(() => {
     table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
   }, [subcategoryFilter, table]);
+
+  React.useEffect(() => {
+    table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
+  }, [microcategoryFilter, table]);
 
   React.useEffect(() => {
     let range: DateRange | undefined;
@@ -137,6 +141,12 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
     return category ? category.subcategories : [];
   }, [categoryFilter, categories]);
 
+  const microcategories = React.useMemo(() => {
+    if(!subcategoryFilter) return [];
+    const subcategory = subcategories.find(s => s.name === subcategoryFilter);
+    return subcategory ? (subcategory.microcategories || []) : [];
+  }, [subcategoryFilter, subcategories]);
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 py-4">
@@ -144,13 +154,14 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
           placeholder="Filter by description..."
           value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('description')?.setFilterValue(event.target.value)}
-          className="max-w-sm"
+          className="max-w-xs"
         />
         <Select value={categoryFilter} onValueChange={(value) => {
           setCategoryFilter(value === 'all' ? '' : value);
           setSubcategoryFilter('');
+          setMicrocategoryFilter('');
         }}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
           <SelectContent>
@@ -160,8 +171,11 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
             ))}
           </SelectContent>
         </Select>
-        <Select value={subcategoryFilter} onValueChange={(value) => setSubcategoryFilter(value === 'all' ? '' : value)} disabled={!categoryFilter}>
-          <SelectTrigger className="w-[180px]">
+        <Select value={subcategoryFilter} onValueChange={(value) => {
+            setSubcategoryFilter(value === 'all' ? '' : value);
+            setMicrocategoryFilter('');
+        }} disabled={!categoryFilter}>
+          <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="Subcategory" />
           </SelectTrigger>
           <SelectContent>
@@ -171,11 +185,23 @@ export function DataTable<TData, TValue>({ columns, data }: DataTableProps<TData
             ))}
           </SelectContent>
         </Select>
+        <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Micro-Sub" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Micros</SelectItem>
+            {microcategories.map((micro) => (
+              <SelectItem key={micro.id} value={micro.name}>{micro.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select period" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="all">All Time</SelectItem>
             <SelectItem value="today">Today</SelectItem>
             <SelectItem value="this-week">This Week</SelectItem>
             <SelectItem value="last-week">Last Week</SelectItem>
