@@ -81,7 +81,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const userId = user?.uid;
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading) {
+        setLoading(true);
+        setLoadingCategories(true);
+        return;
+    };
+
     if (!userId) {
       setTransactions([]);
       setCategories([]);
@@ -130,9 +135,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               await batch.commit();
             }
 
-            // Now fetch all default categories
+            // Now fetch all default categories for the user to use
             const defaultCategoriesQuery = query(categoriesCollection, where("isDefault", "==", true));
             querySnapshot = await getDocs(defaultCategoriesQuery);
+             const userCategoriesToCreate = querySnapshot.docs.map(docSnap => {
+                const data = docSnap.data();
+                return {
+                    id: `${userId}_${data.name.toLowerCase().replace(/\s+/g, '_')}`,
+                    name: data.name,
+                    icon: data.icon, // This is a string name
+                    subcategories: data.subcategories || [],
+                    userId: userId,
+                    isDefault: false
+                };
+            });
+
+            const batch = writeBatch(db);
+            userCategoriesToCreate.forEach(catData => {
+                const newDocRef = doc(db, 'categories', catData.id);
+                batch.set(newDocRef, catData);
+            });
+            await batch.commit();
+            
+            // After creating user-specific copies, fetch them again
+            querySnapshot = await getDocs(userCategoriesQuery);
         }
 
         const fetchedCategories = querySnapshot.docs.map(doc => {
@@ -215,49 +241,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'userId'> & { icon: string }) => {
     if(!userId) return;
     const id = `${userId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
-    const newCategory: Category = {
+    const newCategoryForState: Category = {
       ...categoryData,
       id,
       subcategories: [],
       icon: getIconComponent(categoryData.icon),
     };
     const categoryForDb = {
-        ...categoryData,
-        id,
-        subcategories: [],
+        name: categoryData.name,
         icon: categoryData.icon,
+        subcategories: [],
         userId: userId,
         isDefault: false,
     }
 
-    await addDoc(collection(db, 'categories'), categoryForDb);
-    setCategories(prev => [...prev, newCategory]);
+    const docRef = doc(db, 'categories', id);
+    await writeBatch(db).set(docRef, categoryForDb).commit();
+    setCategories(prev => [...prev, newCategoryForState]);
   };
 
   const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon'>>) => {
     if(!userId) return;
-    const categoriesCopy = [...categories];
-    const categoryIndex = categoriesCopy.findIndex(c => c.id === categoryId);
-    if (categoryIndex === -1) return;
-
-    const oldCategory = categoriesCopy[categoryIndex];
     
-    const updatedCategory = { 
-        ...oldCategory, 
-        name: categoryUpdate.name || oldCategory.name,
-        icon: typeof categoryUpdate.icon === 'string' ? getIconComponent(categoryUpdate.icon) : categoryUpdate.icon || oldCategory.icon
-    };
-    categoriesCopy[categoryIndex] = updatedCategory;
+    const dbUpdate: any = {};
+    if(categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
+    if(typeof categoryUpdate.icon === 'string') dbUpdate.icon = categoryUpdate.icon;
+    else if (categoryUpdate.icon) dbUpdate.icon = getIconName(categoryUpdate.icon);
 
-    const dbUpdate: any = { name: updatedCategory.name };
-    if (typeof categoryUpdate.icon === 'string') {
-        dbUpdate.icon = categoryUpdate.icon;
+    if(Object.keys(dbUpdate).length > 0) {
+        const categoryRef = doc(db, 'categories', categoryId);
+        await updateDoc(categoryRef, dbUpdate);
     }
-
-    const categoryRef = doc(db, 'categories', categoryId);
-    await updateDoc(categoryRef, dbUpdate);
-
-    setCategories(categoriesCopy);
+    
+    setCategories(prev => prev.map(c => {
+        if (c.id === categoryId) {
+            const updatedCat = {...c};
+            if(categoryUpdate.name) updatedCat.name = categoryUpdate.name;
+            if(categoryUpdate.icon) updatedCat.icon = typeof categoryUpdate.icon === 'string' ? getIconComponent(categoryUpdate.icon) : categoryUpdate.icon;
+            return updatedCat;
+        }
+        return c;
+    }));
   };
   
   const deleteCategory = async (categoryId: string) => {
@@ -370,7 +394,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     addCategory,
     editCategory,
     deleteCategory,
-    addSubcategory,
+addSubcategory,
     editSubcategory,
     deleteSubcategory,
     addMicrocategory,
@@ -390,3 +414,5 @@ export function useApp() {
   }
   return context;
 }
+
+    
