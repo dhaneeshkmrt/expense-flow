@@ -45,6 +45,7 @@ import {
     Calendar,
     Apple
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
@@ -85,6 +86,9 @@ interface CategoryDialogProps {
 export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps) {
   const { addCategory, editCategory } = useApp();
   const isEditing = !!category;
+  const currentMonthKey = format(new Date(), 'yyyy-MM');
+  const currentMonthName = format(new Date(), 'MMMM');
+
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -99,22 +103,28 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
     if (open) {
       if (isEditing && category) {
         const iconName = iconList.find(icon => icon.component === category.icon)?.name;
+        const monthlyBudget = category.budgets?.[currentMonthKey] || 0;
         form.reset({
           name: category.name,
           icon: iconName || '',
-          budget: category.budget || 0,
+          budget: monthlyBudget,
         });
       } else {
         form.reset({ name: '', icon: '', budget: 0 });
       }
     }
-  }, [category, isEditing, open, form]);
+  }, [category, isEditing, open, form, currentMonthKey]);
 
   const onSubmit = (data: CategoryFormValues) => {
+    const categoryData = {
+        name: data.name,
+        icon: data.icon,
+        budget: data.budget,
+    };
     if (isEditing && category) {
-      editCategory(category.id, data);
+      editCategory(category.id, categoryData);
     } else {
-      addCategory(data);
+      addCategory(categoryData);
     }
     setOpen(false);
   };
@@ -178,7 +188,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
               name="budget"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category Budget (Optional)</FormLabel>
+                  <FormLabel>Budget for {currentMonthName}</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
                   </FormControl>

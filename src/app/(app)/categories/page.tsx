@@ -13,6 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { MicrocategoryDialog } from '@/components/categories/microcategory-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 export default function CategoriesPage() {
   const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, settings } = useApp();
@@ -101,6 +102,8 @@ export default function CategoriesPage() {
       );
   }
 
+  const currentMonthKey = format(new Date(), 'yyyy-MM');
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -116,6 +119,7 @@ export default function CategoriesPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
+          const monthlyBudget = category.budgets?.[currentMonthKey];
           return (
             <Card key={category.id}>
               <CardHeader className="flex-row items-start justify-between">
@@ -124,9 +128,9 @@ export default function CategoriesPage() {
                         {Icon && <Icon className="w-6 h-6 text-primary" />}
                         <span>{category.name}</span>
                     </CardTitle>
-                    {category.budget && category.budget > 0 && (
+                    {monthlyBudget && monthlyBudget > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
-                            Budget: <span className="font-semibold">{formatCurrency(category.budget)}</span>
+                            Budget for {format(new Date(), 'MMMM')}: <span className="font-semibold">{formatCurrency(monthlyBudget)}</span>
                         </p>
                     )}
                 </div>

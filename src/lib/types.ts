@@ -17,7 +17,7 @@ export type Category = {
   tenantId: string;
   userId?: string;
   isDefault?: boolean;
-  budget?: number;
+  budgets?: Record<string, number>; // e.g. { "2024-07": 500 }
 };
 
 export type Transaction = {

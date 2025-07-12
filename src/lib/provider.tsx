@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, where } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -56,6 +57,12 @@ const getIconComponent = (iconName: string): React.ElementType => {
     return iconMap[iconName] || HelpCircle;
 };
 
+type EditCategoryData = {
+    name?: string;
+    icon?: string | React.ElementType;
+    budget?: number;
+};
+
 
 interface AppContextType {
   transactions: Transaction[];
@@ -67,8 +74,8 @@ interface AppContextType {
   addTransaction: (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string, budget?: number }) => Promise<void>;
-  editCategory: (categoryId: string, category: Partial<Pick<Category, 'name' | 'icon' | 'budget'>>) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => Promise<void>;
+  editCategory: (categoryId: string, category: EditCategoryData) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
   editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => Promise<void>;
@@ -112,6 +119,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             tenantId: tenantId,
             icon: getIconName(category.icon),
             subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
+            budgets: {},
         };
         batch.set(docRef, categoryForDb);
     });
@@ -164,7 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               microcategories: sub.microcategories || []
             })),
             tenantId: data.tenantId,
-            budget: data.budget,
+            budgets: data.budgets || {},
           } as Category;
         });
       setAllCategories(fetchedCategories);
@@ -305,25 +313,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string, budget?: number }) => {
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => {
     if (!selectedTenantId) {
         alert("Please select a tenant first.");
         return;
     }
     const id = `${selectedTenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+    const currentMonthKey = format(new Date(), 'yyyy-MM');
+
     const newCategoryForState: Category = {
-      ...categoryData,
       id,
-      subcategories: [],
+      name: categoryData.name,
       icon: getIconComponent(categoryData.icon),
+      subcategories: [],
       tenantId: selectedTenantId,
+      budgets: categoryData.budget ? { [currentMonthKey]: categoryData.budget } : {},
     };
+
     const categoryForDb = {
         name: categoryData.name,
         icon: categoryData.icon,
-        budget: categoryData.budget || 0,
         subcategories: [],
         tenantId: selectedTenantId,
+        budgets: categoryData.budget ? { [currentMonthKey]: categoryData.budget } : {},
     }
 
     const docRef = doc(db, 'categories', id);
@@ -331,23 +343,41 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAllCategories(prev => [...prev, newCategoryForState]);
   };
 
-  const editCategory = async (categoryId: string, categoryUpdate: Partial<Pick<Category, 'name' | 'icon' | 'budget'>>) => {
-    const dbUpdate: any = {};
-    if(categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
-    if(categoryUpdate.budget !== undefined) dbUpdate.budget = categoryUpdate.budget;
-    if(typeof categoryUpdate.icon === 'string') dbUpdate.icon = categoryUpdate.icon;
-    else if (categoryUpdate.icon) dbUpdate.icon = getIconName(categoryUpdate.icon);
+  const editCategory = async (categoryId: string, categoryUpdate: EditCategoryData) => {
+    const categoryRef = doc(db, 'categories', categoryId);
+    const dbUpdate: { [key: string]: any } = {};
 
-    if(Object.keys(dbUpdate).length > 0) {
-        const categoryRef = doc(db, 'categories', categoryId);
+    if (categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
+    if (typeof categoryUpdate.icon === 'string') {
+        dbUpdate.icon = categoryUpdate.icon;
+    } else if (categoryUpdate.icon) {
+        dbUpdate.icon = getIconName(categoryUpdate.icon);
+    }
+    
+    if (categoryUpdate.budget !== undefined) {
+        const currentMonthKey = format(new Date(), 'yyyy-MM');
+        dbUpdate[`budgets.${currentMonthKey}`] = categoryUpdate.budget;
+    }
+    
+    if (Object.keys(dbUpdate).length > 0) {
         await updateDoc(categoryRef, dbUpdate);
     }
     
     setAllCategories(prev => prev.map(c => {
         if (c.id === categoryId) {
-            const updatedCat = {...c, ...categoryUpdate};
-            if(categoryUpdate.icon && typeof categoryUpdate.icon === 'string') {
-              updatedCat.icon = getIconComponent(categoryUpdate.icon);
+            const updatedCat = { ...c };
+            if (categoryUpdate.name) updatedCat.name = categoryUpdate.name;
+            if (categoryUpdate.icon && typeof categoryUpdate.icon === 'string') {
+                updatedCat.icon = getIconComponent(categoryUpdate.icon);
+            } else if (categoryUpdate.icon) {
+                updatedCat.icon = categoryUpdate.icon;
+            }
+            if (categoryUpdate.budget !== undefined) {
+                const currentMonthKey = format(new Date(), 'yyyy-MM');
+                updatedCat.budgets = {
+                    ...(updatedCat.budgets || {}),
+                    [currentMonthKey]: categoryUpdate.budget,
+                };
             }
             return updatedCat;
         }
