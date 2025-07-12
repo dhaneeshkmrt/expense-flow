@@ -93,28 +93,23 @@ export default function ImportCsvDialog({ children }: { children: React.ReactNod
           const categoryName = row['Category']?.trim();
           const subcategoryName = row['Sub Category']?.trim();
 
-          if (!categoryName || !subcategoryName) {
-            continue; // Skip rows without category or subcategory
+          if (!categoryName) {
+            continue; // Skip rows without category
           }
 
           if (!categoryMap.has(categoryName.toLowerCase())) {
             importError = `Category "${categoryName}" does not exist. Please add it before importing.`;
             break;
           }
-          const categoryInfo = categoryMap.get(categoryName.toLowerCase());
-          if (!categoryInfo?.subcategories.has(subcategoryName.toLowerCase())) {
-            importError = `Subcategory "${subcategoryName}" under "${categoryName}" does not exist.`;
-            break;
-          }
-
+         
           validTransactions.push({
             date: parseDate(row['Date']),
             time: '00:00', // Default time
             description: row['Description'] || 'Imported Transaction',
             amount: parseAmount(row['Amount']),
             category: categoryName,
-            subcategory: subcategoryName,
-            microcategory: subcategoryName, // Using subcategory as microcategory
+            subcategory: subcategoryName || 'N/A',
+            microcategory: subcategoryName || 'N/A', // Using subcategory as microcategory
             paidBy: row['Paid by']?.trim() || 'N/A',
             notes: row['Notes'] || '',
           });
