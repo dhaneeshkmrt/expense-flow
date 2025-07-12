@@ -14,16 +14,28 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
-import { LayoutDashboard, ReceiptText, Shapes } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { useState } from 'react';
+import Link from 'next/link';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
+  { 
+    label: 'Admin', 
+    icon: Shield,
+    subItems: [
+        { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
+        { href: '/admin/settings', label: 'Settings', icon: Settings }
+    ]
+  },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [openAdmin, setOpenAdmin] = useState(pathname.startsWith('/admin'));
 
   return (
     <SidebarProvider>
@@ -34,19 +46,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarContent>
           <SidebarMenu>
             {navItems.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  href={item.href}
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={item.label}
-                >
-                  <a href={item.href}>
-                    <item.icon />
-                    <span>{item.label}</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              item.subItems ? (
+                <Collapsible key={item.label} open={openAdmin} onOpenChange={setOpenAdmin}>
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                        <SidebarMenuButton
+                            className="w-full justify-start"
+                            variant={pathname.startsWith('/admin') ? 'default' : 'ghost'}
+                        >
+                            <item.icon />
+                            <span>{item.label}</span>
+                        </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                  </SidebarMenuItem>
+                  <CollapsibleContent>
+                    <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
+                        {item.subItems.map(subItem => (
+                             <Link key={subItem.href} href={subItem.href} passHref>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={pathname === subItem.href}
+                                    className="h-8"
+                                    tooltip={subItem.label}
+                                >
+                                    <a>
+                                        <subItem.icon />
+                                        <span>{subItem.label}</span>
+                                    </a>
+                                </SidebarMenuButton>
+                             </Link>
+                        ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    href={item.href}
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                  >
+                    <a href={item.href}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )
             ))}
           </SidebarMenu>
         </SidebarContent>
