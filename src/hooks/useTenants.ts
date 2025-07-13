@@ -1,0 +1,118 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { Tenant } from '@/lib/types';
+
+export function useTenants(
+    seedDefaultCategories: (tenantId: string) => Promise<void>,
+    seedDefaultSettings: (tenantId: string) => Promise<any>
+) {
+    const [tenants, setTenants] = useState<Tenant[]>([]);
+    const [loadingTenants, setLoadingTenants] = useState(true);
+    const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+
+    useEffect(() => {
+        const fetchTenants = async () => {
+            setLoadingTenants(true);
+            try {
+                const tenantsCollection = collection(db, "tenants");
+                const querySnapshot = await getDocs(query(tenantsCollection, orderBy("name")));
+                const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+
+                if (fetchedTenants.length === 0) {
+                    const defaultTenantData = {
+                        name: 'dhanisha',
+                        mobileNo: '',
+                        address: '',
+                        members: []
+                    };
+                    const docRef = await addDoc(tenantsCollection, defaultTenantData);
+                    const defaultTenant = { id: docRef.id, ...defaultTenantData };
+                    
+                    await seedDefaultCategories(defaultTenant.id);
+                    await seedDefaultSettings(defaultTenant.id);
+
+                    setTenants([defaultTenant]);
+                    setSelectedTenantId(defaultTenant.id);
+                } else {
+                    setTenants(fetchedTenants);
+                    const savedTenantId = localStorage.getItem('selectedTenantId');
+                    if (savedTenantId && fetchedTenants.some(t => t.id === savedTenantId)) {
+                        setSelectedTenantId(savedTenantId);
+                    } else if (fetchedTenants.length > 0) {
+                        setSelectedTenantId(fetchedTenants[0].id);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching tenants: ", error);
+            } finally {
+                setLoadingTenants(false);
+            }
+        };
+        fetchTenants();
+    }, [seedDefaultCategories, seedDefaultSettings]);
+
+    const handleSetSelectedTenantId = (tenantId: string | null) => {
+        setSelectedTenantId(tenantId);
+        if (tenantId) {
+            localStorage.setItem('selectedTenantId', tenantId);
+        } else {
+            localStorage.removeItem('selectedTenantId');
+        }
+    };
+
+    const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
+        try {
+            const docRef = await addDoc(collection(db, 'tenants'), tenantData);
+            const newTenant = { id: docRef.id, ...tenantData };
+    
+            await seedDefaultCategories(newTenant.id);
+            await seedDefaultSettings(newTenant.id);
+    
+            setTenants(prev => [...prev, newTenant].sort((a,b) => a.name.localeCompare(b.name)));
+            
+            if (!selectedTenantId) {
+                handleSetSelectedTenantId(newTenant.id);
+            }
+        } catch(e) {
+            console.error("Error adding tenant: ", e);
+        }
+    };
+
+    const editTenant = async (tenantId: string, tenantData: Partial<Omit<Tenant, 'id'>>) => {
+        try {
+            const tenantRef = doc(db, 'tenants', tenantId);
+            await updateDoc(tenantRef, tenantData);
+            setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, ...tenantData } as Tenant : t).sort((a,b) => a.name.localeCompare(b.name)));
+        } catch(e) {
+            console.error("Error updating tenant: ", e);
+        }
+    };
+
+    const deleteTenant = async (tenantId: string) => {
+        try {
+            await deleteDoc(doc(db, 'tenants', tenantId));
+            const remainingTenants = tenants.filter(t => t.id !== tenantId);
+            setTenants(remainingTenants);
+            if (selectedTenantId === tenantId) {
+                const newSelectedId = remainingTenants.length > 0 ? remainingTenants[0].id : null
+                handleSetSelectedTenantId(newSelectedId);
+            }
+        } catch(e) {
+            console.error("Error deleting tenant: ", e);
+        }
+    };
+
+
+    return {
+        tenants,
+        loadingTenants,
+        selectedTenantId,
+        setSelectedTenantId: handleSetSelectedTenantId,
+        addTenant,
+        editTenant,
+        deleteTenant,
+    };
+}
