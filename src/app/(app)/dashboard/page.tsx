@@ -10,7 +10,8 @@ import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { useApp } from '@/lib/provider';
 import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getYear, getMonth, parseISO } from 'date-fns';
+import { getYear, getMonth, parseISO, format } from 'date-fns';
+import Papa from 'papaparse';
 
 const months = [
   { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
@@ -20,7 +21,7 @@ const months = [
 ];
 
 export default function DashboardPage() {
-  const { selectedTenantId, transactions } = useApp();
+  const { selectedTenantId, transactions, settings } = useApp();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
@@ -38,6 +39,37 @@ export default function DashboardPage() {
       return getYear(transactionDate) === selectedYear && getMonth(transactionDate) === selectedMonth;
     });
   }, [transactions, selectedYear, selectedMonth]);
+  
+  const handleDownloadCsv = () => {
+    if (!filteredTransactions.length) return;
+
+    const dataToExport = filteredTransactions.map(t => ({
+      'Date': format(parseISO(t.date), 'dd-MMM-yy'),
+      'Cate': t.category,
+      'sub': t.subcategory,
+      'Amount': `${settings.currency}${t.amount.toFixed(2)}`,
+      'Paid by': t.paidBy,
+      'Desc': t.description,
+      'Notes': t.notes || '',
+      '': '', // Empty column
+      ' ': '', // Second empty column
+    }));
+
+    const csv = Papa.unparse(dataToExport);
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      const monthName = months.find(m => m.value === selectedMonth)?.label;
+      link.setAttribute('href', url);
+      link.setAttribute('download', `transactions-${monthName}-${selectedYear}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,6 +101,10 @@ export default function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
+           <Button onClick={handleDownloadCsv} variant="outline" disabled={filteredTransactions.length === 0}>
+            <Download className="mr-2" />
+            Download
+          </Button>
           <AddTransactionSheet>
             <Button disabled={!selectedTenantId}>
               <PlusCircle className="mr-2" />
