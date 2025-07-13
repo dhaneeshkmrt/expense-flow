@@ -1,4 +1,5 @@
 'use client';
+import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -8,9 +9,36 @@ import { Download, PlusCircle } from 'lucide-react';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
 import { useApp } from '@/lib/provider';
 import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getYear, getMonth, parseISO } from 'date-fns';
+
+const months = [
+  { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
+  { value: 3, label: 'April' }, { value: 4, label: 'May' }, { value: 5, label: 'June' },
+  { value: 6, label: 'July' }, { value: 7, label: 'August' }, { value: 8, label: 'September' },
+  { value: 9, label: 'October' }, { value: 10, label: 'November' }, { value: 11, label: 'December' }
+];
 
 export default function DashboardPage() {
-  const { selectedTenantId } = useApp();
+  const { selectedTenantId, transactions } = useApp();
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+
+  const availableYears = useMemo(() => {
+    const years = new Set(transactions.map(t => getYear(parseISO(t.date))));
+    if (!years.has(new Date().getFullYear())) {
+      years.add(new Date().getFullYear());
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(t => {
+      const transactionDate = parseISO(t.date);
+      return getYear(transactionDate) === selectedYear && getMonth(transactionDate) === selectedMonth;
+    });
+  }, [transactions, selectedYear, selectedMonth]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -20,11 +48,27 @@ export default function DashboardPage() {
             Here&apos;s a quick overview of your finances.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" disabled>
-            <Download className="mr-2" />
-            Download Report
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+           <Select value={String(selectedYear)} onValueChange={(value) => setSelectedYear(Number(value))}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={String(selectedMonth)} onValueChange={(value) => setSelectedMonth(Number(value))}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map(month => (
+                <SelectItem key={month.value} value={String(month.value)}>{month.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <AddTransactionSheet>
             <Button disabled={!selectedTenantId}>
               <PlusCircle className="mr-2" />
@@ -34,35 +78,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <DashboardStats />
+      <DashboardStats transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Category Expense Overview</CardTitle>
-            <CardDescription>Your spending by category for this month.</CardDescription>
+            <CardDescription>Your spending by category for the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <OverviewChart />
+            <OverviewChart transactions={filteredTransactions} />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
-            <CardDescription>Your spending by day for this month.</CardDescription>
+            <CardDescription>Your spending by day for the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyExpenseChart />
+            <DailyExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
         </Card>
       </div>
       <Card>
           <CardHeader>
             <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Your latest 5 transactions.</CardDescription>
+            <CardDescription>Your latest 5 transactions for the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentTransactions />
+            <RecentTransactions transactions={filteredTransactions} />
           </CardContent>
         </Card>
     </div>

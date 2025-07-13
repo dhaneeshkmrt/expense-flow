@@ -2,9 +2,14 @@
 
 import { useApp } from '@/lib/provider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { Transaction } from '@/lib/types';
 
-export function RecentTransactions() {
-  const { transactions, categories, settings } = useApp();
+interface RecentTransactionsProps {
+  transactions: Transaction[];
+}
+
+export function RecentTransactions({ transactions }: RecentTransactionsProps) {
+  const { categories, settings } = useApp();
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
@@ -40,6 +45,9 @@ export function RecentTransactions() {
           </div>
         </div>
       ))}
+       {transactions.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center">No transactions for this period.</p>
+      )}
     </div>
   );
 }

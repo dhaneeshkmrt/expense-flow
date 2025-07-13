@@ -4,10 +4,17 @@ import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, startOfMonth, isWithinInterval } from 'date-fns';
+import { format } from 'date-fns';
+import type { Transaction } from '@/lib/types';
 
-export function DashboardStats() {
-    const { transactions, settings, loading, loadingSettings } = useApp();
+interface DashboardStatsProps {
+    transactions: Transaction[];
+    year: number;
+    month: number;
+}
+
+export function DashboardStats({ transactions, year, month }: DashboardStatsProps) {
+    const { settings, loading, loadingSettings } = useApp();
 
     const stats = useMemo(() => {
         if (!transactions.length) {
@@ -19,16 +26,11 @@ export function DashboardStats() {
             };
         }
 
-        const currentMonthStart = startOfMonth(new Date());
-        const currentMonthTransactions = transactions.filter(t => 
-            isWithinInterval(new Date(t.date), { start: currentMonthStart, end: new Date() })
-        );
-
-        const totalSpent = currentMonthTransactions.reduce((sum, t) => sum + t.amount, 0);
-        const transactionCount = currentMonthTransactions.length;
+        const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
+        const transactionCount = transactions.length;
         const avgTransaction = transactionCount > 0 ? totalSpent / transactionCount : 0;
 
-        const categoryCounts = currentMonthTransactions.reduce((acc, t) => {
+        const categoryCounts = transactions.reduce((acc, t) => {
             acc[t.category] = (acc[t.category] || 0) + t.amount;
             return acc;
         }, {} as Record<string, number>);
@@ -69,14 +71,14 @@ export function DashboardStats() {
         );
     }
     
-    const currentMonthName = format(new Date(), 'MMMM');
+    const selectedMonthName = format(new Date(year, month), 'MMMM');
 
     return (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader>
-                    <CardTitle>Total Spent ({currentMonthName})</CardTitle>
-                    <CardDescription>Total expenses for the current month.</CardDescription>
+                    <CardTitle>Total Spent ({selectedMonthName})</CardTitle>
+                    <CardDescription>Total expenses for the selected month.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <p className="text-4xl font-bold">{formatCurrency(stats.totalSpent)}</p>

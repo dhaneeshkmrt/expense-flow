@@ -4,15 +4,21 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, isWithinInterval, eachDayOfInterval, getDate, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
+import type { Transaction } from '@/lib/types';
 
-export function DailyExpenseChart() {
-  const { transactions, settings } = useApp();
+interface DailyExpenseChartProps {
+    transactions: Transaction[];
+    year: number;
+    month: number;
+}
+
+export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
+  const { settings } = useApp();
 
   const data = useMemo(() => {
-    const today = new Date();
-    const monthStart = startOfMonth(today);
-    const monthEnd = endOfMonth(today);
+    const monthStart = startOfMonth(new Date(year, month));
+    const monthEnd = endOfMonth(new Date(year, month));
     
     const daysInMonth = eachDayOfInterval({
         start: monthStart,
@@ -26,11 +32,9 @@ export function DailyExpenseChart() {
 
     transactions.forEach(txn => {
         const transactionDate = parseISO(txn.date);
-        if (isWithinInterval(transactionDate, { start: monthStart, end: monthEnd })) {
-            const dayKey = format(transactionDate, 'yyyy-MM-dd');
-            const currentTotal = dailyTotals.get(dayKey) || 0;
-            dailyTotals.set(dayKey, currentTotal + txn.amount);
-        }
+        const dayKey = format(transactionDate, 'yyyy-MM-dd');
+        const currentTotal = dailyTotals.get(dayKey) || 0;
+        dailyTotals.set(dayKey, currentTotal + txn.amount);
     });
 
     return Array.from(dailyTotals.entries())
@@ -40,7 +44,7 @@ export function DailyExpenseChart() {
       }))
       .sort((a,b) => parseInt(a.name) - parseInt(b.name));
 
-  }, [transactions]);
+  }, [transactions, year, month]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-US', {
