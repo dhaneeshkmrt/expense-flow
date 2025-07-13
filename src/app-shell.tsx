@@ -66,7 +66,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
   
   const isRootTenantUser = useMemo(() => {
-    return selectedTenant?.isRootUser && user?.name === selectedTenant.name;
+    if (!selectedTenant || !user) return false;
+    return selectedTenant.isRootUser && user.name === selectedTenant.name;
   }, [selectedTenant, user]);
 
   const navItems = useMemo(() => {
@@ -74,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     
     let currentBaseNavItems = baseNavItemsTemplate.map(item => {
         if (item.href === '/dashboard' && selectedTenant) {
-            return { ...item, label: `Dashboard (${selectedTenant.name})` };
+            return { ...item, label: `Dashboard` };
         }
         return item;
     });
@@ -193,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     role="combobox"
                     aria-expanded={tenantPopoverOpen}
                     className="w-[200px] justify-between"
-                    disabled={loadingTenants || tenants.length <= 1}
+                    disabled={loadingTenants}
                   >
                     {selectedTenant ? selectedTenant.name : "Select tenant..."}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
