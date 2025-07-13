@@ -1,0 +1,123 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { useApp } from '@/lib/provider';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { Transaction } from '@/lib/types';
+import { parseISO, format } from 'date-fns';
+
+export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
+    const { categories, settings } = useApp();
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
+    const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
+
+    const subcategoryOptions = useMemo(() => {
+        if (!selectedCategory) return [];
+        const category = categories.find(c => c.name === selectedCategory);
+        return category ? category.subcategories : [];
+    }, [selectedCategory, categories]);
+
+    const microcategoryOptions = useMemo(() => {
+        if (!selectedSubcategory) return [];
+        const subcategory = subcategoryOptions.find(s => s.name === selectedSubcategory);
+        return subcategory ? (subcategory.microcategories || []) : [];
+    }, [selectedSubcategory, subcategoryOptions]);
+    
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const categoryMatch = !selectedCategory || t.category === selectedCategory;
+            const subcategoryMatch = !selectedSubcategory || t.subcategory === selectedSubcategory;
+            const microcategoryMatch = !selectedMicrocategory || t.microcategory === selectedMicrocategory;
+            return categoryMatch && subcategoryMatch && microcategoryMatch;
+        });
+    }, [transactions, selectedCategory, selectedSubcategory, selectedMicrocategory]);
+    
+    const totalAmount = useMemo(() => {
+        return filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+    }, [filteredTransactions]);
+
+    const getCategoryIcon = (categoryName: string) => {
+        const category = categories.find(c => c.name === categoryName);
+        if (category && category.icon) {
+            const Icon = typeof category.icon === 'string' ? () => null : category.icon;
+            return <Icon className="w-4 h-4" />;
+        }
+        return null;
+    };
+    
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+        }).format(amount).replace('$', settings.currency);
+    };
+    
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <CardTitle>Transaction Breakdown</CardTitle>
+                <CardDescription>Filter transactions by category.</CardDescription>
+                <div className="flex flex-wrap items-center gap-2 pt-4">
+                    <Select value={selectedCategory} onValueChange={v => {setSelectedCategory(v === 'all' ? '' : v); setSelectedSubcategory(''); setSelectedMicrocategory('');}}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedSubcategory} onValueChange={v => {setSelectedSubcategory(v === 'all' ? '' : v); setSelectedMicrocategory('');}} disabled={!selectedCategory}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <SelectValue placeholder="Subcategory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                             <SelectItem value="all">All Subcategories</SelectItem>
+                            {subcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedMicrocategory} onValueChange={v => setSelectedMicrocategory(v === 'all' ? '' : v)} disabled={!selectedSubcategory}>
+                        <SelectTrigger className="w-full sm:w-[150px]">
+                            <SelectValue placeholder="Micro" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Micros</SelectItem>
+                            {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+            </CardHeader>
+            <CardContent className="flex-grow flex flex-col">
+                <div className="border-t pt-4">
+                    <p className="text-2xl font-bold text-center mb-4">
+                        Total: {formatCurrency(totalAmount)}
+                    </p>
+                </div>
+                <div className="space-y-4 flex-grow overflow-y-auto pr-2">
+                    {filteredTransactions.length > 0 ? filteredTransactions.map((transaction) => (
+                        <div key={transaction.id} className="flex items-center">
+                            <Avatar className="h-9 w-9">
+                                <AvatarFallback className="bg-secondary text-secondary-foreground">
+                                {getCategoryIcon(transaction.category)}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="ml-4 space-y-1">
+                                <p className="text-sm font-medium leading-none">{transaction.description}</p>
+                                <p className="text-sm text-muted-foreground">{format(parseISO(transaction.date), 'dd MMM yyyy')}</p>
+                            </div>
+                            <div className="ml-auto font-medium text-right">
+                                <p>{formatCurrency(transaction.amount)}</p>
+                                <p className="text-xs text-muted-foreground">{transaction.subcategory}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
+                            </div>
+                        </div>
+                    )) : (
+                        <p className="text-sm text-muted-foreground text-center pt-4">No transactions match your filters.</p>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}

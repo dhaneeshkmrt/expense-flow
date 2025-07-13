@@ -13,6 +13,7 @@ import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getYear, getMonth, parseISO, format } from 'date-fns';
 import Papa from 'papaparse';
+import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 
 const months = [
   { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
@@ -137,15 +138,18 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <Card>
-          <CardHeader>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Your latest 5 transactions for the selected period.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentTransactions transactions={filteredTransactions} />
-          </CardContent>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+            <CardHeader>
+              <CardTitle>Recent Transactions</CardTitle>
+              <CardDescription>Your latest 5 transactions for the selected period.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecentTransactions transactions={filteredTransactions} />
+            </CardContent>
         </Card>
+        <CategoryBreakdown transactions={filteredTransactions} />
+      </div>
     </div>
   );
 }
