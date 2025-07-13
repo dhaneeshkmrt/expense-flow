@@ -210,10 +210,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
             const tenantsCollection = collection(db, "tenants");
             const querySnapshot = await getDocs(query(tenantsCollection, orderBy("name")));
-            let fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+            const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
 
             if (fetchedTenants.length === 0) {
-                const defaultTenantData = {
+                 const defaultTenantData = {
                     name: 'dhanisha',
                     mobileNo: '',
                     address: '',
@@ -225,12 +225,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 await seedDefaultCategories(defaultTenant.id);
                 await seedDefaultSettings(defaultTenant.id);
 
-                // Set the state with only the newly created tenant
-                fetchedTenants = [defaultTenant];
-            }
-
-            setTenants(fetchedTenants);
-            if (fetchedTenants.length > 0 && !selectedTenantId) {
+                setTenants([defaultTenant]);
+                setSelectedTenantId(defaultTenant.id);
+            } else {
+                setTenants(fetchedTenants);
                 const savedTenantId = localStorage.getItem('selectedTenantId');
                 if (savedTenantId && fetchedTenants.some(t => t.id === savedTenantId)) {
                     setSelectedTenantId(savedTenantId);
