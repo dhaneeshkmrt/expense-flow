@@ -29,8 +29,8 @@ export default function RootLayout({
       <body className={`${inter.variable} font-body antialiased`}>
         <AppProvider>
           {children}
-          <Toaster />
         </AppProvider>
+        <Toaster />
       </body>
     </html>
   );
