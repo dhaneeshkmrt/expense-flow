@@ -15,7 +15,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check, FlaskConical, LogOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
+import { toast } from '@/hooks/use-toast';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -37,15 +38,37 @@ const navItems = [
         { href: '/admin/settings', label: 'Settings', icon: Settings }
     ]
   },
+  {
+    label: 'Test',
+    icon: FlaskConical,
+    subItems: [
+      { href: '/test/auth', label: 'Auth', icon: Shield },
+    ],
+  },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { tenants, selectedTenantId, setSelectedTenantId, loadingTenants } = useApp();
-  const [openAdmin, setOpenAdmin] = useState(pathname.startsWith('/admin'));
+  const { tenants, selectedTenantId, setSelectedTenantId, loadingTenants, user, signOut } = useApp();
+  const [openSections, setOpenSections] = useState({
+      admin: pathname.startsWith('/admin'),
+      test: pathname.startsWith('/test'),
+  });
   const [tenantPopoverOpen, setTenantPopoverOpen] = useState(false);
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+  
+  const toggleSection = (section: 'admin' | 'test') => {
+      setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
+  }
+  
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: 'Signed Out',
+      description: 'You have been successfully signed out.',
+    });
+  };
 
   return (
     <SidebarProvider>
@@ -58,14 +81,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {navItems.map((item) => {
               const isDashboard = item.label === 'Dashboard';
               const label = isDashboard && selectedTenant ? `Dashboard - ${selectedTenant.name}` : item.label;
+              const sectionKey = item.label.toLowerCase() as 'admin' | 'test';
 
               return item.subItems ? (
-                <Collapsible key={item.label} open={openAdmin} onOpenChange={setOpenAdmin}>
+                <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
                         <SidebarMenuButton
                             className="w-full justify-start"
-                            variant={pathname.startsWith('/admin') ? 'default' : 'ghost'}
+                            variant={pathname.startsWith(`/${sectionKey}`) ? 'default' : 'ghost'}
                         >
                           <>
                             <item.icon />
@@ -117,48 +141,55 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <SidebarTrigger />
           </div>
           <div className="flex-1" />
-          <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={tenantPopoverOpen}
-                className="w-[200px] justify-between"
-                disabled={loadingTenants}
-              >
-                {selectedTenant ? selectedTenant.name : "Select tenant..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <div className="flex items-center gap-4">
+            <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={tenantPopoverOpen}
+                  className="w-[200px] justify-between"
+                  disabled={loadingTenants}
+                >
+                  {selectedTenant ? selectedTenant.name : "Select tenant..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[200px] p-0">
+                <Command>
+                  <CommandInput placeholder="Search tenant..." />
+                  <CommandList>
+                    <CommandEmpty>No tenant found.</CommandEmpty>
+                    <CommandGroup>
+                      {tenants.map((tenant) => (
+                        <CommandItem
+                          key={tenant.id}
+                          value={tenant.id}
+                          onSelect={(currentValue) => {
+                            setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
+                            setTenantPopoverOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedTenantId === tenant.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {tenant.name}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {user && (
+              <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+                <LogOut />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0">
-              <Command>
-                <CommandInput placeholder="Search tenant..." />
-                <CommandList>
-                  <CommandEmpty>No tenant found.</CommandEmpty>
-                  <CommandGroup>
-                    {tenants.map((tenant) => (
-                      <CommandItem
-                        key={tenant.id}
-                        value={tenant.id}
-                        onSelect={(currentValue) => {
-                          setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
-                          setTenantPopoverOpen(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            selectedTenantId === tenant.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {tenant.name}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
       </SidebarInset>

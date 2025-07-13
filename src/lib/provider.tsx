@@ -23,9 +23,18 @@ import {
   User,
   Calendar,
 } from 'lucide-react';
-import { db } from './firebase';
+import { db, auth } from './firebase';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  type User as FirebaseUser,
+  signOut as firebaseSignOut
+} from 'firebase/auth';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, orderBy, setDoc, getDoc, where } from 'firebase/firestore';
 import { format, subMonths } from 'date-fns';
+import { toast } from '@/hooks/use-toast';
+
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase,
@@ -65,6 +74,9 @@ type EditCategoryData = {
 
 
 interface AppContextType {
+  user: FirebaseUser | null;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
   transactions: Transaction[];
   categories: Category[];
   settings: Settings;
@@ -97,18 +109,54 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
   const [allTransactions, setAllTransactions] = useState<Transaction[]>([]);
   const [allCategories, setAllCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<Settings>({ ...defaultSettings, tenantId: '' });
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
 
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [loadingTenants, setLoadingTenants] = useState(true);
 
-  const loading = loadingTransactions || loadingCategories || loadingSettings || loadingTenants;
+  const loading = loadingAuth || loadingTransactions || loadingCategories || loadingSettings || loadingTenants;
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoadingAuth(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const signInWithEmail = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        // If user not found, create a new user
+        try {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } catch (createError: any) {
+          toast({ title: 'Sign Up Failed', description: createError.message, variant: 'destructive' });
+        }
+      } else {
+        toast({ title: 'Sign In Failed', description: error.message, variant: 'destructive' });
+      }
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error: any) {
+      toast({ title: 'Sign Out Failed', description: error.message, variant: 'destructive' });
+    }
+  };
+
 
   const seedDefaultCategories = useCallback(async (tenantId: string) => {
     const batch = writeBatch(db);
@@ -283,7 +331,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         alert("Please select a tenant first.");
         return;
     }
-    const transactionData = { ...transaction, tenantId: selectedTenantId };
+    const transactionData = { ...transaction, tenantId: selectedTenantId, userId: user?.uid };
     try {
       const docRef = await addDoc(collection(db, "transactions"), transactionData);
       setAllTransactions(prev => [{ ...transactionData, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -301,7 +349,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     transactions.forEach(transaction => {
       const docRef = doc(collection(db, "transactions"));
-      const transactionData = { ...transaction, tenantId: selectedTenantId, microcategory: transaction.microcategory || '' };
+      const transactionData = { ...transaction, tenantId: selectedTenantId, userId: user?.uid, microcategory: transaction.microcategory || '' };
       batch.set(docRef, transactionData);
       newTransactions.push({ ...transactionData, id: docRef.id });
     });
@@ -317,7 +365,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => {
     if (!selectedTenantId) return;
-    const transactionData = { ...transactionUpdate, tenantId: selectedTenantId };
+    const transactionData = { ...transactionUpdate, tenantId: selectedTenantId, userId: user?.uid };
     try {
         const transactionRef = doc(db, "transactions", transactionId);
         await updateDoc(transactionRef, transactionData);
@@ -353,6 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       icon: getIconComponent(categoryData.icon),
       subcategories: [],
       tenantId: selectedTenantId,
+      userId: user?.uid,
       budgets: categoryData.budget ? { [currentMonthKey]: categoryData.budget } : {},
     };
 
@@ -361,6 +410,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         icon: categoryData.icon,
         subcategories: [],
         tenantId: selectedTenantId,
+        userId: user?.uid,
         budgets: categoryData.budget ? { [currentMonthKey]: categoryData.budget } : {},
     }
 
@@ -519,7 +569,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
     try {
         const docRef = await addDoc(collection(db, 'tenants'), tenantData);
-        const newTenant = { id: docRef.id, ...tenantData };
+        const newTenant = { id: docRef.id, ...tenantData, userId: user?.uid };
 
         await seedDefaultCategories(newTenant.id);
         await seedDefaultSettings(newTenant.id);
@@ -564,6 +614,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const contextValue = useMemo(() => ({
+    user,
+    signInWithEmail,
+    signOut,
     transactions: allTransactions,
     categories: allCategories,
     settings,
@@ -593,7 +646,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingTenants,
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
-      allTransactions, allCategories, settings, tenants, selectedTenantId, 
+      user, allTransactions, allCategories, settings, tenants, selectedTenantId, 
       loading, loadingCategories, loadingSettings, loadingTenants
     ]);
 
