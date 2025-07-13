@@ -41,6 +41,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import type { Transaction } from '@/lib/types';
+import { ScrollArea } from '../ui/scroll-area';
 
 const transactionSchema = z.object({
   date: z.date({
@@ -232,255 +233,257 @@ export default function AddTransactionSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {children && <SheetTrigger asChild>{children}</SheetTrigger>}
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent className="sm:max-w-lg flex flex-col">
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
           <SheetDescription>{sheetDescription}</SheetDescription>
         </SheetHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+        <ScrollArea className="flex-grow pr-6 -mr-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={'outline'}
+                              className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                            >
+                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="time"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              
               <FormField
                 control={form.control}
-                name="date"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={'outline'}
-                            className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                          >
-                            {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} />
+                      <Input placeholder="e.g., Weekly groceries" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Weekly groceries" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-1 gap-4">
               <FormField
                 control={form.control}
-                name="category"
+                name="amount"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel className="flex items-center">
-                      Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                    </FormLabel>
-                    <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
-                            {field.value ? categories.find((cat) => cat.name === field.value)?.name : 'Select a category'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                          <CommandInput placeholder="Search category..." />
-                          <CommandList>
-                            <CommandEmpty>No category found.</CommandEmpty>
-                            <CommandGroup>
-                              {categories.map((cat) => (
-                                <CommandItem value={cat.name} key={cat.id} onSelect={() => { form.setValue('category', cat.name, { shouldValidate: true }); setCategoryPopoverOpen(false); }}>
-                                  <Check className={cn('mr-2 h-4 w-4', cat.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                  {cat.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="flex items-center">
+                        Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                      </FormLabel>
+                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
+                              {field.value ? categories.find((cat) => cat.name === field.value)?.name : 'Select a category'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search category..." />
+                            <CommandList>
+                              <CommandEmpty>No category found.</CommandEmpty>
+                              <CommandGroup>
+                                {categories.map((cat) => (
+                                  <CommandItem value={cat.name} key={cat.id} onSelect={() => { form.setValue('category', cat.name, { shouldValidate: true }); setCategoryPopoverOpen(false); }}>
+                                    <Check className={cn('mr-2 h-4 w-4', cat.name === field.value ? 'opacity-100' : 'opacity-0')} />
+                                    {cat.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="subcategory"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Subcategory</FormLabel>
+                       <Popover open={subcategoryPopoverOpen} onOpenChange={setSubcategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedCategoryName}>
+                              {field.value ? subcategories.find((sub) => sub.name === field.value)?.name : 'Select a subcategory'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                             <CommandInput placeholder="Search subcategory..." />
+                             <CommandList>
+                              <CommandEmpty>No subcategory found.</CommandEmpty>
+                              <CommandGroup>
+                                {subcategories.map((sub) => (
+                                  <CommandItem value={sub.name} key={sub.id} onSelect={() => { form.setValue('subcategory', sub.name, { shouldValidate: true }); setSubcategoryPopoverOpen(false); }}>
+                                    <Check className={cn('mr-2 h-4 w-4', sub.name === field.value ? 'opacity-100' : 'opacity-0')} />
+                                    {sub.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                             </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="microcategory"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Micro-Subcategory (Optional)</FormLabel>
+                       <Popover open={microcategoryPopoverOpen} onOpenChange={setMicrocategoryPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedSubcategoryName}>
+                              {field.value ? microcategories.find((micro) => micro.name === field.value)?.name : 'Select a micro-subcategory'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                             <CommandInput placeholder="Search micro-subcategory..." />
+                             <CommandList>
+                              <CommandEmpty>No micro-subcategory found.</CommandEmpty>
+                              <CommandGroup>
+                                {microcategories.map((micro) => (
+                                  <CommandItem value={micro.name} key={micro.id} onSelect={() => { form.setValue('microcategory', micro.name, { shouldValidate: true }); setMicrocategoryPopoverOpen(false); }}>
+                                    <Check className={cn('mr-2 h-4 w-4', micro.name === field.value ? 'opacity-100' : 'opacity-0')} />
+                                    {micro.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                             </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="subcategory"
+                name="paidBy"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Subcategory</FormLabel>
-                     <Popover open={subcategoryPopoverOpen} onOpenChange={setSubcategoryPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedCategoryName}>
-                            {field.value ? subcategories.find((sub) => sub.name === field.value)?.name : 'Select a subcategory'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                           <CommandInput placeholder="Search subcategory..." />
-                           <CommandList>
-                            <CommandEmpty>No subcategory found.</CommandEmpty>
-                            <CommandGroup>
-                              {subcategories.map((sub) => (
-                                <CommandItem value={sub.name} key={sub.id} onSelect={() => { form.setValue('subcategory', sub.name, { shouldValidate: true }); setSubcategoryPopoverOpen(false); }}>
-                                  <Check className={cn('mr-2 h-4 w-4', sub.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                  {sub.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                           </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                  <FormItem>
+                    <FormLabel>Paid By</FormLabel>
+                     <Popover open={paidByPopoverOpen} onOpenChange={setPaidByPopoverOpen}>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
+                              {field.value ? field.value.toUpperCase() : 'Select a payer'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                             <CommandInput placeholder="Select a payer..." />
+                             <CommandList>
+                              <CommandEmpty>No payer found.</CommandEmpty>
+                              <CommandGroup>
+                                {paidByOptions.map((option) => (
+                                  <CommandItem value={option} key={option} onSelect={() => { form.setValue('paidBy', option, { shouldValidate: true }); setPaidByPopoverOpen(false); }}>
+                                    <Check className={cn('mr-2 h-4 w-4', option === field.value ? 'opacity-100' : 'opacity-0')} />
+                                    {option.toUpperCase()}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                             </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-               <FormField
+
+              <FormField
                 control={form.control}
-                name="microcategory"
+                name="notes"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Micro-Subcategory (Optional)</FormLabel>
-                     <Popover open={microcategoryPopoverOpen} onOpenChange={setMicrocategoryPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedSubcategoryName}>
-                            {field.value ? microcategories.find((micro) => micro.name === field.value)?.name : 'Select a micro-subcategory'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                           <CommandInput placeholder="Search micro-subcategory..." />
-                           <CommandList>
-                            <CommandEmpty>No micro-subcategory found.</CommandEmpty>
-                            <CommandGroup>
-                              {microcategories.map((micro) => (
-                                <CommandItem value={micro.name} key={micro.id} onSelect={() => { form.setValue('microcategory', micro.name, { shouldValidate: true }); setMicrocategoryPopoverOpen(false); }}>
-                                  <Check className={cn('mr-2 h-4 w-4', micro.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                  {micro.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                           </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
+                  <FormItem>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Any additional notes..." {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="paidBy"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Paid By</FormLabel>
-                   <Popover open={paidByPopoverOpen} onOpenChange={setPaidByPopoverOpen}>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
-                            {field.value ? field.value.toUpperCase() : 'Select a payer'}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                        <Command>
-                           <CommandInput placeholder="Select a payer..." />
-                           <CommandList>
-                            <CommandEmpty>No payer found.</CommandEmpty>
-                            <CommandGroup>
-                              {paidByOptions.map((option) => (
-                                <CommandItem value={option} key={option} onSelect={() => { form.setValue('paidBy', option, { shouldValidate: true }); setPaidByPopoverOpen(false); }}>
-                                  <Check className={cn('mr-2 h-4 w-4', option === field.value ? 'opacity-100' : 'opacity-0')} />
-                                  {option.toUpperCase()}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                           </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Any additional notes..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <SheetFooter>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? 'Save Changes' : 'Save Transaction'}
-              </Button>
-            </SheetFooter>
-          </form>
-        </Form>
+              <SheetFooter className="mt-auto pt-4">
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditing ? 'Save Changes' : 'Save Transaction'}
+                </Button>
+              </SheetFooter>
+            </form>
+          </Form>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
