@@ -300,7 +300,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     transactions.forEach(transaction => {
       const docRef = doc(collection(db, "transactions"));
-      const transactionData = { ...transaction, tenantId: selectedTenantId };
+      const transactionData = { ...transaction, tenantId: selectedTenantId, microcategory: transaction.microcategory || '' };
       batch.set(docRef, transactionData);
       newTransactions.push({ ...transactionData, id: docRef.id });
     });

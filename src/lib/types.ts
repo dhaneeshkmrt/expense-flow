@@ -28,7 +28,7 @@ export type Transaction = {
   amount: number;
   category: string;
   subcategory: string;
-  microcategory: string;
+  microcategory?: string;
   paidBy: string;
   notes?: string;
   tenantId: string;

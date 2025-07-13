@@ -102,7 +102,10 @@ export const columns: ColumnDef<Transaction>[] = [
     {
     accessorKey: 'microcategory',
     header: 'Micro-Subcategory',
-    cell: ({ row }) => <Badge variant="outline">{row.getValue('microcategory')}</Badge>,
+    cell: ({ row }) => {
+        const microcategory = row.getValue('microcategory') as string;
+        return microcategory ? <Badge variant="outline">{microcategory}</Badge> : null;
+    },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },

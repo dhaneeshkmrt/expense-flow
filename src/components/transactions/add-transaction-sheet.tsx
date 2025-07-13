@@ -51,7 +51,7 @@ const transactionSchema = z.object({
   amount: z.coerce.number().positive('Amount must be positive.'),
   category: z.string().min(1, 'Please select a category.'),
   subcategory: z.string().min(1, 'Please select a subcategory.'),
-  microcategory: z.string().min(1, 'Please select a micro-subcategory.'),
+  microcategory: z.string().optional(),
   paidBy: z.string().min(1, 'Please select a payer.'),
   notes: z.string().optional(),
 });
@@ -89,6 +89,7 @@ export default function AddTransactionSheet({
         ...transaction,
         date: parseISO(transaction.date),
         amount: transaction.amount,
+        microcategory: transaction.microcategory || '',
         notes: transaction.notes || '',
       } : {
         date: new Date(),
@@ -109,6 +110,7 @@ export default function AddTransactionSheet({
         ...transaction,
         date: parseISO(transaction.date),
         amount: transaction.amount,
+        microcategory: transaction.microcategory || '',
         notes: transaction.notes || '',
       } : {
         date: new Date(),
@@ -195,6 +197,7 @@ export default function AddTransactionSheet({
     const submissionData = {
         ...data,
         date: format(data.date, 'yyyy-MM-dd'),
+        microcategory: data.microcategory || '',
     };
     
     if (isEditing && transaction) {
@@ -381,7 +384,7 @@ export default function AddTransactionSheet({
                 name="microcategory"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Micro-Subcategory</FormLabel>
+                    <FormLabel>Micro-Subcategory (Optional)</FormLabel>
                      <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
