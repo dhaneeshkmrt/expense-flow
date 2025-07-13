@@ -22,7 +22,7 @@ const months = [
 ];
 
 export default function DashboardPage() {
-  const { selectedTenantId, transactions, settings } = useApp();
+  const { selectedTenantId, transactions } = useApp();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
@@ -52,8 +52,8 @@ export default function DashboardPage() {
       'Paid by': t.paidBy,
       'Desc': t.description,
       'Notes': t.notes || '',
-      '': '', // Empty column
-      ' ': '', // Second empty column
+      '': '',
+      ' ': '',
     }));
 
     const csv = Papa.unparse(dataToExport);
@@ -131,7 +131,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
             <CardDescription>Your spending by day for the selected period.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
             <DailyExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
