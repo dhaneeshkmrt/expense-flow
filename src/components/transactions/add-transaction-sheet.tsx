@@ -33,7 +33,8 @@ import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { suggestTransactionCategories } from '@/ai/flows/categorize-transaction';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import type { Transaction } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -218,6 +219,8 @@ export default function AddTransactionSheet({
   const sheetDescription = isEditing
     ? 'Update the details of your transaction below.'
     : 'Enter the details of your transaction below.';
+    
+  const chipRadioClasses = "cursor-pointer rounded-full border border-border px-3 py-1.5 text-sm transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -229,7 +232,7 @@ export default function AddTransactionSheet({
         </SheetHeader>
         <ScrollArea className="flex-grow pr-6 -mr-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -300,103 +303,123 @@ export default function AddTransactionSheet({
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center">
-                        Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat.id} value={cat.name}>
-                              {cat.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="flex items-center">
+                      Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                    </FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {categories.map((cat) => (
+                           <FormItem key={cat.id}>
+                            <FormControl>
+                               <RadioGroupItem value={cat.name} id={`cat-${cat.id}`} className="sr-only peer" />
+                            </FormControl>
+                            <Label htmlFor={`cat-${cat.id}`} className={chipRadioClasses}>
+                               {cat.name}
+                            </Label>
+                           </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {selectedCategoryName && (
                 <FormField
                   control={form.control}
                   name="subcategory"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-3">
                       <FormLabel>Subcategory</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCategoryName}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a subcategory" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-wrap gap-2"
+                        >
                           {subcategories.map((sub) => (
-                            <SelectItem key={sub.id} value={sub.name}>
-                              {sub.name}
-                            </SelectItem>
+                            <FormItem key={sub.id}>
+                               <FormControl>
+                                 <RadioGroupItem value={sub.name} id={`sub-${sub.id}`} className="sr-only peer" />
+                               </FormControl>
+                               <Label htmlFor={`sub-${sub.id}`} className={chipRadioClasses}>
+                                 {sub.name}
+                               </Label>
+                            </FormItem>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </RadioGroup>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                 <FormField
+              )}
+
+              {selectedSubcategoryName && microcategories.length > 0 && (
+                <FormField
                   control={form.control}
                   name="microcategory"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="space-y-3">
                       <FormLabel>Micro-Subcategory (Optional)</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedSubcategoryName}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a micro-subcategory" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                       <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-wrap gap-2"
+                        >
                           {microcategories.map((micro) => (
-                            <SelectItem key={micro.id} value={micro.name}>
-                              {micro.name}
-                            </SelectItem>
+                            <FormItem key={micro.id}>
+                               <FormControl>
+                                 <RadioGroupItem value={micro.name} id={`micro-${micro.id}`} className="sr-only peer" />
+                               </FormControl>
+                               <Label htmlFor={`micro-${micro.id}`} className={chipRadioClasses}>
+                                 {micro.name}
+                               </Label>
+                            </FormItem>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </RadioGroup>
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
 
               <FormField
                 control={form.control}
                 name="paidBy"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-3">
                     <FormLabel>Paid By</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a payer" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {paidByOptions.map((option) => (
-                                <SelectItem key={option} value={option}>
-                                    {option.toUpperCase()}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex flex-wrap gap-2"
+                      >
+                        {paidByOptions.map((option) => (
+                            <FormItem key={option}>
+                               <FormControl>
+                                 <RadioGroupItem value={option} id={`paidby-${option}`} className="sr-only peer" />
+                               </FormControl>
+                               <Label htmlFor={`paidby-${option}`} className={chipRadioClasses}>
+                                 {option.toUpperCase()}
+                               </Label>
+                            </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -416,8 +439,8 @@ export default function AddTransactionSheet({
                 )}
               />
 
-              <SheetFooter className="mt-auto pt-4">
-                <Button type="submit" disabled={isSubmitting}>
+              <SheetFooter className="mt-auto pt-4 sticky bottom-0 bg-background">
+                <Button type="submit" disabled={isSubmitting} className="w-full">
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isEditing ? 'Save Changes' : 'Save Transaction'}
                 </Button>
