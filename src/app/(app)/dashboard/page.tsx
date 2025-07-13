@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
@@ -47,7 +48,7 @@ export default function DashboardPage() {
       'Date': format(parseISO(t.date), 'dd-MMM-yy'),
       'Cate': t.category,
       'sub': t.subcategory,
-      'Amount': `${settings.currency}${t.amount.toFixed(2)}`,
+      'Amount': t.amount.toFixed(2),
       'Paid by': t.paidBy,
       'Desc': t.description,
       'Notes': t.notes || '',
@@ -130,7 +131,7 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
             <CardDescription>Your spending by day for the selected period.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <DailyExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
