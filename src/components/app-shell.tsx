@@ -139,12 +139,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {tenants.map((tenant) => (
                       <CommandItem
                         key={tenant.id}
-                        value={tenant.name}
-                        onSelect={() => {
-                          setSelectedTenantId(tenant.id);
+                        value={tenant.id}
+                        onSelect={(currentValue) => {
+                          setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
                           setTenantPopoverOpen(false);
                         }}
                       >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            selectedTenantId === tenant.id ? "opacity-100" : "opacity-0"
+                          )}
+                        />
                         {tenant.name}
                       </CommandItem>
                     ))}
