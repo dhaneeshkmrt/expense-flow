@@ -231,8 +231,8 @@ export default function AddTransactionSheet({
           <SheetDescription>{sheetDescription}</SheetDescription>
         </SheetHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow min-h-0">
-            <ScrollArea className="flex-grow pr-6 -mr-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col min-h-0">
+            <ScrollArea className="flex-1 pr-6 -mr-6">
               <div className="space-y-6 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
@@ -441,7 +441,7 @@ export default function AddTransactionSheet({
                 />
               </div>
             </ScrollArea>
-            <SheetFooter className="mt-auto pt-4 sticky bottom-0 bg-background">
+            <SheetFooter className="mt-auto pt-4">
               <Button type="submit" disabled={isSubmitting} className="w-full">
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isEditing ? 'Save Changes' : 'Save Transaction'}
