@@ -30,12 +30,12 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
   { 
     label: 'Admin', 
     icon: Shield,
     subItems: [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
-        { href: '/admin/settings', label: 'Settings', icon: Settings }
     ]
   },
   {
