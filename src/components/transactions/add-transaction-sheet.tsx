@@ -215,19 +215,15 @@ export default function AddTransactionSheet({
   };
 
   const sheetTitle = isEditing ? 'Edit Transaction' : 'Add a New Transaction';
-  const sheetDescription = isEditing
-    ? 'Update the details of your transaction below.'
-    : '';
     
   const chipRadioClasses = "cursor-pointer rounded-full border border-border px-3 py-1.5 text-sm transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground";
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {children && <SheetTrigger asChild>{children}</SheetTrigger>}
-      <SheetContent className="w-[95vw] sm:max-w-xl flex flex-col" suppressHydrationWarning>
+      <SheetContent className="sm:max-w-xl flex flex-col" suppressHydrationWarning>
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
-          {sheetDescription && <SheetDescription>{sheetDescription}</SheetDescription>}
         </SheetHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
