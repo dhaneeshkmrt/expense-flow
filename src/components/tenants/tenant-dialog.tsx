@@ -28,6 +28,15 @@ import type { Tenant } from '@/lib/types';
 import { PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const generateSecretToken = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let token = '';
+  for (let i = 0; i < 16; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+};
+
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
@@ -36,6 +45,7 @@ const tenantSchema = z.object({
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
     mobileNo: z.string().optional(),
+    secretToken: z.string().min(1, 'Secret Token is required.'),
   })).optional(),
 });
 
@@ -47,15 +57,6 @@ interface TenantDialogProps {
   tenant?: Tenant | null;
   setSelectedTenant: (tenant: Tenant | null) => void;
 }
-
-const generateSecretToken = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
-  let token = '';
-  for (let i = 0; i < 16; i++) {
-    token += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return token;
-};
 
 export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: TenantDialogProps) {
   const { addTenant, editTenant } = useApp();
@@ -82,8 +83,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
   }
 
-  const handleCopyToClipboard = () => {
-    const token = form.getValues('secretToken');
+  const handleCopyToClipboard = (token: string) => {
     navigator.clipboard.writeText(token);
     toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
   }
@@ -163,7 +163,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                     <FormControl>
                       <Input readOnly {...field} />
                     </FormControl>
-                    <Button type="button" variant="outline" size="icon" onClick={handleCopyToClipboard}>
+                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(field.value)}>
                         <Copy className="h-4 w-4"/>
                     </Button>
                     <Button type="button" variant="outline" size="icon" onClick={handleGenerateToken}>
@@ -241,13 +241,34 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name={`members.${index}.secretToken`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Member Secret Token</FormLabel>
+                          <div className="flex items-center gap-2">
+                            <FormControl>
+                              <Input readOnly {...field} />
+                            </FormControl>
+                            <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(field.value)}>
+                                <Copy className="h-4 w-4"/>
+                            </Button>
+                            <Button type="button" variant="outline" size="icon" onClick={() => form.setValue(`members.${index}.secretToken`, generateSecretToken())}>
+                                <RefreshCw className="h-4 w-4"/>
+                            </Button>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 ))}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ name: '', mobileNo: '' })}
+                  onClick={() => append({ name: '', mobileNo: '', secretToken: generateSecretToken() })}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Member

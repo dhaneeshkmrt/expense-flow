@@ -43,6 +43,7 @@ export type Settings = {
 export type TenantMember = {
   name: string;
   mobileNo?: string;
+  secretToken: string;
 };
 
 export type Tenant = {
