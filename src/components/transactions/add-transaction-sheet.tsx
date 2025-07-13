@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, ChevronsUpDown, Check } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -32,14 +32,7 @@ import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { suggestTransactionCategories } from '@/ai/flows/categorize-transaction';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Transaction } from '@/lib/types';
 import { ScrollArea } from '../ui/scroll-area';
 
@@ -79,11 +72,6 @@ export default function AddTransactionSheet({
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
-  const [subcategoryPopoverOpen, setSubcategoryPopoverOpen] = useState(false);
-  const [microcategoryPopoverOpen, setMicrocategoryPopoverOpen] = useState(false);
-  const [paidByPopoverOpen, setPaidByPopoverOpen] = useState(false);
 
   const isEditing = !!transaction;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -316,36 +304,24 @@ export default function AddTransactionSheet({
                   control={form.control}
                   name="category"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel className="flex items-center">
                         Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
                       </FormLabel>
-                      <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
-                              {field.value ? categories.find((cat) => cat.name === field.value)?.name : 'Select a category'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search category..." />
-                            <CommandList>
-                              <CommandEmpty>No category found.</CommandEmpty>
-                              <CommandGroup>
-                                {categories.map((cat) => (
-                                  <CommandItem value={cat.name} key={cat.id} onSelect={() => { form.setValue('category', cat.name, { shouldValidate: true }); setCategoryPopoverOpen(false); }}>
-                                    <Check className={cn('mr-2 h-4 w-4', cat.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                    {cat.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.name}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -354,34 +330,22 @@ export default function AddTransactionSheet({
                   control={form.control}
                   name="subcategory"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Subcategory</FormLabel>
-                       <Popover open={subcategoryPopoverOpen} onOpenChange={setSubcategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedCategoryName}>
-                              {field.value ? subcategories.find((sub) => sub.name === field.value)?.name : 'Select a subcategory'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                             <CommandInput placeholder="Search subcategory..." />
-                             <CommandList>
-                              <CommandEmpty>No subcategory found.</CommandEmpty>
-                              <CommandGroup>
-                                {subcategories.map((sub) => (
-                                  <CommandItem value={sub.name} key={sub.id} onSelect={() => { form.setValue('subcategory', sub.name, { shouldValidate: true }); setSubcategoryPopoverOpen(false); }}>
-                                    <Check className={cn('mr-2 h-4 w-4', sub.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                    {sub.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                             </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                       <Select onValueChange={field.onChange} value={field.value} disabled={!selectedCategoryName}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a subcategory" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {subcategories.map((sub) => (
+                            <SelectItem key={sub.id} value={sub.name}>
+                              {sub.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -390,34 +354,23 @@ export default function AddTransactionSheet({
                   control={form.control}
                   name="microcategory"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Micro-Subcategory (Optional)</FormLabel>
-                       <Popover open={microcategoryPopoverOpen} onOpenChange={setMicrocategoryPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')} disabled={!selectedSubcategoryName}>
-                              {field.value ? microcategories.find((micro) => micro.name === field.value)?.name : 'Select a micro-subcategory'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                             <CommandInput placeholder="Search micro-subcategory..." />
-                             <CommandList>
-                              <CommandEmpty>No micro-subcategory found.</CommandEmpty>
-                              <CommandGroup>
-                                {microcategories.map((micro) => (
-                                  <CommandItem value={micro.name} key={micro.id} onSelect={() => { form.setValue('microcategory', micro.name, { shouldValidate: true }); setMicrocategoryPopoverOpen(false); }}>
-                                    <Check className={cn('mr-2 h-4 w-4', micro.name === field.value ? 'opacity-100' : 'opacity-0')} />
-                                    {micro.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                             </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={!selectedSubcategoryName}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a micro-subcategory" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {microcategories.map((micro) => (
+                            <SelectItem key={micro.id} value={micro.name}>
+                              {micro.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -430,32 +383,20 @@ export default function AddTransactionSheet({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Paid By</FormLabel>
-                     <Popover open={paidByPopoverOpen} onOpenChange={setPaidByPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant="outline" role="combobox" className={cn('w-full justify-between', !field.value && 'text-muted-foreground')}>
-                              {field.value ? field.value.toUpperCase() : 'Select a payer'}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                             <CommandInput placeholder="Select a payer..." />
-                             <CommandList>
-                              <CommandEmpty>No payer found.</CommandEmpty>
-                              <CommandGroup>
-                                {paidByOptions.map((option) => (
-                                  <CommandItem value={option} key={option} onSelect={() => { form.setValue('paidBy', option, { shouldValidate: true }); setPaidByPopoverOpen(false); }}>
-                                    <Check className={cn('mr-2 h-4 w-4', option === field.value ? 'opacity-100' : 'opacity-0')} />
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a payer" />
+                            </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            {paidByOptions.map((option) => (
+                                <SelectItem key={option} value={option}>
                                     {option.toUpperCase()}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                             </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
