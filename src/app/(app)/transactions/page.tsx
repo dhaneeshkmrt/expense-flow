@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { columns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
@@ -10,7 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 
 export default function TransactionsPage() {
-  const { transactions, loading, loadingCategories, selectedTenantId } = useApp();
+  const { user, tenants, transactions, loading, loadingCategories, selectedTenantId } = useApp();
+
+  const isMainTenant = useMemo(() => {
+    if (!user || !selectedTenantId || !tenants.length) return false;
+    const currentTenant = tenants.find(t => t.id === selectedTenantId);
+    return currentTenant?.name === user.name;
+  }, [user, selectedTenantId, tenants]);
 
   if (loading || loadingCategories) {
     return (
@@ -40,12 +47,14 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <ImportCsvDialog>
-            <Button variant="outline" disabled={!selectedTenantId}>
-              <Import className="mr-2" />
-              Import CSV
-            </Button>
-          </ImportCsvDialog>
+          {isMainTenant && (
+            <ImportCsvDialog>
+              <Button variant="outline" disabled={!selectedTenantId}>
+                <Import className="mr-2" />
+                Import CSV
+              </Button>
+            </ImportCsvDialog>
+          )}
           <AddTransactionSheet>
               <Button disabled={!selectedTenantId}>
                 <PlusCircle className="mr-2" />
