@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -8,11 +9,15 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Transaction } from '@/lib/types';
 import { parseISO, format } from 'date-fns';
 
+const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
+
 export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
     const { categories, settings } = useApp();
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
+    const [selectedPaidBy, setSelectedPaidBy] = useState<string>('');
+
 
     const subcategoryOptions = useMemo(() => {
         if (!selectedCategory) return [];
@@ -31,9 +36,10 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
             const categoryMatch = !selectedCategory || t.category === selectedCategory;
             const subcategoryMatch = !selectedSubcategory || t.subcategory === selectedSubcategory;
             const microcategoryMatch = !selectedMicrocategory || t.microcategory === selectedMicrocategory;
-            return categoryMatch && subcategoryMatch && microcategoryMatch;
+            const paidByMatch = !selectedPaidBy || t.paidBy === selectedPaidBy;
+            return categoryMatch && subcategoryMatch && microcategoryMatch && paidByMatch;
         });
-    }, [transactions, selectedCategory, selectedSubcategory, selectedMicrocategory]);
+    }, [transactions, selectedCategory, selectedSubcategory, selectedMicrocategory, selectedPaidBy]);
     
     const totalAmount = useMemo(() => {
         return filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -86,6 +92,15 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                         <SelectContent>
                             <SelectItem value="all">All Micros</SelectItem>
                             {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedPaidBy} onValueChange={v => setSelectedPaidBy(v === 'all' ? '' : v)}>
+                        <SelectTrigger className="w-full sm:w-[120px]">
+                            <SelectValue placeholder="Paid By" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Payers</SelectItem>
+                            {paidByOptions.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
                         </SelectContent>
                     </Select>
                 </div>
