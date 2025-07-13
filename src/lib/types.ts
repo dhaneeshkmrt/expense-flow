@@ -50,5 +50,6 @@ export type Tenant = {
   name: string;
   mobileNo?: string;
   address?: string;
+  secretToken: string;
   members: TenantMember[];
 };

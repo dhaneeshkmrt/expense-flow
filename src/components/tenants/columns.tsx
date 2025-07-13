@@ -2,7 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Tenant } from '@/lib/types';
-import { Edit, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Copy, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import {
 import { Badge } from '../ui/badge';
 import { useApp } from '@/lib/provider';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 export const columns = (
     setSelectedTenant: (tenant: Tenant) => void,
@@ -26,13 +27,26 @@ export const columns = (
     header: 'Name',
     cell: ({ row }) => <div className="font-medium">{row.getValue('name')}</div>,
   },
-  {
-    accessorKey: 'mobileNo',
-    header: 'Mobile No.',
-  },
-  {
-    accessorKey: 'address',
-    header: 'Address',
+   {
+    accessorKey: 'secretToken',
+    header: 'Secret Token',
+    cell: function Cell({ row }) {
+        const { toast } = useToast();
+        const token = row.getValue('secretToken') as string;
+
+        const copyToClipboard = () => {
+            navigator.clipboard.writeText(token);
+            toast({ title: 'Copied!', description: 'Token copied to clipboard.'});
+        }
+        return (
+            <div className="flex items-center gap-2 font-mono text-sm">
+                <span>************</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={copyToClipboard}>
+                    <Copy className="h-4 w-4" />
+                </Button>
+            </div>
+        )
+    }
   },
   {
     accessorKey: 'members',

@@ -5,6 +5,15 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc 
 import { db } from '@/lib/firebase';
 import type { Tenant } from '@/lib/types';
 
+const generateSecretToken = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let token = '';
+  for (let i = 0; i < 16; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+};
+
 export function useTenants(
     seedDefaultCategories: (tenantId: string) => Promise<void>,
     seedDefaultSettings: (tenantId: string) => Promise<any>
@@ -22,10 +31,11 @@ export function useTenants(
                 const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
 
                 if (fetchedTenants.length === 0) {
-                    const defaultTenantData = {
+                    const defaultTenantData: Omit<Tenant, 'id'> = {
                         name: 'dhanisha',
                         mobileNo: '',
                         address: '',
+                        secretToken: generateSecretToken(),
                         members: []
                     };
                     const docRef = await addDoc(tenantsCollection, defaultTenantData);

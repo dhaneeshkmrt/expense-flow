@@ -25,12 +25,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Tenant } from '@/lib/types';
-import { PlusCircle, Trash2 } from 'lucide-react';
+import { PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   mobileNo: z.string().optional(),
   address: z.string().optional(),
+  secretToken: z.string().min(1, 'Secret Token is required.'),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
     mobileNo: z.string().optional(),
@@ -46,8 +48,18 @@ interface TenantDialogProps {
   setSelectedTenant: (tenant: Tenant | null) => void;
 }
 
+const generateSecretToken = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let token = '';
+  for (let i = 0; i < 16; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+};
+
 export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: TenantDialogProps) {
   const { addTenant, editTenant } = useApp();
+  const { toast } = useToast();
   const isEditing = !!tenant;
 
   const form = useForm<TenantFormValues>({
@@ -56,6 +68,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       name: '',
       mobileNo: '',
       address: '',
+      secretToken: '',
       members: [],
     },
   });
@@ -64,22 +77,36 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     control: form.control,
     name: 'members',
   });
+  
+  const handleGenerateToken = () => {
+    form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
+  }
+
+  const handleCopyToClipboard = () => {
+    const token = form.getValues('secretToken');
+    navigator.clipboard.writeText(token);
+    toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
+  }
 
   useEffect(() => {
-    if (open && tenant) {
-      form.reset({
-        name: tenant.name,
-        mobileNo: tenant.mobileNo,
-        address: tenant.address,
-        members: tenant.members || [],
-      });
-    } else {
-      form.reset({
-        name: '',
-        mobileNo: '',
-        address: '',
-        members: [],
-      });
+    if (open) {
+        if (tenant) {
+          form.reset({
+            name: tenant.name,
+            mobileNo: tenant.mobileNo,
+            address: tenant.address,
+            secretToken: tenant.secretToken,
+            members: tenant.members || [],
+          });
+        } else {
+          form.reset({
+            name: '',
+            mobileNo: '',
+            address: '',
+            secretToken: generateSecretToken(),
+            members: [],
+          });
+        }
     }
   }, [tenant, open, form]);
 
@@ -122,6 +149,27 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                   <FormControl>
                     <Input placeholder="e.g., John Doe" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="secretToken"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Secret Token</FormLabel>
+                  <div className="flex items-center gap-2">
+                    <FormControl>
+                      <Input readOnly {...field} />
+                    </FormControl>
+                    <Button type="button" variant="outline" size="icon" onClick={handleCopyToClipboard}>
+                        <Copy className="h-4 w-4"/>
+                    </Button>
+                    <Button type="button" variant="outline" size="icon" onClick={handleGenerateToken}>
+                        <RefreshCw className="h-4 w-4"/>
+                    </Button>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
