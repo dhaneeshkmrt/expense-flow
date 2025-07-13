@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         currentBaseNavItems = baseNavItemsTemplate.filter(item => !item.tenantOnly);
     }
     
-    if (selectedTenant?.isRootUser) {
+    if (selectedTenant?.isRootUser && isMainTenant) {
         return [...currentBaseNavItems, ...adminNavItems];
     }
     return currentBaseNavItems;
@@ -105,8 +105,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarContent>
           <SidebarMenu>
             {navItems.map((item) => {
-              const isDashboard = item.label === 'Dashboard';
-              const label = isDashboard && selectedTenant ? `Dashboard - ${selectedTenant.name}` : item.label;
               const sectionKey = item.label.toLowerCase() as 'admin' | 'test';
 
               return item.subItems ? (
@@ -148,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                    <Link href={item.href}>
                         <SidebarMenuButton
                             isActive={pathname === item.href}
-                            tooltip={label}
+                            tooltip={item.label}
                         >
                             <item.icon />
                             <span>{item.label}</span>

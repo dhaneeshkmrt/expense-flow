@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         currentBaseNavItems = baseNavItemsTemplate.filter(item => !item.tenantOnly);
     }
     
-    if (selectedTenant?.isRootUser) {
+    if (selectedTenant?.isRootUser && isMainTenant) {
         return [...currentBaseNavItems, ...adminNavItems];
     }
     return currentBaseNavItems;
