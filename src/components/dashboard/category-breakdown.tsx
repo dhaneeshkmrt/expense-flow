@@ -181,7 +181,10 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                                 <p className="text-sm text-muted-foreground">{format(parseISO(transaction.date), 'dd MMM yyyy')}</p>
                             </div>
                             <div className="ml-auto font-medium text-right">
-                                <p>{formatCurrency(transaction.amount)}</p>
+                                <p className="flex items-center justify-end gap-2">
+                                  <span>{formatCurrency(transaction.amount)}</span>
+                                  <Badge variant="outline" className="font-mono">{transaction.paidBy.toUpperCase()}</Badge>
+                                </p>
                                 <p className="text-xs text-muted-foreground">{transaction.subcategory}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
                             </div>
                         </div>
@@ -194,3 +197,4 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     )
 }
 
+    
