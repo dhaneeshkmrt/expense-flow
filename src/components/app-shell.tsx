@@ -27,10 +27,10 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 
-const baseNavItems = [
+const baseNavItemsTemplate = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
-  { href: '/categories', label: 'Categories', icon: Shapes },
+  { href: '/categories', label: 'Categories', icon: Shapes, tenantOnly: true },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -66,11 +66,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   const navItems = useMemo(() => {
-    if (selectedTenant?.isRootUser) {
-        return [...baseNavItems, ...adminNavItems];
+    const isMainTenant = selectedTenant && user && selectedTenant.name === user.name;
+    
+    let currentBaseNavItems = baseNavItemsTemplate;
+    if (!isMainTenant) {
+        currentBaseNavItems = baseNavItemsTemplate.filter(item => !item.tenantOnly);
     }
-    return baseNavItems;
-  }, [selectedTenant]);
+    
+    if (selectedTenant?.isRootUser) {
+        return [...currentBaseNavItems, ...adminNavItems];
+    }
+    return currentBaseNavItems;
+  }, [selectedTenant, user]);
   
   const toggleSection = (section: 'admin' | 'test') => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
