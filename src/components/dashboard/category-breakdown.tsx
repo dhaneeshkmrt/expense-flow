@@ -17,6 +17,8 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
     const [selectedPaidBy, setSelectedPaidBy] = useState<string>('');
+    const [sortKey, setSortKey] = useState<'date' | 'amount'>('date');
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
 
     const subcategoryOptions = useMemo(() => {
@@ -31,19 +33,30 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
         return subcategory ? (subcategory.microcategories || []) : [];
     }, [selectedSubcategory, subcategoryOptions]);
     
-    const filteredTransactions = useMemo(() => {
-        return transactions.filter(t => {
+    const filteredAndSortedTransactions = useMemo(() => {
+        const filtered = transactions.filter(t => {
             const categoryMatch = !selectedCategory || t.category === selectedCategory;
             const subcategoryMatch = !selectedSubcategory || t.subcategory === selectedSubcategory;
             const microcategoryMatch = !selectedMicrocategory || t.microcategory === selectedMicrocategory;
             const paidByMatch = !selectedPaidBy || t.paidBy === selectedPaidBy;
             return categoryMatch && subcategoryMatch && microcategoryMatch && paidByMatch;
         });
-    }, [transactions, selectedCategory, selectedSubcategory, selectedMicrocategory, selectedPaidBy]);
+
+        return filtered.sort((a, b) => {
+            let comparison = 0;
+            if (sortKey === 'date') {
+                comparison = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+            } else { // amount
+                comparison = a.amount - b.amount;
+            }
+            return sortOrder === 'asc' ? comparison : -comparison;
+        });
+
+    }, [transactions, selectedCategory, selectedSubcategory, selectedMicrocategory, selectedPaidBy, sortKey, sortOrder]);
     
     const totalAmount = useMemo(() => {
-        return filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-    }, [filteredTransactions]);
+        return filteredAndSortedTransactions.reduce((sum, t) => sum + t.amount, 0);
+    }, [filteredAndSortedTransactions]);
 
     const getCategoryIcon = (categoryName: string) => {
         const category = categories.find(c => c.name === categoryName);
@@ -65,7 +78,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
         <Card className="flex flex-col">
             <CardHeader>
                 <CardTitle>Transaction Breakdown</CardTitle>
-                <CardDescription>Filter transactions by category.</CardDescription>
+                <CardDescription>Filter and sort transactions.</CardDescription>
                 <div className="flex flex-wrap items-center gap-2 pt-4">
                     <Select value={selectedCategory} onValueChange={v => {setSelectedCategory(v === 'all' ? '' : v); setSelectedSubcategory(''); setSelectedMicrocategory('');}}>
                         <SelectTrigger className="w-full sm:w-[150px]">
@@ -103,6 +116,21 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                             {paidByOptions.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
                         </SelectContent>
                     </Select>
+                    <Select value={`${sortKey}-${sortOrder}`} onValueChange={(value) => {
+                        const [key, order] = value.split('-') as [typeof sortKey, typeof sortOrder];
+                        setSortKey(key);
+                        setSortOrder(order);
+                    }}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="date-desc">Date (Newest first)</SelectItem>
+                            <SelectItem value="date-asc">Date (Oldest first)</SelectItem>
+                            <SelectItem value="amount-desc">Amount (High to Low)</SelectItem>
+                            <SelectItem value="amount-asc">Amount (Low to High)</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col">
@@ -112,7 +140,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                     </p>
                 </div>
                 <div className="space-y-4 flex-grow overflow-y-auto pr-2">
-                    {filteredTransactions.length > 0 ? filteredTransactions.map((transaction) => (
+                    {filteredAndSortedTransactions.length > 0 ? filteredAndSortedTransactions.map((transaction) => (
                         <div key={transaction.id} className="flex items-center">
                             <Avatar className="h-9 w-9">
                                 <AvatarFallback className="bg-secondary text-secondary-foreground">
