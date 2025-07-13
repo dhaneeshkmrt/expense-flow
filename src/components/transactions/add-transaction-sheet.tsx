@@ -230,224 +230,225 @@ export default function AddTransactionSheet({
           <SheetTitle>{sheetTitle}</SheetTitle>
           <SheetDescription>{sheetDescription}</SheetDescription>
         </SheetHeader>
-        <ScrollArea className="flex-grow pr-6 -mr-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-              <div className="grid grid-cols-2 gap-4">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-grow min-h-0">
+            <ScrollArea className="flex-grow pr-6 -mr-6">
+              <div className="space-y-6 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant={'outline'}
+                                className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                              >
+                                {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
+                          </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="time"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Time</FormLabel>
+                        <FormControl>
+                          <Input type="time" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                
                 <FormField
                   control={form.control}
-                  name="date"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={'outline'}
-                              className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                            >
-                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
-                        </PopoverContent>
-                      </Popover>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Weekly groceries" {...field} />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
-                  name="time"
+                  name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Time</FormLabel>
+                      <FormLabel>Amount</FormLabel>
                       <FormControl>
-                        <Input type="time" {...field} />
+                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="flex items-center">
+                        Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                      </FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {categories.map((cat) => (
+                            <FormItem key={cat.id}>
+                              <FormControl>
+                                <RadioGroupItem value={cat.name} id={`cat-${cat.id}`} className="sr-only peer" />
+                              </FormControl>
+                              <Label htmlFor={`cat-${cat.id}`} className={chipRadioClasses}>
+                                {cat.name}
+                              </Label>
+                            </FormItem>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedCategoryName && (
+                  <FormField
+                    control={form.control}
+                    name="subcategory"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>Subcategory</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-wrap gap-2"
+                          >
+                            {subcategories.map((sub) => (
+                              <FormItem key={sub.id}>
+                                <FormControl>
+                                  <RadioGroupItem value={sub.name} id={`sub-${sub.id}`} className="sr-only peer" />
+                                </FormControl>
+                                <Label htmlFor={`sub-${sub.id}`} className={chipRadioClasses}>
+                                  {sub.name}
+                                </Label>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {selectedSubcategoryName && microcategories.length > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="microcategory"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>Micro-Subcategory (Optional)</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-wrap gap-2"
+                          >
+                            {microcategories.map((micro) => (
+                              <FormItem key={micro.id}>
+                                <FormControl>
+                                  <RadioGroupItem value={micro.name} id={`micro-${micro.id}`} className="sr-only peer" />
+                                </FormControl>
+                                <Label htmlFor={`micro-${micro.id}`} className={chipRadioClasses}>
+                                  {micro.name}
+                                </Label>
+                              </FormItem>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="paidBy"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Paid By</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          value={field.value}
+                          className="flex flex-wrap gap-2"
+                        >
+                          {paidByOptions.map((option) => (
+                              <FormItem key={option}>
+                                <FormControl>
+                                  <RadioGroupItem value={option} id={`paidby-${option}`} className="sr-only peer" />
+                                </FormControl>
+                                <Label htmlFor={`paidby-${option}`} className={chipRadioClasses}>
+                                  {option.toUpperCase()}
+                                </Label>
+                              </FormItem>
+                          ))}
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Any additional notes..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Weekly groceries" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="amount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount</FormLabel>
-                    <FormControl>
-                      <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="category"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="flex items-center">
-                      Category {isAiPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                    </FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {categories.map((cat) => (
-                           <FormItem key={cat.id}>
-                            <FormControl>
-                               <RadioGroupItem value={cat.name} id={`cat-${cat.id}`} className="sr-only peer" />
-                            </FormControl>
-                            <Label htmlFor={`cat-${cat.id}`} className={chipRadioClasses}>
-                               {cat.name}
-                            </Label>
-                           </FormItem>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {selectedCategoryName && (
-                <FormField
-                  control={form.control}
-                  name="subcategory"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Subcategory</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-wrap gap-2"
-                        >
-                          {subcategories.map((sub) => (
-                            <FormItem key={sub.id}>
-                               <FormControl>
-                                 <RadioGroupItem value={sub.name} id={`sub-${sub.id}`} className="sr-only peer" />
-                               </FormControl>
-                               <Label htmlFor={`sub-${sub.id}`} className={chipRadioClasses}>
-                                 {sub.name}
-                               </Label>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {selectedSubcategoryName && microcategories.length > 0 && (
-                <FormField
-                  control={form.control}
-                  name="microcategory"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Micro-Subcategory (Optional)</FormLabel>
-                       <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          value={field.value}
-                          className="flex flex-wrap gap-2"
-                        >
-                          {microcategories.map((micro) => (
-                            <FormItem key={micro.id}>
-                               <FormControl>
-                                 <RadioGroupItem value={micro.name} id={`micro-${micro.id}`} className="sr-only peer" />
-                               </FormControl>
-                               <Label htmlFor={`micro-${micro.id}`} className={chipRadioClasses}>
-                                 {micro.name}
-                               </Label>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
-                name="paidBy"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Paid By</FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        value={field.value}
-                        className="flex flex-wrap gap-2"
-                      >
-                        {paidByOptions.map((option) => (
-                            <FormItem key={option}>
-                               <FormControl>
-                                 <RadioGroupItem value={option} id={`paidby-${option}`} className="sr-only peer" />
-                               </FormControl>
-                               <Label htmlFor={`paidby-${option}`} className={chipRadioClasses}>
-                                 {option.toUpperCase()}
-                               </Label>
-                            </FormItem>
-                        ))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Any additional notes..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <SheetFooter className="mt-auto pt-4 sticky bottom-0 bg-background">
-                <Button type="submit" disabled={isSubmitting} className="w-full">
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditing ? 'Save Changes' : 'Save Transaction'}
-                </Button>
-              </SheetFooter>
-            </form>
-          </Form>
-        </ScrollArea>
+            </ScrollArea>
+            <SheetFooter className="mt-auto pt-4 sticky bottom-0 bg-background">
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isEditing ? 'Save Changes' : 'Save Transaction'}
+              </Button>
+            </SheetFooter>
+          </form>
+        </Form>
       </SheetContent>
     </Sheet>
   );
