@@ -65,19 +65,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
+  const isRootTenantUser = useMemo(() => {
+    return selectedTenant?.isRootUser && user?.name === selectedTenant.name;
+  }, [selectedTenant, user]);
+
   const navItems = useMemo(() => {
     const isMainTenant = selectedTenant && user && selectedTenant.name === user.name;
     
-    let currentBaseNavItems = baseNavItemsTemplate;
+    let currentBaseNavItems = baseNavItemsTemplate.map(item => {
+        if (item.href === '/dashboard' && selectedTenant) {
+            return { ...item, label: `Dashboard (${selectedTenant.name})` };
+        }
+        return item;
+    });
+
     if (!isMainTenant) {
-        currentBaseNavItems = baseNavItemsTemplate.filter(item => !item.tenantOnly);
+        currentBaseNavItems = currentBaseNavItems.filter(item => !item.tenantOnly);
     }
     
-    if (selectedTenant?.isRootUser && isMainTenant) {
+    if (isRootTenantUser) {
         return [...currentBaseNavItems, ...adminNavItems];
     }
     return currentBaseNavItems;
-  }, [selectedTenant, user]);
+  }, [selectedTenant, user, isRootTenantUser]);
   
   const toggleSection = (section: 'admin' | 'test') => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
@@ -175,48 +185,50 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={tenantPopoverOpen}
-                  className="w-[200px] justify-between"
-                  disabled={loadingTenants || tenants.length <= 1}
-                >
-                  {selectedTenant ? selectedTenant.name : "Select tenant..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-0">
-                <Command>
-                  <CommandInput placeholder="Search tenant..." />
-                  <CommandList>
-                    <CommandEmpty>No tenant found.</CommandEmpty>
-                    <CommandGroup>
-                      {tenants.map((tenant) => (
-                        <CommandItem
-                          key={tenant.id}
-                          value={tenant.id}
-                          onSelect={(currentValue) => {
-                            setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
-                            setTenantPopoverOpen(false);
-                          }}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedTenantId === tenant.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          {tenant.name}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            {isRootTenantUser && (
+              <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={tenantPopoverOpen}
+                    className="w-[200px] justify-between"
+                    disabled={loadingTenants || tenants.length <= 1}
+                  >
+                    {selectedTenant ? selectedTenant.name : "Select tenant..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[200px] p-0">
+                  <Command>
+                    <CommandInput placeholder="Search tenant..." />
+                    <CommandList>
+                      <CommandEmpty>No tenant found.</CommandEmpty>
+                      <CommandGroup>
+                        {tenants.map((tenant) => (
+                          <CommandItem
+                            key={tenant.id}
+                            value={tenant.id}
+                            onSelect={(currentValue) => {
+                              setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
+                              setTenantPopoverOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedTenantId === tenant.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {tenant.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>
