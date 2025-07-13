@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Transaction } from '@/lib/types';
-import type { User as FirebaseUser } from 'firebase/auth';
+import type { Transaction, User } from '@/lib/types';
 
-export function useTransactions(tenantId: string | null, user: FirebaseUser | null) {
+export function useTransactions(tenantId: string | null, user: User | null) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
 
@@ -36,7 +35,7 @@ export function useTransactions(tenantId: string | null, user: FirebaseUser | nu
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>) => {
     if (!tenantId) return;
-    const transactionData = { ...transaction, tenantId: tenantId, userId: user?.uid };
+    const transactionData = { ...transaction, tenantId: tenantId, userId: user?.name };
     try {
       const docRef = await addDoc(collection(db, "transactions"), transactionData);
       setTransactions(prev => [{ ...transactionData, id: docRef.id }, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -52,7 +51,7 @@ export function useTransactions(tenantId: string | null, user: FirebaseUser | nu
 
     transactionsToAdd.forEach(transaction => {
       const docRef = doc(collection(db, "transactions"));
-      const transactionData = { ...transaction, tenantId: tenantId, userId: user?.uid, microcategory: transaction.microcategory || '' };
+      const transactionData = { ...transaction, tenantId: tenantId, userId: user?.name, microcategory: transaction.microcategory || '' };
       batch.set(docRef, transactionData);
       newTransactions.push({ ...transactionData, id: docRef.id });
     });
@@ -68,7 +67,7 @@ export function useTransactions(tenantId: string | null, user: FirebaseUser | nu
 
   const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => {
     if (!tenantId) return;
-    const transactionData = { ...transactionUpdate, tenantId: tenantId, userId: user?.uid };
+    const transactionData = { ...transactionUpdate, tenantId: tenantId, userId: user?.name };
     try {
         const transactionRef = doc(db, "transactions", transactionId);
         await updateDoc(transactionRef, transactionData);

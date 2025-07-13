@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Tenant } from '@/lib/types';
+import type { Tenant, User } from '@/lib/types';
 
 const generateSecretToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -16,7 +16,8 @@ const generateSecretToken = () => {
 
 export function useTenants(
     seedDefaultCategories: (tenantId: string) => Promise<void>,
-    seedDefaultSettings: (tenantId: string) => Promise<any>
+    seedDefaultSettings: (tenantId: string) => Promise<any>,
+    user: User | null
 ) {
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [loadingTenants, setLoadingTenants] = useState(true);
@@ -46,15 +47,9 @@ export function useTenants(
                     await seedDefaultSettings(defaultTenant.id);
 
                     setTenants([defaultTenant]);
-                    setSelectedTenantId(defaultTenant.id);
+                    // Let auth handle setting the tenant
                 } else {
                     setTenants(fetchedTenants);
-                    const savedTenantId = localStorage.getItem('selectedTenantId');
-                    if (savedTenantId && fetchedTenants.some(t => t.id === savedTenantId)) {
-                        setSelectedTenantId(savedTenantId);
-                    } else if (fetchedTenants.length > 0) {
-                        setSelectedTenantId(fetchedTenants[0].id);
-                    }
                 }
             } catch (error) {
                 console.error("Error fetching tenants: ", error);
@@ -64,14 +59,19 @@ export function useTenants(
         };
         fetchTenants();
     }, [seedDefaultCategories, seedDefaultSettings]);
+    
+    useEffect(() => {
+        if(user?.tenantId) {
+            setSelectedTenantId(user.tenantId)
+        }
+    }, [user]);
 
     const handleSetSelectedTenantId = (tenantId: string | null) => {
-        setSelectedTenantId(tenantId);
-        if (tenantId) {
-            localStorage.setItem('selectedTenantId', tenantId);
-        } else {
-            localStorage.removeItem('selectedTenantId');
+        if(user && tenantId !== user.tenantId) {
+            console.warn("setSelectedTenantId was called with a different tenantId than the logged-in user's tenantId. This is not allowed in the current auth model.");
+            return;
         }
+        setSelectedTenantId(tenantId);
     };
 
     const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
@@ -84,9 +84,6 @@ export function useTenants(
     
             setTenants(prev => [...prev, newTenant].sort((a,b) => a.name.localeCompare(b.name)));
             
-            if (!selectedTenantId) {
-                handleSetSelectedTenantId(newTenant.id);
-            }
         } catch(e) {
             console.error("Error adding tenant: ", e);
         }
@@ -104,13 +101,13 @@ export function useTenants(
 
     const deleteTenant = async (tenantId: string) => {
         try {
+            if(user?.tenantId === tenantId) {
+                alert("You cannot delete the tenant you are currently logged into.");
+                return;
+            }
             await deleteDoc(doc(db, 'tenants', tenantId));
             const remainingTenants = tenants.filter(t => t.id !== tenantId);
             setTenants(remainingTenants);
-            if (selectedTenantId === tenantId) {
-                const newSelectedId = remainingTenants.length > 0 ? remainingTenants[0].id : null
-                handleSetSelectedTenantId(newSelectedId);
-            }
         } catch(e) {
             console.error("Error deleting tenant: ", e);
         }

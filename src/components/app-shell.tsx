@@ -25,6 +25,7 @@ import { Button } from './ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
 const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,17 +42,11 @@ const adminNavItems = [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
     ]
   },
-  {
-    label: 'Test',
-    icon: FlaskConical,
-    subItems: [
-      { href: '/test/auth', label: 'Auth', icon: Shield },
-    ],
-  },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { tenants, selectedTenantId, setSelectedTenantId, loadingTenants, user, signOut } = useApp();
   const [openSections, setOpenSections] = useState({
       admin: false,
@@ -87,6 +82,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       title: 'Signed Out',
       description: 'You have been successfully signed out.',
     });
+    router.push('/login');
   };
   
   if (!isMounted) {
@@ -156,7 +152,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </SidebarMenu>
         </SidebarContent>
-        <SidebarFooter />
+        <SidebarFooter>
+          <div className="flex items-center gap-2 p-2">
+              <div className='flex-grow'>
+                <p className='font-semibold'>{user?.name}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
+                <LogOut />
+              </Button>
+            </div>
+        </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <header className="flex items-center justify-between p-4 border-b">
@@ -172,7 +177,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   role="combobox"
                   aria-expanded={tenantPopoverOpen}
                   className="w-[200px] justify-between"
-                  disabled={loadingTenants}
+                  disabled={loadingTenants || tenants.length <= 1}
                 >
                   {selectedTenant ? selectedTenant.name : "Select tenant..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -207,11 +212,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </Command>
               </PopoverContent>
             </Popover>
-            {user && (
-              <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sign Out">
-                <LogOut />
-              </Button>
-            )}
           </div>
         </header>
         <main className="flex-1 p-4 md:p-6">{children}</main>

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useMemo } from 'react';
-import type { User as FirebaseUser } from 'firebase/auth';
-import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant } from './types';
+import type { User as AuthUser } from 'firebase/auth';
+import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User } from './types';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenants } from '@/hooks/useTenants';
@@ -12,8 +12,8 @@ import { useTransactions } from '@/hooks/useTransactions';
 
 // Define the shape of the context value
 interface AppContextType {
-  user: FirebaseUser | null;
-  signInWithEmail: (email: string, password: string) => Promise<void>;
+  user: User | null;
+  signIn: (mobileNo: string, secretToken: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   
   tenants: Tenant[];
@@ -44,6 +44,7 @@ interface AppContextType {
   deleteTransaction: (transactionId: string) => Promise<void>;
   
   loading: boolean;
+  loadingAuth: boolean;
   loadingCategories: boolean;
   loadingSettings: boolean;
   loadingTenants: boolean;
@@ -53,13 +54,13 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { user, loadingAuth, signInWithEmail, signOut } = useAuth();
+  const { user, loadingAuth, signIn, signOut } = useAuth();
   
   const { settings, loadingSettings, updateSettings, seedDefaultSettings } = useSettings(null); // Initial null, tenant hook will provide ID
   const { categories, loadingCategories, addCategory, editCategory, deleteCategory, addSubcategory, editSubcategory, deleteSubcategory, addMicrocategory, editMicrocategory, deleteMicrocategory, seedDefaultCategories } = useCategories(null); // Initial null
 
-  const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings);
-  const selectedTenantId = tenantHook.selectedTenantId;
+  const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
+  const selectedTenantId = user?.tenantId ?? null;
 
   const settingsHook = useSettings(selectedTenantId);
   const categoriesHook = useCategories(selectedTenantId);
@@ -69,20 +70,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue = useMemo(() => ({
     user,
-    signInWithEmail,
+    signIn,
     signOut,
 
     ...tenantHook,
+    // We override setSelectedTenantId from tenantHook because our auth determines the tenant
+    selectedTenantId,
+    setSelectedTenantId: tenantHook.setSelectedTenantId, // still expose original setter if needed elsewhere
     ...settingsHook,
     ...categoriesHook,
     ...transactionsHook,
 
     loading,
+    loadingAuth,
     loadingCategories: categoriesHook.loadingCategories,
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signInWithEmail, signOut, tenantHook, settingsHook, categoriesHook, transactionsHook, loading]);
+  }), [user, signIn, signOut, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, selectedTenantId]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

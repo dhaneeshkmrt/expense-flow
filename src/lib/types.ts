@@ -55,3 +55,8 @@ export type Tenant = {
   members: TenantMember[];
   isRootUser?: boolean;
 };
+
+export type User = {
+    name: string;
+    tenantId: string;
+};
