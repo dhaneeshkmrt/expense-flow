@@ -17,7 +17,7 @@ import {
 import { Logo } from '@/components/logo';
 import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check, FlaskConical, LogOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/provider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -26,11 +26,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
-const navItems = [
+const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
+];
+
+const adminNavItems = [
   { 
     label: 'Admin', 
     icon: Shield,
@@ -66,6 +69,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
+
+  const navItems = useMemo(() => {
+    if (selectedTenant?.isRootUser) {
+        return [...baseNavItems, ...adminNavItems];
+    }
+    return baseNavItems;
+  }, [selectedTenant]);
   
   const toggleSection = (section: 'admin' | 'test') => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
