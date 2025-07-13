@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -363,7 +364,6 @@ export default function AddTransactionSheet({
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None</SelectItem>
                           {microcategories.map((micro) => (
                             <SelectItem key={micro.id} value={micro.name}>
                               {micro.name}
