@@ -157,7 +157,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const q = query(categoriesCollection, where("tenantId", "==", tenantId));
       let querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty && tenants.some(t => t.id === tenantId)) {
+      if (querySnapshot.empty) {
           await seedDefaultCategories(tenantId);
           querySnapshot = await getDocs(q);
       }
@@ -183,7 +183,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoadingCategories(false);
     }
-  }, [tenants, seedDefaultCategories]);
+  }, [seedDefaultCategories]);
   
   const fetchSettings = useCallback(async (tenantId: string) => {
     setLoadingSettings(true);
@@ -221,9 +221,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 };
                 const docRef = await addDoc(tenantsCollection, defaultTenantData);
                 const defaultTenant = { id: docRef.id, ...defaultTenantData };
-                fetchedTenants = [defaultTenant];
+                
                 await seedDefaultCategories(defaultTenant.id);
                 await seedDefaultSettings(defaultTenant.id);
+
+                // Set the state with only the newly created tenant
+                fetchedTenants = [defaultTenant];
             }
 
             setTenants(fetchedTenants);
