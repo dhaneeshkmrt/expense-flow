@@ -17,7 +17,7 @@ import {
 import { Logo } from '@/components/logo';
 import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check, FlaskConical, LogOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/provider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -51,10 +51,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { tenants, selectedTenantId, setSelectedTenantId, loadingTenants, user, signOut } = useApp();
   const [openSections, setOpenSections] = useState({
-      admin: pathname.startsWith('/admin'),
-      test: pathname.startsWith('/test'),
+      admin: false,
+      test: false,
   });
   const [tenantPopoverOpen, setTenantPopoverOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setOpenSections({
+        admin: pathname.startsWith('/admin'),
+        test: pathname.startsWith('/test'),
+    });
+  }, [pathname]);
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
   
@@ -69,6 +78,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       description: 'You have been successfully signed out.',
     });
   };
+  
+  if (!isMounted) {
+      return null;
+  }
 
   return (
     <SidebarProvider>
