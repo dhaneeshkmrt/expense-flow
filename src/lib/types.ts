@@ -53,4 +53,5 @@ export type Tenant = {
   address?: string;
   secretToken: string;
   members: TenantMember[];
+  isRootUser?: boolean;
 };

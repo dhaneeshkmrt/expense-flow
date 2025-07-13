@@ -36,7 +36,8 @@ export function useTenants(
                         mobileNo: '1234567890',
                         address: '',
                         secretToken: generateSecretToken(),
-                        members: []
+                        members: [],
+                        isRootUser: true,
                     };
                     const docRef = await addDoc(tenantsCollection, defaultTenantData);
                     const defaultTenant = { id: docRef.id, ...defaultTenantData };

@@ -2,7 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Tenant } from '@/lib/types';
-import { Copy, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Copy, Edit, MoreHorizontal, Trash2, CheckCircle2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +17,7 @@ import { Badge } from '../ui/badge';
 import { useApp } from '@/lib/provider';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 export const columns = (
     setSelectedTenant: (tenant: Tenant) => void,
@@ -25,7 +26,26 @@ export const columns = (
   {
     accessorKey: 'name',
     header: 'Name',
-    cell: ({ row }) => <div className="font-medium">{row.getValue('name')}</div>,
+    cell: ({ row }) => {
+        const tenant = row.original;
+        return (
+            <div className="flex items-center gap-2 font-medium">
+                <span>{tenant.name}</span>
+                {tenant.isRootUser && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Root User</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+            </div>
+        )
+    },
   },
    {
     accessorKey: 'secretToken',

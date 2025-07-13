@@ -27,6 +27,7 @@ import { useApp } from '@/lib/provider';
 import type { Tenant } from '@/lib/types';
 import { PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '../ui/checkbox';
 
 const generateSecretToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -42,6 +43,7 @@ const tenantSchema = z.object({
   mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
   address: z.string().optional(),
   secretToken: z.string().min(1, 'Secret Token is required.'),
+  isRootUser: z.boolean().optional(),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
     mobileNo: z.string().optional(),
@@ -70,6 +72,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       mobileNo: '',
       address: '',
       secretToken: '',
+      isRootUser: false,
       members: [],
     },
   });
@@ -96,6 +99,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             mobileNo: tenant.mobileNo,
             address: tenant.address,
             secretToken: tenant.secretToken,
+            isRootUser: tenant.isRootUser || false,
             members: tenant.members || [],
           });
         } else {
@@ -104,6 +108,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             mobileNo: '',
             address: '',
             secretToken: generateSecretToken(),
+            isRootUser: false,
             members: [],
           });
         }
@@ -200,6 +205,27 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={form.control}
+              name="isRootUser"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                        <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel>
+                            Root User
+                        </FormLabel>
+                    </div>
+                </FormItem>
+              )}
+            />
+
 
             <div>
               <FormLabel>Family Members</FormLabel>
