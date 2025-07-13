@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Transaction } from '@/lib/types';
 import { parseISO, format } from 'date-fns';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Button } from '../ui/button';
+import { Badge } from '../ui/badge';
 
 const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
 
@@ -16,7 +19,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
-    const [selectedPaidBy, setSelectedPaidBy] = useState<string>('');
+    const [selectedPaidBy, setSelectedPaidBy] = useState<string[]>([]);
     const [sortKey, setSortKey] = useState<'date' | 'amount'>('date');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
@@ -38,7 +41,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
             const categoryMatch = !selectedCategory || t.category === selectedCategory;
             const subcategoryMatch = !selectedSubcategory || t.subcategory === selectedSubcategory;
             const microcategoryMatch = !selectedMicrocategory || t.microcategory === selectedMicrocategory;
-            const paidByMatch = !selectedPaidBy || t.paidBy === selectedPaidBy;
+            const paidByMatch = selectedPaidBy.length === 0 || selectedPaidBy.includes(t.paidBy);
             return categoryMatch && subcategoryMatch && microcategoryMatch && paidByMatch;
         });
 
@@ -72,6 +75,12 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
             style: 'currency',
             currency: 'USD',
         }).format(amount).replace('$', settings.currency);
+    };
+
+    const handlePaidByChange = (payer: string) => {
+        setSelectedPaidBy(prev => 
+            prev.includes(payer) ? prev.filter(p => p !== payer) : [...prev, payer]
+        );
     };
     
     return (
@@ -107,15 +116,28 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                             {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
-                    <Select value={selectedPaidBy} onValueChange={v => setSelectedPaidBy(v === 'all' ? '' : v)}>
-                        <SelectTrigger className="w-full sm:w-[120px]">
-                            <SelectValue placeholder="Paid By" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Payers</SelectItem>
-                            {paidByOptions.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" className="w-full sm:w-auto">
+                                Paid By
+                                {selectedPaidBy.length > 0 && <Badge variant="secondary" className="ml-2">{selectedPaidBy.length}</Badge>}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56">
+                            <DropdownMenuLabel>Filter by Payer</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {paidByOptions.map(p => (
+                                <DropdownMenuCheckboxItem
+                                    key={p}
+                                    checked={selectedPaidBy.includes(p)}
+                                    onSelect={(e) => e.preventDefault()}
+                                    onCheckedChange={() => handlePaidByChange(p)}
+                                >
+                                    {p.toUpperCase()}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Select value={`${sortKey}-${sortOrder}`} onValueChange={(value) => {
                         const [key, order] = value.split('-') as [typeof sortKey, typeof sortOrder];
                         setSortKey(key);
@@ -131,6 +153,13 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                             <SelectItem value="amount-asc">Amount (Low to High)</SelectItem>
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="flex flex-wrap gap-1 pt-2">
+                    {selectedPaidBy.map(p => (
+                        <Badge key={p} variant="secondary" className="flex items-center gap-1">
+                            {p.toUpperCase()}
+                        </Badge>
+                    ))}
                 </div>
             </CardHeader>
             <CardContent className="flex-grow flex flex-col">
@@ -164,3 +193,4 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
         </Card>
     )
 }
+
