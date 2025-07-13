@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
-  mobileNo: z.string().optional(),
+  mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
   address: z.string().optional(),
   secretToken: z.string().min(1, 'Secret Token is required.'),
   members: z.array(z.object({
@@ -179,7 +179,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               name="mobileNo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mobile Number (Optional)</FormLabel>
+                  <FormLabel>Mobile Number</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., 9876543210" {...field} />
                   </FormControl>
