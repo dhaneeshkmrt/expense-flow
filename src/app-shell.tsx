@@ -15,7 +15,7 @@ import {
   SidebarFooter,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/logo';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check, FlaskConical, LogOut } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, ChevronsUpDown, Check, Landmark, LogOut } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -31,6 +31,7 @@ const baseNavItemsTemplate = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
+  { href: '/accounts', label: 'Accounts', icon: Landmark },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -72,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isRootUser = useMemo(() => {
     if (!userTenant || !user) return false;
-    return !!userTenant.isRootUser && user.name === userTenant.name;
+    return !!userTenant.isRootUser;
   }, [userTenant, user]);
 
   const isMainTenantUser = useMemo(() => {
@@ -92,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         currentNavItems = currentNavItems.filter(item => item.href !== '/categories');
     }
     
-    if (isRootUser) {
+    if (isRootUser && isMainTenantUser) {
         return [...currentNavItems, ...adminNavItems];
     }
     return currentNavItems;
@@ -194,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            {isRootUser && (
+            {isRootUser && isMainTenantUser &&(
               <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
