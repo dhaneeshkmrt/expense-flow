@@ -47,7 +47,6 @@ export function useTenants(
                     await seedDefaultSettings(defaultTenant.id);
 
                     setTenants([defaultTenant]);
-                    // Let auth handle setting the tenant
                 } else {
                     setTenants(fetchedTenants);
                 }
@@ -63,15 +62,23 @@ export function useTenants(
     useEffect(() => {
         if(user?.tenantId) {
             setSelectedTenantId(user.tenantId)
+        } else {
+            setSelectedTenantId(null);
         }
     }, [user]);
 
     const handleSetSelectedTenantId = (tenantId: string | null) => {
-        if(user && tenantId !== user.tenantId) {
-            console.warn("setSelectedTenantId was called with a different tenantId than the logged-in user's tenantId. This is not allowed in the current auth model.");
+        const rootUserTenant = tenants.find(t => t.id === user?.tenantId);
+        const isRoot = rootUserTenant?.isRootUser && rootUserTenant?.name === user?.name;
+
+        if (isRoot) {
+            setSelectedTenantId(tenantId);
+        } else if (user && tenantId !== user.tenantId) {
+            console.warn("Attempted to switch tenant for non-root user. Denied.");
             return;
+        } else {
+            setSelectedTenantId(tenantId);
         }
-        setSelectedTenantId(tenantId);
     };
 
     const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
@@ -104,6 +111,9 @@ export function useTenants(
             if(user?.tenantId === tenantId) {
                 alert("You cannot delete the tenant you are currently logged into.");
                 return;
+            }
+            if(selectedTenantId === tenantId) {
+                setSelectedTenantId(user?.tenantId ?? null);
             }
             await deleteDoc(doc(db, 'tenants', tenantId));
             const remainingTenants = tenants.filter(t => t.id !== tenantId);

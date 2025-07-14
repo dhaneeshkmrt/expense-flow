@@ -56,11 +56,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user, loadingAuth, signIn, signOut } = useAuth();
   
-  const { settings, loadingSettings, updateSettings, seedDefaultSettings } = useSettings(null); // Initial null, tenant hook will provide ID
-  const { categories, loadingCategories, addCategory, editCategory, deleteCategory, addSubcategory, editSubcategory, deleteSubcategory, addMicrocategory, editMicrocategory, deleteMicrocategory, seedDefaultCategories } = useCategories(null); // Initial null
+  // These hooks are just for getting the seeding functions
+  const { seedDefaultSettings } = useSettings(null);
+  const { seedDefaultCategories } = useCategories(null); 
 
   const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
-  const selectedTenantId = user?.tenantId ?? null;
+  const { selectedTenantId } = tenantHook;
 
   const settingsHook = useSettings(selectedTenantId);
   const categoriesHook = useCategories(selectedTenantId);
@@ -74,9 +75,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     signOut,
 
     ...tenantHook,
-    // We override setSelectedTenantId from tenantHook because our auth determines the tenant
-    selectedTenantId,
-    setSelectedTenantId: tenantHook.setSelectedTenantId, // still expose original setter if needed elsewhere
     ...settingsHook,
     ...categoriesHook,
     ...transactionsHook,
@@ -87,7 +85,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signIn, signOut, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, selectedTenantId]);
+  }), [user, signIn, signOut, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
