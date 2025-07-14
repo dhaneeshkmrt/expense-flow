@@ -9,8 +9,10 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface MonthlyRecord {
   month: string;
@@ -29,9 +31,55 @@ interface AccountData {
   monthlyRecords: MonthlyRecord[];
 }
 
+const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: string, month: string, initialBudget: number }) => {
+    const { updateCategoryBudget } = useApp();
+    const [budget, setBudget] = useState(initialBudget);
+    const [isEditing, setIsEditing] = useState(false);
+    const debouncedBudget = useDebounce(budget, 500);
+
+    const handleSave = () => {
+        updateCategoryBudget(categoryId, month, debouncedBudget);
+        setIsEditing(false);
+    };
+    
+    return (
+        <div className="flex items-center justify-end gap-1">
+            {isEditing ? (
+                <Input 
+                    type="number"
+                    value={budget}
+                    onChange={(e) => setBudget(parseFloat(e.target.value) || 0)}
+                    onBlur={handleSave}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                    className="h-8 text-right w-24"
+                    autoFocus
+                />
+            ) : (
+                <>
+                    <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(budget).replace('$', '')}</span>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditing(true)}>
+                        <Edit2 className="h-3 w-3" />
+                    </Button>
+                </>
+            )}
+        </div>
+    )
+}
+
+
 export default function AccountsPage() {
-  const { categories, transactions, loading, settings } = useApp();
+  const { categories, transactions, loading, settings, user, tenants, updateCategoryBudget } = useApp();
   const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+
+  const userTenant = useMemo(() => {
+    if (!user || !tenants.length) return null;
+    return tenants.find(t => t.id === user.tenantId);
+  }, [user, tenants]);
+  
+  const isRootUser = useMemo(() => {
+    if (!userTenant || !user) return false;
+    return !!userTenant.isRootUser && user.name === userTenant.name;
+  }, [user, userTenant]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -46,22 +94,22 @@ export default function AccountsPage() {
     return categories.map((category): AccountData => {
       const monthlyData: Record<string, { budget: number; spent: number }> = {};
 
-      // Populate with budgets
+      // Initialize with budgets for months that have them
       if (category.budgets) {
         for (const [monthKey, budget] of Object.entries(category.budgets)) {
           monthlyData[monthKey] = { budget: budget, spent: 0 };
         }
       }
 
-      // Populate with spending
+      // Aggregate spending for relevant months
       transactions
         .filter(t => t.category === category.name)
         .forEach(t => {
           const monthKey = format(parseISO(t.date), 'yyyy-MM');
-          if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { budget: 0, spent: 0 };
+          // Only track spending if a budget exists for that month
+          if (monthlyData[monthKey]) {
+            monthlyData[monthKey].spent += t.amount;
           }
-          monthlyData[monthKey].spent += t.amount;
         });
 
       let totalBudget = 0;
@@ -179,7 +227,13 @@ export default function AccountsPage() {
                           {account.monthlyRecords.map(record => (
                             <TableRow key={record.month}>
                               <TableCell className="font-medium">{format(parseISO(`${record.month}-01`), 'MMM yyyy')}</TableCell>
-                              <TableCell className="text-right">{formatCurrency(record.budget)}</TableCell>
+                              <TableCell className="text-right">
+                                {isRootUser ? (
+                                    <EditableBudgetCell categoryId={account.categoryId} month={record.month} initialBudget={record.budget} />
+                                ) : (
+                                    formatCurrency(record.budget)
+                                )}
+                              </TableCell>
                               <TableCell className="text-right">{formatCurrency(record.spent)}</TableCell>
                               <TableCell
                                 className={cn(
@@ -196,7 +250,7 @@ export default function AccountsPage() {
                     </CollapsibleContent>
                   </Collapsible>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No budget or spending records found.</p>
+                  <p className="text-sm text-muted-foreground">No budget records found. Add a budget in the Category Dialog.</p>
                 )}
               </CardContent>
             </Card>
@@ -206,4 +260,3 @@ export default function AccountsPage() {
     </div>
   );
 }
-

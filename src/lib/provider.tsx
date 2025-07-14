@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useMemo } from 'react';
@@ -30,6 +31,7 @@ interface AppContextType {
   addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => Promise<void>;
   editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
+  updateCategoryBudget: (categoryId: string, month: string, budget: number) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
   editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => Promise<void>;
   deleteSubcategory: (categoryId: string, subcategoryId: string) => Promise<void>;

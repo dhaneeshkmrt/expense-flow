@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -177,6 +178,23 @@ export function useCategories(tenantId: string | null) {
     }));
   };
 
+  const updateCategoryBudget = async (categoryId: string, month: string, budget: number) => {
+    const categoryRef = doc(db, 'categories', categoryId);
+    await updateDoc(categoryRef, {
+      [`budgets.${month}`]: budget
+    });
+
+    setCategories(prev => prev.map(c => 
+      c.id === categoryId ? {
+        ...c,
+        budgets: {
+          ...c.budgets,
+          [month]: budget,
+        }
+      } : c
+    ));
+  };
+
   const deleteCategory = async (categoryId: string) => {
     const categoryRef = doc(db, 'categories', categoryId);
     await deleteDoc(categoryRef);
@@ -261,6 +279,7 @@ export function useCategories(tenantId: string | null) {
     addCategory, editCategory, deleteCategory,
     addSubcategory, editSubcategory, deleteSubcategory,
     addMicrocategory, editMicrocategory, deleteMicrocategory,
+    updateCategoryBudget,
     seedDefaultCategories,
   };
 }
