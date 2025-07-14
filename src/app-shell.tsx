@@ -30,7 +30,7 @@ import { useRouter } from 'next/navigation';
 const baseNavItemsTemplate = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
-  { href: '/categories', label: 'Categories', icon: Shapes, tenantOnly: true },
+  { href: '/categories', label: 'Categories', icon: Shapes },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -65,30 +65,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
   
-  const isRootTenantUser = useMemo(() => {
-    if (!selectedTenant || !user) return false;
-    return selectedTenant.isRootUser && user.name === selectedTenant.name;
-  }, [selectedTenant, user]);
+  const userTenant = useMemo(() => {
+    if (!user || !tenants.length) return null;
+    return tenants.find(t => t.id === user.tenantId);
+  }, [user, tenants]);
+
+  const isRootUser = useMemo(() => {
+    if (!userTenant || !user) return false;
+    return !!userTenant.isRootUser && user.name === userTenant.name;
+  }, [userTenant, user]);
+
+  const isMainTenantUser = useMemo(() => {
+    if (!userTenant || !user) return false;
+    return user.name === userTenant.name;
+  }, [user, userTenant]);
+
 
   const navItems = useMemo(() => {
-    const isMainTenant = selectedTenant && user && selectedTenant.name === user.name;
-    
-    let currentBaseNavItems = baseNavItemsTemplate.map(item => {
-        if (item.href === '/dashboard' && selectedTenant) {
-            return { ...item, label: `Dashboard` };
-        }
-        return item;
-    });
+    let currentNavItems = [...baseNavItemsTemplate];
 
-    if (!isMainTenant) {
-        currentBaseNavItems = currentBaseNavItems.filter(item => !item.tenantOnly);
+    if (selectedTenant) {
+        currentNavItems[0] = { ...currentNavItems[0], label: `Dashboard (${selectedTenant.name})` };
+    }
+
+    if (!isMainTenantUser) {
+        currentNavItems = currentNavItems.filter(item => item.href !== '/categories');
     }
     
-    if (isRootTenantUser) {
-        return [...currentBaseNavItems, ...adminNavItems];
+    if (isRootUser) {
+        return [...currentNavItems, ...adminNavItems];
     }
-    return currentBaseNavItems;
-  }, [selectedTenant, user, isRootTenantUser]);
+    return currentNavItems;
+  }, [selectedTenant, isRootUser, isMainTenantUser]);
   
   const toggleSection = (section: 'admin' | 'test') => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
@@ -186,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-4">
-            {isRootTenantUser && (
+            {isRootUser && (
               <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -211,7 +219,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             key={tenant.id}
                             value={tenant.id}
                             onSelect={(currentValue) => {
-                              setSelectedTenantId(currentValue === selectedTenantId ? "" : currentValue);
+                              setSelectedTenantId(currentValue);
                               setTenantPopoverOpen(false);
                             }}
                           >

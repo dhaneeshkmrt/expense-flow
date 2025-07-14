@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Tenant, User } from '@/lib/types';
@@ -22,6 +23,16 @@ export function useTenants(
     const [tenants, setTenants] = useState<Tenant[]>([]);
     const [loadingTenants, setLoadingTenants] = useState(true);
     const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null);
+
+    const userTenant = useMemo(() => {
+        if (!user || !tenants.length) return null;
+        return tenants.find(t => t.id === user.tenantId);
+    }, [user, tenants]);
+
+    const isRootUser = useMemo(() => {
+        if (!userTenant || !user) return false;
+        return !!userTenant.isRootUser && user.name === userTenant.name;
+    }, [userTenant, user]);
 
     useEffect(() => {
         const fetchTenants = async () => {
@@ -68,13 +79,11 @@ export function useTenants(
     }, [user]);
 
     const handleSetSelectedTenantId = (tenantId: string | null) => {
-        const rootUserTenant = tenants.find(t => t.id === user?.tenantId);
-        const isRoot = rootUserTenant?.isRootUser && rootUserTenant?.name === user?.name;
-
-        if (isRoot) {
+        if (isRootUser) {
             setSelectedTenantId(tenantId);
         } else if (user && tenantId !== user.tenantId) {
             console.warn("Attempted to switch tenant for non-root user. Denied.");
+            // Do not change the selected tenant for non-root users
             return;
         } else {
             setSelectedTenantId(tenantId);

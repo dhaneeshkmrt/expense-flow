@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -13,11 +14,12 @@ import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 export default function TransactionsPage() {
   const { user, tenants, transactions, loading, loadingCategories, selectedTenantId } = useApp();
 
-  const isMainTenant = useMemo(() => {
-    if (!user || !selectedTenantId || !tenants.length) return false;
-    const currentTenant = tenants.find(t => t.id === selectedTenantId);
-    return currentTenant?.name === user.name;
-  }, [user, selectedTenantId, tenants]);
+  const isMainTenantUser = useMemo(() => {
+    if (!user || !tenants.length) return false;
+    const userTenant = tenants.find(t => t.id === user.tenantId);
+    return !!userTenant && user.name === userTenant.name;
+  }, [user, tenants]);
+
 
   if (loading || loadingCategories) {
     return (
@@ -47,7 +49,7 @@ export default function TransactionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {isMainTenant && (
+          {isMainTenantUser && (
             <ImportCsvDialog>
               <Button variant="outline" disabled={!selectedTenantId}>
                 <Import className="mr-2" />
