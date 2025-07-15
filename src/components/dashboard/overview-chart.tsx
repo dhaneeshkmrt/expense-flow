@@ -66,7 +66,6 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
   const BalanceLabel = (props: any) => {
     const { x, y, width, value } = props;
     
-    // Defensive check to prevent crash
     if (!props.payload) {
         return null;
     }
@@ -77,7 +76,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     }
 
     const isPositive = balance >= 0;
-    const fill = isPositive ? 'hsl(142.1 76.2% 41.2%)' : 'hsl(0 84.2% 60.2%)'; // green-600 or red-600
+    const fill = isPositive ? 'hsl(142.1 76.2% 41.2%)' : 'hsl(0 84.2% 60.2%)';
 
     return (
       <text x={x + width + 5} y={y + 11} fill={fill} textAnchor="start" fontSize={11} fontWeight="bold">
@@ -106,15 +105,16 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
               cursor={{ fill: 'hsl(var(--muted))' }}
               formatter={(value: number, name, props) => {
                   const { payload } = props;
-                  const budget = categories.find(c => c.name === payload.name)?.budgets?.[format(new Date(year, month), 'yyyy-MM')] || 0;
-                  const balance = budget > 0 ? budget - (value as number) : null;
-
-                  const formattedValue = `${settings.currency}${value.toFixed(2)}`;
-                  const formattedBudget = budget > 0 ? `Budget: ${settings.currency}${budget.toFixed(2)}` : 'No budget';
-                  const formattedBalance = balance !== null ? `Balance: ${settings.currency}${balance.toFixed(2)}` : '';
+                  const monthKey = format(new Date(year, month), 'yyyy-MM');
+                  const budget = categories.find(c => c.name === payload.name)?.budgets?.[monthKey] || 0;
                   
-                  return [formattedValue, `Spent`];
+                  const formattedValue = `Spent: ${formatCurrency(value as number)}`;
+                  const formattedBudget = budget > 0 ? `Budget: ${formatCurrency(budget)}` : 'No budget';
+                  const formattedBalance = payload.balance !== null ? `Balance: ${formatCurrency(payload.balance)}` : '';
+                  
+                  return [formattedValue, payload.name];
               }}
+              labelFormatter={() => ''}
             />
             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
                 <LabelList dataKey="balance" content={<BalanceLabel />} />
