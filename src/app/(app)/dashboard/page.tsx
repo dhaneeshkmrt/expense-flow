@@ -120,6 +120,10 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
+          <CardHeader>
+            <CardTitle>Category Expense Overview</CardTitle>
+            <CardDescription>Your spending by category for the selected period.</CardDescription>
+          </CardHeader>
           <CardContent className="p-0">
             <OverviewChart transactions={filteredTransactions} />
           </CardContent>
