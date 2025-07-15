@@ -17,9 +17,9 @@ interface DailyExpenseChartProps {
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
   const { settings } = useApp();
   const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data, yAxisMax, outlierThreshold } = useMemo(() => {
+  const { data, xAxisMax, outlierThreshold } = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
     const monthEnd = endOfMonth(new Date(year, month));
     
@@ -42,16 +42,16 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
     
     const allTotals = Array.from(dailyTotals.values()).filter(total => total > 0);
     
-    let yAxisMax = 100; // Default max, at least 100
-    let outlierThreshold = yAxisMax;
+    let xAxisMax = 100; // Default max, at least 100
+    let outlierThreshold = xAxisMax;
     
     if(allTotals.length > 0) {
         allTotals.sort((a,b) => a - b);
         const percentileIndex = Math.floor(allTotals.length * 0.95);
         const ninetyFifthPercentile = allTotals[percentileIndex];
         
-        yAxisMax = Math.max(ninetyFifthPercentile * 1.2, 100); // Add 20% padding, but ensure it's at least 100
-        outlierThreshold = yAxisMax;
+        xAxisMax = Math.max(ninetyFifthPercentile * 1.2, 100); // Add 20% padding, but ensure it's at least 100
+        outlierThreshold = xAxisMax;
     }
 
 
@@ -62,7 +62,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
       }))
       .sort((a,b) => parseInt(a.name) - parseInt(b.name));
 
-    return { data: chartData, yAxisMax, outlierThreshold };
+    return { data: chartData, xAxisMax, outlierThreshold };
 
   }, [transactions, year, month]);
 
@@ -94,28 +94,31 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
 
   return (
     <>
-      <ResponsiveContainer width="100%" height={350}>
+      <ResponsiveContainer width="100%" height={600}>
         <BarChart 
           data={data} 
-          margin={{ top: 20, right: 0, left: 0, bottom: 5 }}
+          layout="vertical"
+          margin={{ top: 5, right: 50, left: 0, bottom: 5 }}
           onClick={handleBarClick}
         >
           <XAxis 
-              dataKey="name" 
+              type="number"
               stroke="#888888" 
               fontSize={12} 
               tickLine={false} 
               axisLine={false}
-              label={{ value: 'Day of Month', position: 'insideBottom', offset: -5, fontSize: 12, fill: '#888888' }} 
+              tickFormatter={(value) => `${settings.currency}${value}`}
+              domain={[0, xAxisMax]}
+              allowDataOverflow={true}
           />
           <YAxis 
+              type="category"
+              dataKey="name" 
               stroke="#888888" 
               fontSize={12} 
               tickLine={false} 
               axisLine={false} 
-              tickFormatter={(value) => `${settings.currency}${value}`}
-              domain={[0, yAxisMax]}
-              allowDataOverflow={true}
+              width={20}
           />
           <Tooltip
             contentStyle={{
@@ -127,12 +130,13 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
             formatter={(value: number, name, props) => [`${settings.currency}${value.toFixed(2)}`, `Day ${props.payload.name}`]}
             labelFormatter={() => ''}
           />
-          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer">
+          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
               <LabelList 
                   dataKey="total" 
-                  position="top" 
+                  position="right" 
                   formatter={(value: number) => (value > 0 && value < outlierThreshold) ? formatCurrency(value) : ''}
                   fontSize={11}
+                  offset={5}
               />
           </Bar>
            {data.map((entry, index) => {
@@ -140,14 +144,15 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
                   return (
                       <ReferenceLine 
                           key={`outlier-${index}`}
-                          x={entry.name}
+                          y={entry.name}
                           strokeDasharray="3 3"
                           stroke="hsl(var(--muted-foreground))"
                           label={{ 
-                              position: 'top', 
+                              position: 'right', 
                               value: formatCurrency(entry.total), 
                               fill: 'hsl(var(--foreground))',
-                              fontSize: 12
+                              fontSize: 12,
+                              offset: 10
                           }}
                       />
                   )
