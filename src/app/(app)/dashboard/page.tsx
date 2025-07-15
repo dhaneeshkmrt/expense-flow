@@ -125,7 +125,7 @@ export default function DashboardPage() {
             <CardDescription>Your spending by category for the selected period.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <OverviewChart transactions={filteredTransactions} />
+            <OverviewChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
         </Card>
         <Card>
