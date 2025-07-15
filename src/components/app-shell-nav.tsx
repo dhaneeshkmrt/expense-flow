@@ -107,8 +107,9 @@ export function AppShellNav() {
                       const isSubItemNavigating = navigatingTo === subItem.href;
                       return (
                        <SidebarMenuItem key={subItem.href}>
-                          <Link href={subItem.href} legacyBehavior passHref onClick={() => handleNavClick(subItem.href)}>
+                          <Link href={subItem.href} onClick={() => handleNavClick(subItem.href)} passHref>
                               <SidebarMenuButton
+                                  as="span"
                                   isActive={pathname === subItem.href}
                                   className="h-8"
                                   tooltip={subItem.label}
@@ -126,8 +127,9 @@ export function AppShellNav() {
           </Collapsible>
         ) : (
           <SidebarMenuItem key={item.href}>
-             <Link href={item.href} legacyBehavior passHref onClick={() => handleNavClick(item.href)}>
+             <Link href={item.href} onClick={() => handleNavClick(item.href)} passHref>
                   <SidebarMenuButton
+                      as="span"
                       isActive={pathname === item.href}
                       tooltip={item.label}
                       disabled={isNavigating}
