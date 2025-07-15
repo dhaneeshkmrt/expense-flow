@@ -32,6 +32,7 @@ const baseNavItemsTemplate = [
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
   { href: '/accounts', label: 'Accounts', icon: Landmark },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 const adminNavItems = [
@@ -40,7 +41,6 @@ const adminNavItems = [
     icon: Shield,
     subItems: [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
-        { href: '/admin/settings', label: 'Settings', icon: Settings },
     ]
   },
 ];
@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     let currentNavItems = [...baseNavItemsTemplate];
 
     if (!isMainTenantUser) {
-        currentNavItems = currentNavItems.filter(item => item.href !== '/categories');
+        currentNavItems = currentNavItems.filter(item => item.href !== '/categories' && item.href !== '/admin/settings');
     }
     
     if (isRootUser) {
