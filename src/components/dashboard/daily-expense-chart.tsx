@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, ReferenceLine } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
@@ -16,7 +16,7 @@ interface DailyExpenseChartProps {
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
   const { settings } = useApp();
 
-  const data = useMemo(() => {
+  const { data, yAxisMax, outlierThreshold } = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
     const monthEnd = endOfMonth(new Date(year, month));
     
@@ -36,13 +36,30 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
         const currentTotal = dailyTotals.get(dayKey) || 0;
         dailyTotals.set(dayKey, currentTotal + txn.amount);
     });
+    
+    const allTotals = Array.from(dailyTotals.values()).filter(total => total > 0);
+    
+    let yAxisMax = Math.max(...allTotals, 100); // Default max, at least 100
+    let outlierThreshold = yAxisMax;
+    
+    if(allTotals.length > 1) {
+        allTotals.sort((a,b) => a - b);
+        const percentileIndex = Math.floor(allTotals.length * 0.95);
+        const ninetyFifthPercentile = allTotals[percentileIndex];
+        
+        yAxisMax = ninetyFifthPercentile * 1.2; // Add 20% padding
+        outlierThreshold = yAxisMax;
+    }
 
-    return Array.from(dailyTotals.entries())
+
+    const chartData = Array.from(dailyTotals.entries())
       .map(([date, total]) => ({ 
           name: format(parseISO(date), 'd'), 
           total 
       }))
       .sort((a,b) => parseInt(a.name) - parseInt(b.name));
+
+    return { data: chartData, yAxisMax, outlierThreshold };
 
   }, [transactions, year, month]);
 
@@ -73,6 +90,8 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
             tickLine={false} 
             axisLine={false} 
             tickFormatter={(value) => `${settings.currency}${value}`}
+            domain={[0, yAxisMax]}
+            allowDataOverflow={true}
         />
         <Tooltip
           contentStyle={{
@@ -88,10 +107,29 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
             <LabelList 
                 dataKey="total" 
                 position="top" 
-                formatter={(value: number) => value > 0 ? formatCurrency(value) : ''}
+                formatter={(value: number) => (value > 0 && value < outlierThreshold) ? formatCurrency(value) : ''}
                 fontSize={11}
             />
         </Bar>
+         {data.map((entry, index) => {
+            if (entry.total > outlierThreshold) {
+                return (
+                    <ReferenceLine 
+                        key={`outlier-${index}`}
+                        x={entry.name}
+                        strokeDasharray="3 3"
+                        stroke="hsl(var(--muted-foreground))"
+                        label={{ 
+                            position: 'top', 
+                            value: formatCurrency(entry.total), 
+                            fill: 'hsl(var(--foreground))',
+                            fontSize: 12
+                        }}
+                    />
+                )
+            }
+            return null;
+        })}
       </BarChart>
     </ResponsiveContainer>
   );
