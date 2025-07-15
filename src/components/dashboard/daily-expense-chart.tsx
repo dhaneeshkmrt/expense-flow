@@ -17,7 +17,7 @@ interface DailyExpenseChartProps {
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
   const { settings } = useApp();
   const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
-  [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data, xAxisMax, outlierThreshold } = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
