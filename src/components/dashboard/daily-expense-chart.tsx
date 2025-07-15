@@ -39,15 +39,15 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
     
     const allTotals = Array.from(dailyTotals.values()).filter(total => total > 0);
     
-    let yAxisMax = Math.max(...allTotals, 100); // Default max, at least 100
+    let yAxisMax = 100; // Default max, at least 100
     let outlierThreshold = yAxisMax;
     
-    if(allTotals.length > 1) {
+    if(allTotals.length > 0) {
         allTotals.sort((a,b) => a - b);
         const percentileIndex = Math.floor(allTotals.length * 0.95);
         const ninetyFifthPercentile = allTotals[percentileIndex];
         
-        yAxisMax = ninetyFifthPercentile * 1.2; // Add 20% padding
+        yAxisMax = Math.max(ninetyFifthPercentile * 1.2, 100); // Add 20% padding, but ensure it's at least 100
         outlierThreshold = yAxisMax;
     }
 
