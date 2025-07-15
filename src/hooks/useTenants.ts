@@ -51,7 +51,7 @@ export function useTenants(
                         secretToken: generateSecretToken(),
                         members: [],
                         isRootUser: true,
-                        paidByOptions: ['dhanisha'],
+                        paidByOptions: ['dhanisha', 'DKD', 'NC', 'DKC'],
                     };
                     const docRef = await addDoc(tenantsCollection, defaultTenantData);
                     const defaultTenant = { id: docRef.id, ...defaultTenantData };
