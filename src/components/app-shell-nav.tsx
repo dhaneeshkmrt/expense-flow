@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -39,12 +39,15 @@ export function AppShellNav() {
       admin: false,
   });
   const [isMounted, setIsMounted] = useState(false);
+  const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
     setOpenSections({
         admin: pathname.startsWith('/admin'),
     });
+    // Reset navigation state when path changes
+    setNavigatingTo(null);
   }, [pathname]);
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
@@ -71,10 +74,17 @@ export function AppShellNav() {
       return null;
   }
 
+  const handleNavClick = (href: string) => {
+      if (pathname !== href) {
+        setNavigatingTo(href);
+      }
+  };
+
   return (
     <SidebarMenu>
       {navItems.map((item) => {
         const sectionKey = item.label.toLowerCase() as 'admin';
+        const isNavigating = navigatingTo === item.href;
 
         return item.subItems ? (
           <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
@@ -93,31 +103,36 @@ export function AppShellNav() {
             </SidebarMenuItem>
             <CollapsibleContent>
               <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
-                  {item.subItems.map(subItem => (
+                  {item.subItems.map(subItem => {
+                      const isSubItemNavigating = navigatingTo === subItem.href;
+                      return (
                        <SidebarMenuItem key={subItem.href}>
-                          <Link href={subItem.href} legacyBehavior={false}>
+                          <Link href={subItem.href} legacyBehavior passHref onClick={() => handleNavClick(subItem.href)}>
                               <SidebarMenuButton
                                   isActive={pathname === subItem.href}
                                   className="h-8"
                                   tooltip={subItem.label}
+                                  disabled={isSubItemNavigating}
                               >
-                                  <subItem.icon />
+                                  {isSubItemNavigating ? <Loader2 className="animate-spin" /> : <subItem.icon />}
                                   <span>{subItem.label}</span>
                               </SidebarMenuButton>
                           </Link>
                        </SidebarMenuItem>
-                  ))}
+                      )
+                  })}
               </div>
             </CollapsibleContent>
           </Collapsible>
         ) : (
           <SidebarMenuItem key={item.href}>
-             <Link href={item.href}>
+             <Link href={item.href} legacyBehavior passHref onClick={() => handleNavClick(item.href)}>
                   <SidebarMenuButton
                       isActive={pathname === item.href}
                       tooltip={item.label}
+                      disabled={isNavigating}
                   >
-                      <item.icon />
+                      {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon />}
                        <span>{item.href === '/dashboard' && selectedTenant ? `Dashboard (${selectedTenant.name})` : item.label}</span>
                   </SidebarMenuButton>
              </Link>
