@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -81,7 +82,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                     <CardDescription>Total expenses for the selected month.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">{formatCurrency(stats.totalSpent)}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.totalSpent)}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -90,7 +91,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                     <CardDescription>Average amount per transaction.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">{formatCurrency(stats.avgTransaction)}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.avgTransaction)}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -99,7 +100,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                     <CardDescription>The category you spent the most on.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">{stats.topCategory}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{stats.topCategory}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -108,7 +109,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                     <CardDescription>Total number of transactions.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-4xl font-bold">{stats.transactionCount}</p>
+                    <p className="text-3xl sm:text-4xl font-bold">{stats.transactionCount}</p>
                 </CardContent>
             </Card>
         </div>
