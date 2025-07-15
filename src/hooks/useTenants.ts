@@ -34,6 +34,11 @@ export function useTenants(
         return !!userTenant.isRootUser;
     }, [userTenant]);
 
+    const isMainTenantUser = useMemo(() => {
+        if (!userTenant || !user) return false;
+        return user.name === userTenant.name;
+    }, [user, userTenant]);
+
 
     useEffect(() => {
         const fetchTenants = async () => {
@@ -41,7 +46,7 @@ export function useTenants(
             try {
                 const tenantsCollection = collection(db, "tenants");
                 const querySnapshot = await getDocs(query(tenantsCollection, orderBy("name")));
-                const fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+                let fetchedTenants = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
 
                 if (fetchedTenants.length === 0) {
                     const defaultTenantData: Omit<Tenant, 'id'> = {
@@ -59,10 +64,11 @@ export function useTenants(
                     await seedDefaultCategories(defaultTenant.id);
                     await seedDefaultSettings(defaultTenant.id);
 
-                    setTenants([defaultTenant]);
-                } else {
-                    setTenants(fetchedTenants);
+                    fetchedTenants = [defaultTenant];
                 }
+
+                setTenants(fetchedTenants);
+                
             } catch (error) {
                 console.error("Error fetching tenants: ", error);
             } finally {
@@ -85,7 +91,6 @@ export function useTenants(
             setSelectedTenantId(tenantId);
         } else if (user && tenantId !== user.tenantId) {
             console.warn("Attempted to switch tenant for non-root user. Denied.");
-            // Do not change the selected tenant for non-root users
             return;
         } else {
             setSelectedTenantId(tenantId);
@@ -143,5 +148,8 @@ export function useTenants(
         addTenant,
         editTenant,
         deleteTenant,
+        userTenant,
+        isRootUser,
+        isMainTenantUser
     };
 }
