@@ -28,11 +28,12 @@ export function useTenants(
         if (!user || !tenants.length) return null;
         return tenants.find(t => t.id === user.tenantId);
     }, [user, tenants]);
-
+    
     const isRootUser = useMemo(() => {
         if (!userTenant || !user) return false;
-        return !!userTenant.isRootUser && user.name === userTenant.name;
-    }, [userTenant, user]);
+        return !!userTenant.isRootUser;
+    }, [userTenant]);
+
 
     useEffect(() => {
         const fetchTenants = async () => {
@@ -50,6 +51,7 @@ export function useTenants(
                         secretToken: generateSecretToken(),
                         members: [],
                         isRootUser: true,
+                        paidByOptions: ['dhanisha'],
                     };
                     const docRef = await addDoc(tenantsCollection, defaultTenantData);
                     const defaultTenant = { id: docRef.id, ...defaultTenantData };
@@ -90,10 +92,10 @@ export function useTenants(
         }
     };
 
-    const addTenant = async (tenantData: Omit<Tenant, 'id'>) => {
+    const addTenant = async (tenantData: Partial<Omit<Tenant, 'id'>>) => {
         try {
             const docRef = await addDoc(collection(db, 'tenants'), tenantData);
-            const newTenant = { id: docRef.id, ...tenantData };
+            const newTenant = { id: docRef.id, ...tenantData } as Tenant;
     
             await seedDefaultCategories(newTenant.id);
             await seedDefaultSettings(newTenant.id);

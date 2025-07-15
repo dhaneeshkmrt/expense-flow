@@ -10,9 +10,8 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetDescription,
-  SheetFooter,
   SheetTrigger,
+  SheetFooter,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,8 +52,6 @@ const transactionSchema = z.object({
 
 type TransactionFormValues = z.infer<typeof transactionSchema>;
 
-const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
-
 interface AddTransactionSheetProps {
   children?: React.ReactNode;
   open?: boolean;
@@ -69,7 +66,7 @@ export default function AddTransactionSheet({
   transaction,
 }: AddTransactionSheetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { categories, addTransaction, editTransaction } = useApp();
+  const { categories, addTransaction, editTransaction, tenants, selectedTenantId } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +74,14 @@ export default function AddTransactionSheet({
   const isEditing = !!transaction;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = setControlledOpen !== undefined ? setControlledOpen : setInternalOpen;
+  
+  const selectedTenant = useMemo(() => {
+    return tenants.find(t => t.id === selectedTenantId);
+  }, [tenants, selectedTenantId]);
+
+  const paidByOptions = useMemo(() => {
+    return selectedTenant?.paidByOptions || [];
+  }, [selectedTenant]);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -115,11 +120,11 @@ export default function AddTransactionSheet({
         category: '',
         subcategory: '',
         microcategory: '',
-        paidBy: '',
+        paidBy: paidByOptions[0] || '',
         notes: '',
       });
     }
-  }, [open, isEditing, transaction, form]);
+  }, [open, isEditing, transaction, form, paidByOptions]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -221,7 +226,7 @@ export default function AddTransactionSheet({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {children && <SheetTrigger asChild>{children}</SheetTrigger>}
-      <SheetContent className="sm:max-w-xl flex flex-col" suppressHydrationWarning>
+      <SheetContent className="w-full sm:max-w-xl flex flex-col" suppressHydrationWarning>
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>

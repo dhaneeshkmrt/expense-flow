@@ -49,6 +49,9 @@ const tenantSchema = z.object({
     mobileNo: z.string().optional(),
     secretToken: z.string().min(1, 'Secret Token is required.'),
   })).optional(),
+  paidByOptions: z.array(z.object({
+    name: z.string().min(1, 'Paid by option cannot be empty.'),
+  })).optional(),
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
@@ -74,6 +77,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       secretToken: '',
       isRootUser: false,
       members: [],
+      paidByOptions: [],
     },
   });
 
@@ -81,6 +85,19 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     control: form.control,
     name: 'members',
   });
+
+  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy, update: updatePaidBy } = useFieldArray({
+      control: form.control,
+      name: "paidByOptions",
+  });
+
+  const watchedName = form.watch('name');
+
+  useEffect(() => {
+    if (!isEditing && watchedName && (paidByFields.length === 0 || (paidByFields.length === 1 && paidByFields[0].name === ''))) {
+        updatePaidBy(0, { name: watchedName });
+    }
+  }, [watchedName, isEditing, paidByFields, updatePaidBy]);
   
   const handleGenerateToken = () => {
     form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
@@ -101,6 +118,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             secretToken: tenant.secretToken,
             isRootUser: tenant.isRootUser || false,
             members: tenant.members || [],
+            paidByOptions: tenant.paidByOptions?.map(name => ({ name })) || [{ name: tenant.name }],
           });
         } else {
           form.reset({
@@ -110,6 +128,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             secretToken: generateSecretToken(),
             isRootUser: false,
             members: [],
+            paidByOptions: [{ name: '' }],
           });
         }
     }
@@ -118,7 +137,8 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
   const onSubmit = (data: TenantFormValues) => {
     const tenantData = {
         ...data,
-        members: data.members || []
+        members: data.members || [],
+        paidByOptions: data.paidByOptions?.map(opt => opt.name) || [],
     };
     if (isEditing && tenant) {
       editTenant(tenant.id, tenantData);
@@ -205,7 +225,6 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 </FormItem>
               )}
             />
-
             <FormField
               control={form.control}
               name="isRootUser"
@@ -226,6 +245,47 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               )}
             />
 
+            <div>
+              <FormLabel>Paid By Options</FormLabel>
+              <div className="space-y-2 mt-2">
+                {paidByFields.map((field, index) => (
+                  <div key={field.id} className="flex items-center gap-2">
+                    <FormField
+                      control={form.control}
+                      name={`paidByOptions.${index}.name`}
+                      render={({ field }) => (
+                        <FormItem className="flex-grow">
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0 && !isEditing} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {index > 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-destructive"
+                        onClick={() => removePaidBy(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appendPaidBy({ name: '' })}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Add "Paid By" Option
+                </Button>
+              </div>
+            </div>
 
             <div>
               <FormLabel>Family Members</FormLabel>

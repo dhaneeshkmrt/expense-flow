@@ -20,7 +20,7 @@ interface AppContextType {
   tenants: Tenant[];
   selectedTenantId: string | null;
   setSelectedTenantId: (tenantId: string | null) => void;
-  addTenant: (tenant: Omit<Tenant, 'id'>) => Promise<void>;
+  addTenant: (tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   editTenant: (tenantId: string, tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
   

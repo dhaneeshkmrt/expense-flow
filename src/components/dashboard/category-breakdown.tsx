@@ -6,22 +6,28 @@ import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { Transaction } from '@/lib/types';
+import type { Tenant, Transaction } from '@/lib/types';
 import { parseISO, format } from 'date-fns';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
-const paidByOptions = ['dkd', 'nd', 'dkc', 'nc'];
-
 export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
-    const { categories, settings } = useApp();
+    const { categories, settings, tenants, selectedTenantId } = useApp();
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
     const [selectedPaidBy, setSelectedPaidBy] = useState<string[]>([]);
     const [sortKey, setSortKey] = useState<'date' | 'amount'>('date');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+    
+    const selectedTenant = useMemo(() => {
+        return tenants.find(t => t.id === selectedTenantId)
+    }, [tenants, selectedTenantId]);
+
+    const paidByOptions = useMemo(() => {
+        return selectedTenant?.paidByOptions || [];
+    }, [selectedTenant]);
 
 
     const subcategoryOptions = useMemo(() => {
@@ -196,5 +202,3 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
         </Card>
     )
 }
-
-    
