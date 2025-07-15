@@ -13,7 +13,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 
 export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
-    const { categories, settings, tenants, selectedTenantId } = useApp();
+    const { categories, settings } = useApp();
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
@@ -21,13 +21,11 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     const [sortKey, setSortKey] = useState<'date' | 'amount'>('date');
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
     
-    const selectedTenant = useMemo(() => {
-        return tenants.find(t => t.id === selectedTenantId)
-    }, [tenants, selectedTenantId]);
-
     const paidByOptions = useMemo(() => {
-        return selectedTenant?.paidByOptions || [];
-    }, [selectedTenant]);
+        if (!transactions) return [];
+        const uniquePayers = new Set(transactions.map(t => t.paidBy));
+        return Array.from(uniquePayers).sort();
+    }, [transactions]);
 
 
     const subcategoryOptions = useMemo(() => {
