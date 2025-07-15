@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         currentNavItems = currentNavItems.filter(item => item.href !== '/categories');
     }
     
-    if (isRootUser && isMainTenantUser) {
+    if (isRootUser) {
         return [...currentNavItems, ...adminNavItems];
     }
     return currentNavItems;
