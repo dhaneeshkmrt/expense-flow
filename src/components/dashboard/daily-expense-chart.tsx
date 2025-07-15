@@ -3,9 +3,10 @@
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, ReferenceLine } from 'recharts';
 import { useApp } from '@/lib/provider';
-import { useMemo } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from 'date-fns';
+import { useState, useMemo, useCallback } from 'react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, setDate, isValid } from 'date-fns';
 import type { Transaction } from '@/lib/types';
+import DayTransactionsDialog from './day-transactions-dialog';
 
 interface DailyExpenseChartProps {
     transactions: Transaction[];
@@ -15,6 +16,8 @@ interface DailyExpenseChartProps {
 
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
   const { settings } = useApp();
+  const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data, yAxisMax, outlierThreshold } = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
@@ -72,65 +75,93 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
     }).format(value).replace('$', settings.currency);
   };
 
+  const handleBarClick = useCallback((data: any) => {
+    if (!data || !data.activePayload || !data.activePayload[0]) return;
+    
+    const dayOfMonth = parseInt(data.activePayload[0].payload.name, 10);
+    const clickedDate = setDate(new Date(year, month), dayOfMonth);
+    
+    if (!isValid(clickedDate)) return;
+
+    const clickedDateString = format(clickedDate, 'yyyy-MM-dd');
+    
+    const dayTransactions = transactions.filter(t => format(parseISO(t.date), 'yyyy-MM-dd') === clickedDateString);
+
+    setSelectedDay({ date: clickedDate, transactions: dayTransactions });
+    setIsDialogOpen(true);
+  }, [year, month, transactions]);
+
 
   return (
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={data} margin={{ top: 20, right: 0, left: 0, bottom: 5 }}>
-        <XAxis 
-            dataKey="name" 
-            stroke="#888888" 
-            fontSize={12} 
-            tickLine={false} 
-            axisLine={false}
-            label={{ value: 'Day of Month', position: 'insideBottom', offset: -5, fontSize: 12, fill: '#888888' }} 
-        />
-        <YAxis 
-            stroke="#888888" 
-            fontSize={12} 
-            tickLine={false} 
-            axisLine={false} 
-            tickFormatter={(value) => `${settings.currency}${value}`}
-            domain={[0, yAxisMax]}
-            allowDataOverflow={true}
-        />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: 'hsl(var(--card))',
-            borderColor: 'hsl(var(--border))',
-            borderRadius: 'var(--radius)',
-          }}
-          cursor={{ fill: 'hsl(var(--muted))' }}
-          formatter={(value: number, name, props) => [`${settings.currency}${value.toFixed(2)}`, `Day ${props.payload.name}`]}
-          labelFormatter={() => ''}
-        />
-        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]}>
-            <LabelList 
-                dataKey="total" 
-                position="top" 
-                formatter={(value: number) => (value > 0 && value < outlierThreshold) ? formatCurrency(value) : ''}
-                fontSize={11}
-            />
-        </Bar>
-         {data.map((entry, index) => {
-            if (entry.total > outlierThreshold) {
-                return (
-                    <ReferenceLine 
-                        key={`outlier-${index}`}
-                        x={entry.name}
-                        strokeDasharray="3 3"
-                        stroke="hsl(var(--muted-foreground))"
-                        label={{ 
-                            position: 'top', 
-                            value: formatCurrency(entry.total), 
-                            fill: 'hsl(var(--foreground))',
-                            fontSize: 12
-                        }}
-                    />
-                )
-            }
-            return null;
-        })}
-      </BarChart>
-    </ResponsiveContainer>
+    <>
+      <ResponsiveContainer width="100%" height={350}>
+        <BarChart 
+          data={data} 
+          margin={{ top: 20, right: 0, left: 0, bottom: 5 }}
+          onClick={handleBarClick}
+        >
+          <XAxis 
+              dataKey="name" 
+              stroke="#888888" 
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false}
+              label={{ value: 'Day of Month', position: 'insideBottom', offset: -5, fontSize: 12, fill: '#888888' }} 
+          />
+          <YAxis 
+              stroke="#888888" 
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false} 
+              tickFormatter={(value) => `${settings.currency}${value}`}
+              domain={[0, yAxisMax]}
+              allowDataOverflow={true}
+          />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              borderColor: 'hsl(var(--border))',
+              borderRadius: 'var(--radius)',
+            }}
+            cursor={{ fill: 'hsl(var(--muted))' }}
+            formatter={(value: number, name, props) => [`${settings.currency}${value.toFixed(2)}`, `Day ${props.payload.name}`]}
+            labelFormatter={() => ''}
+          />
+          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} className="cursor-pointer">
+              <LabelList 
+                  dataKey="total" 
+                  position="top" 
+                  formatter={(value: number) => (value > 0 && value < outlierThreshold) ? formatCurrency(value) : ''}
+                  fontSize={11}
+              />
+          </Bar>
+           {data.map((entry, index) => {
+              if (entry.total > outlierThreshold) {
+                  return (
+                      <ReferenceLine 
+                          key={`outlier-${index}`}
+                          x={entry.name}
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--muted-foreground))"
+                          label={{ 
+                              position: 'top', 
+                              value: formatCurrency(entry.total), 
+                              fill: 'hsl(var(--foreground))',
+                              fontSize: 12
+                          }}
+                      />
+                  )
+              }
+              return null;
+          })}
+        </BarChart>
+      </ResponsiveContainer>
+      <DayTransactionsDialog 
+        open={isDialogOpen} 
+        onOpenChange={setIsDialogOpen}
+        date={selectedDay.date}
+        transactions={selectedDay.transactions}
+      />
+    </>
   );
 }
