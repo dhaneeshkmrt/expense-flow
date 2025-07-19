@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc, where, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Tenant, User } from '@/lib/types';
 
@@ -131,11 +131,34 @@ export function useTenants(
             if(selectedTenantId === tenantId) {
                 setSelectedTenantId(user?.tenantId ?? null);
             }
-            await deleteDoc(doc(db, 'tenants', tenantId));
+
+            const batch = writeBatch(db);
+
+            // Delete categories
+            const categoriesQuery = query(collection(db, 'categories'), where('tenantId', '==', tenantId));
+            const categoriesSnapshot = await getDocs(categoriesQuery);
+            categoriesSnapshot.forEach(doc => batch.delete(doc.ref));
+
+            // Delete transactions
+            const transactionsQuery = query(collection(db, 'transactions'), where('tenantId', '==', tenantId));
+            const transactionsSnapshot = await getDocs(transactionsQuery);
+            transactionsSnapshot.forEach(doc => batch.delete(doc.ref));
+            
+            // Delete settings
+            const settingsRef = doc(db, 'settings', tenantId);
+            batch.delete(settingsRef);
+
+            // Delete the tenant itself
+            const tenantRef = doc(db, 'tenants', tenantId);
+            batch.delete(tenantRef);
+            
+            await batch.commit();
+
             const remainingTenants = tenants.filter(t => t.id !== tenantId);
             setTenants(remainingTenants);
+
         } catch(e) {
-            console.error("Error deleting tenant: ", e);
+            console.error("Error deleting tenant and associated data: ", e);
         }
     };
 
