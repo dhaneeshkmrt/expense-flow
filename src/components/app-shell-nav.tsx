@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2 } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -28,6 +28,7 @@ const adminNavItems = [
     icon: Shield,
     subItems: [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
+        { href: '/admin/backup', label: 'Backup / Restore', icon: DatabaseBackup },
     ]
   },
 ];
@@ -107,7 +108,7 @@ export function AppShellNav() {
                       const isSubItemNavigating = navigatingTo === subItem.href;
                       return (
                        <SidebarMenuItem key={subItem.href}>
-                          <Link href={subItem.href} onClick={() => handleNavClick(subItem.href)} passHref>
+                          <Link href={subItem.href} onClick={() => handleNavClick(subItem.href)}>
                               <SidebarMenuButton
                                   as="span"
                                   isActive={pathname === subItem.href}
@@ -127,7 +128,7 @@ export function AppShellNav() {
           </Collapsible>
         ) : (
           <SidebarMenuItem key={item.href}>
-             <Link href={item.href} onClick={() => handleNavClick(item.href)} passHref>
+             <Link href={item.href} onClick={() => handleNavClick(item.href)}>
                   <SidebarMenuButton
                       as="span"
                       isActive={pathname === item.href}

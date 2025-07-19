@@ -23,6 +23,10 @@ interface AppContextType {
   addTenant: (tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   editTenant: (tenantId: string, tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
+  isRootUser: boolean;
+  isMainTenantUser: boolean;
+  backupAllData: () => Promise<void>;
+  restoreAllData: (data: any) => Promise<void>;
   
   settings: Settings;
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;

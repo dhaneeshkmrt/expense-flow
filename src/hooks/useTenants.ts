@@ -4,7 +4,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc, where, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { Tenant, User } from '@/lib/types';
+import type { Tenant, User, Category, Transaction, Settings } from '@/lib/types';
+import { format } from 'date-fns';
 
 const generateSecretToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -161,6 +162,69 @@ export function useTenants(
             console.error("Error deleting tenant and associated data: ", e);
         }
     };
+    
+    const backupAllData = async () => {
+        console.log("Starting backup...");
+        const backupData: { [key: string]: any[] } = {
+            tenants: [],
+            categories: [],
+            transactions: [],
+            settings: [],
+        };
+        const collectionsToBackup = ['tenants', 'categories', 'transactions', 'settings'];
+
+        for (const collectionName of collectionsToBackup) {
+            const querySnapshot = await getDocs(collection(db, collectionName));
+            querySnapshot.forEach(doc => {
+                backupData[collectionName].push({ id: doc.id, ...doc.data() });
+            });
+        }
+        
+        const json = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const date = format(new Date(), 'yyyy-MM-dd');
+        a.download = `expenseflow-backup-${date}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log("Backup complete.");
+    };
+
+    const restoreAllData = async (data: { [key: string]: any[] }) => {
+        console.log("Starting restore...");
+        const collectionsToDelete = ['tenants', 'categories', 'transactions', 'settings'];
+        const batch = writeBatch(db);
+        
+        // Clear all current data
+        for (const collectionName of collectionsToDelete) {
+            const querySnapshot = await getDocs(collection(db, collectionName));
+            querySnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+        }
+        await batch.commit();
+        console.log("All existing data deleted.");
+
+        // Write new data
+        const restoreBatch = writeBatch(db);
+        for (const collectionName of collectionsToDelete) {
+            if (data[collectionName]) {
+                data[collectionName].forEach((item: any) => {
+                    const { id, ...itemData } = item;
+                    const docRef = doc(db, collectionName, id);
+                    restoreBatch.set(docRef, itemData);
+                });
+            }
+        }
+        await restoreBatch.commit();
+        console.log("Restore complete.");
+        // Force a page reload to reflect the new state
+        window.location.reload();
+    };
 
 
     return {
@@ -173,6 +237,8 @@ export function useTenants(
         deleteTenant,
         userTenant,
         isRootUser,
-        isMainTenantUser
+        isMainTenantUser,
+        backupAllData,
+        restoreAllData,
     };
 }
