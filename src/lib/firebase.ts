@@ -8,15 +8,14 @@ import { getAuth } from 'firebase/auth';
 // https://firebase.google.com/docs/web/setup#available-libraries
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBnhiJ4H7QFRJve75x_zuQj-HFk34u1Pe0",
-  authDomain: "expenseflow-54862.firebaseapp.com",
-  projectId: "expenseflow-54862",
-  storageBucket: "expenseflow-54862.firebasestorage.app",
-  messagingSenderId: "457212274922",
-  appId: "1:457212274922:web:eec997b72d073022c0cf93",
-  measurementId: "G-LW7QDMHECM"
+  apiKey: "AIzaSyCiSGpV5tBNgkQmg0bYXc8XiOslGk2eBEM",
+  authDomain: "money-purse-7aee4.firebaseapp.com",
+  projectId: "money-purse-7aee4",
+  storageBucket: "money-purse-7aee4.firebasestorage.app",
+  messagingSenderId: "714772765127",
+  appId: "1:714772765127:web:234c8899a08159dab121e2",
+  measurementId: "G-EXZFQ0KECN"
 };
-
 
 // Initialize Firebase
 let app;
