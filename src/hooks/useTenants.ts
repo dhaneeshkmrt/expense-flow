@@ -33,7 +33,7 @@ export function useTenants(
     const isRootUser = useMemo(() => {
         if (!userTenant || !user) return false;
         return !!userTenant.isRootUser;
-    }, [userTenant]);
+    }, [userTenant, user]);
 
     const isMainTenantUser = useMemo(() => {
         if (!userTenant || !user) return false;
