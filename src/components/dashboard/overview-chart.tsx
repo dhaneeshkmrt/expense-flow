@@ -85,6 +85,26 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     );
   };
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="rounded-lg border bg-background p-2 shadow-sm">
+          <p className="font-bold text-sm">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span>
+          </p>
+          {data.balance !== null && (
+            <p className="text-xs text-muted-foreground">
+              Balance: <span className="font-medium text-foreground">{formatCurrency(data.balance)}</span>
+            </p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <>
         <ResponsiveContainer width="100%" height={350}>
@@ -97,20 +117,8 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${settings.currency}${value}`} />
             <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                borderColor: 'hsl(var(--border))',
-                borderRadius: 'var(--radius)',
-              }}
+              content={<CustomTooltip />}
               cursor={{ fill: 'hsl(var(--muted))' }}
-              formatter={(value: number, name, props) => {
-                  const { payload } = props;
-                  if (payload.balance !== null) {
-                    return [formatCurrency(payload.balance), 'Balance'];
-                  }
-                  return [formatCurrency(payload.total), 'Spent'];
-              }}
-              labelFormatter={(label) => <span className="font-bold">{label}</span>}
             />
             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
                 <LabelList dataKey="balance" content={<BalanceLabel />} />
