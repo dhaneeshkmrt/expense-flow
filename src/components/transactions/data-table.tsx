@@ -13,6 +13,9 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  FilterFn,
 } from '@tanstack/react-table';
 import {
   addDays,
@@ -47,6 +50,23 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
+import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
+
+declare module '@tanstack/react-table' {
+  interface FilterFns {
+    fuzzy: FilterFn<unknown>
+  }
+  interface FilterMeta {
+    itemRank: RankingInfo
+  }
+}
+
+const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
+  const itemRank = rankItem(row.getValue(columnId), value)
+  addMeta({ itemRank })
+  return itemRank.passed
+}
+
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -62,12 +82,15 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = React.useState('')
 
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
   const [period, setPeriod] = React.useState<string>('this-month');
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
+  const [minAmount, setMinAmount] = React.useState<string>('');
+  const [maxAmount, setMaxAmount] = React.useState<string>('');
 
   const table = useReactTable({
     data,
@@ -80,11 +103,16 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: fuzzyFilter,
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
   });
 
@@ -105,6 +133,12 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
       table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
     }
   }, [microcategoryFilter, table, showFilters]);
+
+  React.useEffect(() => {
+    const min = minAmount !== '' ? parseFloat(minAmount) : undefined;
+    const max = maxAmount !== '' ? parseFloat(maxAmount) : undefined;
+    table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+  }, [minAmount, maxAmount, table]);
 
   React.useEffect(() => {
     if (!showFilters) return;
@@ -159,14 +193,16 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     return subcategory ? (subcategory.microcategories || []) : [];
   }, [subcategoryFilter, subcategories]);
 
+  const globalFilterFields = ['description', 'category', 'subcategory', 'microcategory', 'notes', 'paidBy'];
+
   return (
     <div>
        {showFilters && (
         <div className="flex flex-wrap items-center gap-2 py-4">
             <Input
-            placeholder="Filter by description..."
-            value={(table.getColumn('description')?.getFilterValue() as string) ?? ''}
-            onChange={(event) => table.getColumn('description')?.setFilterValue(event.target.value)}
+            placeholder="Search all fields..."
+            value={globalFilter ?? ''}
+            onChange={(event) => setGlobalFilter(String(event.target.value))}
             className="max-w-xs"
             />
             <Select value={categoryFilter} onValueChange={(value) => {
@@ -209,6 +245,22 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                 ))}
             </SelectContent>
             </Select>
+             <div className="flex items-center gap-2">
+                <Input
+                    type="number"
+                    placeholder="Min amount"
+                    value={minAmount}
+                    onChange={(e) => setMinAmount(e.target.value)}
+                    className="w-28"
+                />
+                <Input
+                    type="number"
+                    placeholder="Max amount"
+                    value={maxAmount}
+                    onChange={(e) => setMaxAmount(e.target.value)}
+                    className="w-28"
+                />
+            </div>
             <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select period" />

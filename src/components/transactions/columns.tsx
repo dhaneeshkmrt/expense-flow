@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
@@ -81,6 +82,21 @@ export const columns: ColumnDef<Transaction>[] = [
       }).format(amount).replace('$', settings.currency);
 
       return <div className="text-right font-medium">{formatted}</div>;
+    },
+    filterFn: (row, id, value) => {
+      const amount = row.getValue(id) as number;
+      const [min, max] = value as [number | undefined, number | undefined];
+      
+      if (min !== undefined && max !== undefined) {
+        return amount >= min && amount <= max;
+      }
+      if (min !== undefined) {
+        return amount >= min;
+      }
+      if (max !== undefined) {
+        return amount <= max;
+      }
+      return true;
     },
   },
   {
