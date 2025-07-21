@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, isToday, parseISO } from 'date-fns';
 import type { Transaction } from '@/lib/types';
 
 interface DashboardStatsProps {
@@ -18,10 +18,15 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
     const { settings, loading, loadingSettings } = useApp();
 
     const stats = useMemo(() => {
+        const todaysExpense = transactions
+            .filter(t => isToday(parseISO(t.date)))
+            .reduce((sum, t) => sum + t.amount, 0);
+
         if (!transactions.length) {
             return {
                 totalSpent: 0,
                 avgTransaction: 0,
+                todaysExpense,
             };
         }
 
@@ -32,6 +37,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
         return {
             totalSpent,
             avgTransaction,
+            todaysExpense,
         };
 
     }, [transactions]);
@@ -45,8 +51,8 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
 
     if (loading || loadingSettings) {
         return (
-            <div className="grid gap-6 md:grid-cols-2">
-                {[...Array(2)].map((_, i) => (
+            <div className="grid gap-6 md:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
                     <Card key={i}>
                         <CardHeader>
                             <Skeleton className="h-5 w-3/4" />
@@ -64,7 +70,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
     const selectedMonthName = format(new Date(year, month), 'MMMM');
 
     return (
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-3">
             <Card>
                 <CardHeader>
                     <CardTitle>Total Spent ({selectedMonthName})</CardTitle>
@@ -72,6 +78,15 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                 </CardHeader>
                 <CardContent>
                     <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.totalSpent)}</p>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Today&apos;s Expense</CardTitle>
+                    <CardDescription>Total amount spent today.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.todaysExpense)}</p>
                 </CardContent>
             </Card>
             <Card>
