@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useApp } from '@/lib/provider';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Transaction } from '@/lib/types';
+import { useMemo } from 'react';
 
 interface RecentTransactionsProps {
   transactions: Transaction[];
@@ -10,6 +12,14 @@ interface RecentTransactionsProps {
 
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   const { categories, settings } = useApp();
+
+  const sortedTransactions = useMemo(() => {
+    return [...transactions].sort((a, b) => {
+      const dateA = new Date(`${a.date}T${a.time || '00:00:00'}`).getTime();
+      const dateB = new Date(`${b.date}T${b.time || '00:00:00'}`).getTime();
+      return dateB - dateA;
+    });
+  }, [transactions]);
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
@@ -29,7 +39,7 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
 
   return (
     <div className="space-y-4">
-      {transactions.slice(0, 5).map((transaction) => (
+      {sortedTransactions.slice(0, 5).map((transaction) => (
         <div key={transaction.id} className="flex items-center">
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-secondary text-secondary-foreground">

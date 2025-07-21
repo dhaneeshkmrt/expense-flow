@@ -52,7 +52,9 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
         return filtered.sort((a, b) => {
             let comparison = 0;
             if (sortKey === 'date') {
-                comparison = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+                const dateA = new Date(`${a.date}T${a.time || '00:00:00'}`).getTime();
+                const dateB = new Date(`${b.date}T${b.time || '00:00:00'}`).getTime();
+                comparison = dateA - dateB;
             } else { // amount
                 comparison = a.amount - b.amount;
             }
