@@ -135,9 +135,12 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   }, [microcategoryFilter, table, showFilters]);
 
   React.useEffect(() => {
-    const min = minAmount !== '' ? parseFloat(minAmount) : undefined;
-    const max = maxAmount !== '' ? parseFloat(maxAmount) : undefined;
-    table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+    const amountColumn = table.getColumn('amount');
+    if (amountColumn) {
+      const min = minAmount !== '' ? parseFloat(minAmount) : undefined;
+      const max = maxAmount !== '' ? parseFloat(maxAmount) : undefined;
+      amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+    }
   }, [minAmount, maxAmount, table]);
 
   React.useEffect(() => {
