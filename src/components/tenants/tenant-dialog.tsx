@@ -144,7 +144,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     const tenantData = {
         ...data,
         members: data.members || [],
-        paidByOptions: data.paidByOptions?.map(opt => opt.name) || [],
+        paidByOptions: data.paidByOptions?.map(opt => opt.name).filter(Boolean) || [],
     };
     if (isEditing && tenant) {
       editTenant(tenant.id, tenantData);
