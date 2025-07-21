@@ -15,6 +15,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 interface AppContextType {
   user: User | null;
   signIn: (email: string, secretToken: string) => Promise<boolean>;
+  signInWithGoogle: () => Promise<boolean>;
   signOut: () => Promise<void>;
   
   tenants: Tenant[];
@@ -60,7 +61,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const { user, loadingAuth, signIn, signOut } = useAuth();
+  const { user, loadingAuth, signIn, signOut, signInWithGoogle } = useAuth();
   
   // These hooks are just for getting the seeding functions
   const { seedDefaultSettings } = useSettings(null);
@@ -79,6 +80,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     user,
     signIn,
     signOut,
+    signInWithGoogle,
 
     ...tenantHook,
     ...settingsHook,
@@ -91,7 +93,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signIn, signOut, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
