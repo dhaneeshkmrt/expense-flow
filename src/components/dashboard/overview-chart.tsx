@@ -105,16 +105,12 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
               cursor={{ fill: 'hsl(var(--muted))' }}
               formatter={(value: number, name, props) => {
                   const { payload } = props;
-                  const monthKey = format(new Date(year, month), 'yyyy-MM');
-                  const budget = categories.find(c => c.name === payload.name)?.budgets?.[monthKey] || 0;
-                  
-                  const formattedValue = `Spent: ${formatCurrency(value as number)}`;
-                  const formattedBudget = budget > 0 ? `Budget: ${formatCurrency(budget)}` : 'No budget';
-                  const formattedBalance = payload.balance !== null ? `Balance: ${formatCurrency(payload.balance)}` : '';
-                  
-                  return [formattedValue, payload.name];
+                  if (payload.balance !== null) {
+                    return [formatCurrency(payload.balance), 'Balance'];
+                  }
+                  return [formatCurrency(payload.total), 'Spent'];
               }}
-              labelFormatter={() => ''}
+              labelFormatter={(label) => <span className="font-bold">{label}</span>}
             />
             <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
                 <LabelList dataKey="balance" content={<BalanceLabel />} />
