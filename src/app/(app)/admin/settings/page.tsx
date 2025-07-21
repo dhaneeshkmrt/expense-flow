@@ -35,10 +35,12 @@ export default function SettingsPage() {
   } = useForm<Omit<Settings, 'tenantId'>>();
 
   useEffect(() => {
- if (settings) {
+    // Only reset the form if it's not dirty and settings are available.
+    // This prevents overwriting user input when the component re-renders.
+    if (settings && !isDirtySettings) {
       reset(settings);
     }
-  }, [settings, reset]);
+  }, [settings, isDirtySettings, reset]);
 
   const onSubmit = async (data: Omit<Settings, 'tenantId'>) => {
     if (!selectedTenantId) {
