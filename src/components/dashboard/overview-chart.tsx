@@ -42,8 +42,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
       }))
       .filter(item => item.total > 0 || item.balance !== null)
       .sort((a, b) => {
-        // Sort by balance ascending (nulls/no-budget go to the end)
-        if (a.balance === null && b.balance === null) return b.total - a.total; // if both have no budget, sort by spending
+        if (a.balance === null && b.balance === null) return b.total - a.total;
         if (a.balance === null) return 1;
         if (b.balance === null) return -1;
         return a.balance - b.balance;
@@ -72,21 +71,16 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
   const BalanceLabel = (props: any) => {
     const { x, y, width, value } = props;
     
-    if (!props.payload) {
-        return null;
-    }
-    const { balance } = props.payload;
-
-    if (balance === null || balance === undefined) {
+    if (value === null || value === undefined) {
       return null;
     }
 
-    const isPositive = balance >= 0;
+    const isPositive = value >= 0;
     const fill = isPositive ? 'hsl(142.1 76.2% 41.2%)' : 'hsl(0 84.2% 60.2%)';
 
     return (
       <text x={x + width + 5} y={y + 11} fill={fill} textAnchor="start" fontSize={11} fontWeight="bold">
-        {formatCurrency(balance)}
+        {formatCurrency(value)}
       </text>
     );
   };
