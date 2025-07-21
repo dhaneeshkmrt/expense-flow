@@ -14,6 +14,8 @@ import { getYear, getMonth, parseISO, format } from 'date-fns';
 import Papa from 'papaparse';
 import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 
+export const dynamic = 'force-dynamic';
+
 const months = [
   { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
   { value: 3, label: 'April' }, { value: 4, label: 'May' }, { value: 5, label: 'June' },

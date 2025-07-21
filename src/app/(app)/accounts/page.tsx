@@ -32,6 +32,8 @@ interface AccountData {
   monthlyRecords: MonthlyRecord[];
 }
 
+export const dynamic = 'force-dynamic';
+
 const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: string, month: string, initialBudget: number }) => {
     const { updateCategoryBudget } = useApp();
     const formatCurrency = useCurrencyFormatter();

@@ -11,6 +11,8 @@ import { Import, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 
+export const dynamic = 'force-dynamic';
+
 export default function TransactionsPage() {
   const { user, tenants, transactions, loading, loadingCategories, selectedTenantId } = useApp();
 

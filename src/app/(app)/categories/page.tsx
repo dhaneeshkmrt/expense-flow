@@ -17,6 +17,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
+export const dynamic = 'force-dynamic';
+
 export default function CategoriesPage() {
   const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId } = useApp();
   const formatCurrency = useCurrencyFormatter();
