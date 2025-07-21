@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const { user, signIn } = useApp();
   const { register, handleSubmit } = useForm({
     defaultValues: {
-      mobileNo: '',
+      email: '',
       secretToken: '',
     },
   });
@@ -32,7 +33,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    const success = await signIn(data.mobileNo, data.secretToken);
+    const success = await signIn(data.email, data.secretToken);
     if (success) {
       toast({
         title: 'Login Successful',
@@ -42,7 +43,7 @@ export default function LoginPage() {
     } else {
       toast({
         title: 'Login Failed',
-        description: 'Invalid mobile number or secret token.',
+        description: 'Invalid email or secret token.',
         variant: 'destructive',
       });
     }
@@ -56,14 +57,14 @@ export default function LoginPage() {
           <Logo />
           <CardTitle className="pt-4">Welcome Back</CardTitle>
           <CardDescription>
-            Enter your mobile number and secret token to sign in.
+            Enter your email and secret token to sign in.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="mobileNo">Mobile Number</Label>
-              <Input id="mobileNo" type="text" {...register('mobileNo')} />
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" {...register('email')} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="secretToken">Secret Token</Label>

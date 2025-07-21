@@ -14,7 +14,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 // Define the shape of the context value
 interface AppContextType {
   user: User | null;
-  signIn: (mobileNo: string, secretToken: string) => Promise<boolean>;
+  signIn: (email: string, secretToken: string) => Promise<boolean>;
   signOut: () => Promise<void>;
   
   tenants: Tenant[];

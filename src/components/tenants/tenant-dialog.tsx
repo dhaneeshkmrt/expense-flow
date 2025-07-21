@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -40,12 +41,14 @@ const generateSecretToken = () => {
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
-  mobileNo: z.string().min(10, 'Mobile number must be at least 10 digits.'),
+  email: z.string().email('Please enter a valid email address.'),
+  mobileNo: z.string().optional(),
   address: z.string().optional(),
   secretToken: z.string().min(1, 'Secret Token is required.'),
   isRootUser: z.boolean().optional(),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
+    email: z.string().email('Please enter a valid email for the member.'),
     mobileNo: z.string().optional(),
     secretToken: z.string().min(1, 'Secret Token is required.'),
   })).optional(),
@@ -72,6 +75,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     resolver: zodResolver(tenantSchema),
     defaultValues: {
       name: '',
+      email: '',
       mobileNo: '',
       address: '',
       secretToken: '',
@@ -113,6 +117,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
         if (tenant) {
           form.reset({
             name: tenant.name,
+            email: tenant.email,
             mobileNo: tenant.mobileNo,
             address: tenant.address,
             secretToken: tenant.secretToken,
@@ -123,6 +128,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
         } else {
           form.reset({
             name: '',
+            email: '',
             mobileNo: '',
             address: '',
             secretToken: generateSecretToken(),
@@ -199,12 +205,25 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 </FormItem>
               )}
             />
+             <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., user@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="mobileNo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Mobile Number</FormLabel>
+                  <FormLabel>Mobile Number (Optional)</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., 9876543210" {...field} />
                   </FormControl>
@@ -316,6 +335,19 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                     />
                     <FormField
                       control={form.control}
+                      name={`members.${index}.email`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Member Email</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., member@example.com"/>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
                       name={`members.${index}.mobileNo`}
                       render={({ field }) => (
                         <FormItem>
@@ -354,7 +386,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ name: '', mobileNo: '', secretToken: generateSecretToken() })}
+                  onClick={() => append({ name: '', email: '', mobileNo: '', secretToken: generateSecretToken() })}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Add Member

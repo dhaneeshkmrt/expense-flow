@@ -1,3 +1,4 @@
+
 'use client';
 import type { ElementType } from 'react';
 export type Microcategory = {
@@ -44,6 +45,7 @@ export type Settings = {
 
 export type TenantMember = {
   name: string;
+  email: string;
   mobileNo?: string;
   secretToken: string;
 };
@@ -51,7 +53,8 @@ export type TenantMember = {
 export type Tenant = {
   id: string;
   name: string;
-  mobileNo: string;
+  email: string;
+  mobileNo?: string;
   address?: string;
   secretToken: string;
   members: TenantMember[];

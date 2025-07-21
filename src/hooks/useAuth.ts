@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -27,7 +28,7 @@ export function useAuth() {
     }
   }, []);
 
-  const signIn = async (mobileNo: string, secretToken: string): Promise<boolean> => {
+  const signIn = async (email: string, secretToken: string): Promise<boolean> => {
     setLoadingAuth(true);
     try {
       const tenantsCollection = collection(db, 'tenants');
@@ -41,7 +42,7 @@ export function useAuth() {
         const tenant = { id: doc.id, ...doc.data() } as Tenant;
 
         // Check main tenant credentials
-        if (tenant.mobileNo === mobileNo && tenant.secretToken === secretToken) {
+        if (tenant.email === email && tenant.secretToken === secretToken) {
           foundUser = { name: tenant.name, tenantId: tenant.id };
           foundTenant = tenant;
           break;
@@ -50,7 +51,7 @@ export function useAuth() {
         // Check member credentials
         if (tenant.members && tenant.members.length > 0) {
           const member = tenant.members.find(
-            m => m.mobileNo === mobileNo && m.secretToken === secretToken
+            m => m.email === email && m.secretToken === secretToken
           );
           if (member) {
             foundUser = { name: member.name, tenantId: tenant.id };

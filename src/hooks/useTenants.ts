@@ -52,6 +52,7 @@ export function useTenants(
                 if (fetchedTenants.length === 0) {
                     const defaultTenantData: Omit<Tenant, 'id'> = {
                         name: 'dhanisha',
+                        email: 'dhanisha@example.com',
                         mobileNo: '1234567890',
                         address: '',
                         secretToken: generateSecretToken(),
