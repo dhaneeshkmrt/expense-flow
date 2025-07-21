@@ -41,7 +41,13 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
           balance: budget > 0 ? budget - total : null,
       }))
       .filter(item => item.total > 0 || item.balance !== null)
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => {
+        // Sort by balance ascending (nulls/no-budget go to the end)
+        if (a.balance === null && b.balance === null) return b.total - a.total; // if both have no budget, sort by spending
+        if (a.balance === null) return 1;
+        if (b.balance === null) return -1;
+        return a.balance - b.balance;
+      });
   }, [transactions, categories, year, month]);
   
   const formatCurrency = (value: number) => {
