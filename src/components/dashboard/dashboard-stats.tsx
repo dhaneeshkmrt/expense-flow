@@ -25,18 +25,14 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
         if (!transactions.length) {
             return {
                 totalSpent: 0,
-                avgTransaction: 0,
                 todaysExpense,
             };
         }
 
         const totalSpent = transactions.reduce((sum, t) => sum + t.amount, 0);
-        const transactionCount = transactions.length;
-        const avgTransaction = transactionCount > 0 ? totalSpent / transactionCount : 0;
         
         return {
             totalSpent,
-            avgTransaction,
             todaysExpense,
         };
 
@@ -51,8 +47,8 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
 
     if (loading || loadingSettings) {
         return (
-            <div className="grid gap-6 md:grid-cols-3">
-                {[...Array(3)].map((_, i) => (
+            <div className="grid gap-6 md:grid-cols-2">
+                {[...Array(2)].map((_, i) => (
                     <Card key={i}>
                         <CardHeader>
                             <Skeleton className="h-5 w-3/4" />
@@ -70,7 +66,7 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
     const selectedMonthName = format(new Date(year, month), 'MMMM');
 
     return (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
             <Card>
                 <CardHeader>
                     <CardTitle>Total Spent ({selectedMonthName})</CardTitle>
@@ -87,15 +83,6 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
                 </CardHeader>
                 <CardContent>
                     <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.todaysExpense)}</p>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Avg. Transaction</CardTitle>
-                    <CardDescription>Average amount per transaction.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-3xl sm:text-4xl font-bold">{formatCurrency(stats.avgTransaction)}</p>
                 </CardContent>
             </Card>
         </div>
