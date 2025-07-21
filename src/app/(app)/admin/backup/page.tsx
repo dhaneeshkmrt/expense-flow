@@ -11,6 +11,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, Download, Upload, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
+export const dynamic = 'force-dynamic';
+
 export default function BackupPage() {
   const { backupAllData, restoreAllData, isRootUser } = useApp();
   const { toast } = useToast();
