@@ -28,7 +28,8 @@ export function useSettings(tenantId: string | null) {
             const newSettings = await seedDefaultSettings(tenantIdToFetch);
             setSettings(newSettings);
         } else {
-            setSettings(docSnap.data() as Settings);
+            const data = docSnap.data() as Omit<Settings, 'tenantId'>;
+            setSettings({ ...defaultSettings, ...data, tenantId: tenantIdToFetch });
         }
     } catch (error) {
         console.error("Error fetching settings: ", error);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -11,6 +12,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import type { Settings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+const countryLocales = [
+  { value: 'en-US', label: 'United States (USD)' },
+  { value: 'en-IN', label: 'India (INR)' },
+  { value: 'en-GB', label: 'United Kingdom (GBP)' },
+  { value: 'en-CA', label: 'Canada (CAD)' },
+  { value: 'en-AU', label: 'Australia (AUD)' },
+  { value: 'de-DE', label: 'Germany (EUR)' },
+  { value: 'ja-JP', label: 'Japan (JPY)' },
+];
 
 export default function SettingsPage() {
   const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant } = useApp();
@@ -18,6 +30,7 @@ export default function SettingsPage() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { isSubmitting: isSubmittingSettings, isDirty: isDirtySettings },
   } = useForm<Omit<Settings, 'tenantId'>>();
 
@@ -119,14 +132,38 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
-              <Input
-                id="currency"
-                {...register('currency')}
-                className="w-full md:w-1/3"
-                disabled={!selectedTenantId}
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency Symbol</Label>
+                  <Input
+                    id="currency"
+                    {...register('currency')}
+                    className="w-full md:w-2/3"
+                    disabled={!selectedTenantId}
+                    placeholder="e.g. ₹, $, €"
+                  />
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="locale">Country for Formatting</Label>
+                    <Controller
+                        name="locale"
+                        control={control}
+                        render={({ field }) => (
+                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedTenantId}>
+                                <SelectTrigger className="w-full md:w-2/3">
+                                    <SelectValue placeholder="Select a country" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {countryLocales.map(cl => (
+                                        <SelectItem key={cl.value} value={cl.value}>
+                                            {cl.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                </div>
             </div>
             <Button type="submit" disabled={isSubmittingSettings || !isDirtySettings || !selectedTenantId}>
               {isSubmittingSettings && <Loader2 className="mr-2 animate-spin" />}
