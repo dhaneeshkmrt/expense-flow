@@ -17,7 +17,7 @@ interface DailyExpenseChartProps {
 const CustomDot = (props: any) => {
     const { cx, cy, payload, handleDotClick } = props;
   
-    if (payload.total > 0) {
+    if (payload.total > 0 && handleDotClick) {
       return (
         <Dot
           cx={cx}
@@ -39,6 +39,21 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
   const { settings } = useApp();
   const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleDotClick = useCallback((payload: any) => {
+    if (!payload || !payload.date) return;
+    
+    const clickedDate = payload.date;
+    
+    if (!isValid(clickedDate)) return;
+
+    const clickedDateString = format(clickedDate, 'yyyy-MM-dd');
+    
+    const dayTransactions = transactions.filter(t => format(parseISO(t.date), 'yyyy-MM-dd') === clickedDateString);
+
+    setSelectedDay({ date: clickedDate, transactions: dayTransactions });
+    setIsDialogOpen(true);
+  }, [transactions]);
 
   const data = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
@@ -82,22 +97,6 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
         maximumFractionDigits: 0,
     }).format(value).replace('$', settings.currency);
   };
-  
-  const handleDotClick = useCallback((payload: any) => {
-    if (!payload || !payload.date) return;
-    
-    const clickedDate = payload.date;
-    
-    if (!isValid(clickedDate)) return;
-
-    const clickedDateString = format(clickedDate, 'yyyy-MM-dd');
-    
-    const dayTransactions = transactions.filter(t => format(parseISO(t.date), 'yyyy-MM-dd') === clickedDateString);
-
-    setSelectedDay({ date: clickedDate, transactions: dayTransactions });
-    setIsDialogOpen(true);
-  }, [transactions]);
-
 
   return (
     <>
@@ -137,7 +136,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
             stroke="hsl(var(--primary))" 
             strokeWidth={2}
             dot={<CustomDot handleDotClick={handleDotClick} />}
-            activeDot={(props) => <CustomDot {...props} r={6} />}
+            activeDot={(props) => <CustomDot {...props} r={6} handleDotClick={handleDotClick} />}
           />
         </LineChart>
       </ResponsiveContainer>
