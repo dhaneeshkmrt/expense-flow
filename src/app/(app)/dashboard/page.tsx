@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { OverviewChart } from '@/components/dashboard/overview-chart';
-import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
 import { Download, PlusCircle } from 'lucide-react';
@@ -138,16 +137,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-            <CardHeader>
-              <CardTitle>Recent Transactions</CardTitle>
-              <CardDescription>Your latest 5 transactions for the selected period.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RecentTransactions transactions={filteredTransactions} />
-            </CardContent>
-        </Card>
+      <div className="grid grid-cols-1">
         <CategoryBreakdown transactions={filteredTransactions} />
       </div>
     </div>

@@ -6,11 +6,12 @@ import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import type { Tenant, Transaction } from '@/lib/types';
+import type { Transaction } from '@/lib/types';
 import { parseISO, format } from 'date-fns';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuLabel, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
 
 export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
     const { categories, settings } = useApp();
@@ -90,10 +91,10 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     };
     
     return (
-        <Card className="flex flex-col">
+        <Card className="flex flex-col h-[500px]">
             <CardHeader>
                 <CardTitle>Transaction Breakdown</CardTitle>
-                <CardDescription>Filter and sort transactions.</CardDescription>
+                <CardDescription>Filter and sort transactions from the selected period.</CardDescription>
                 <div className="flex flex-wrap items-center gap-2 pt-4">
                     <Select value={selectedCategory} onValueChange={v => {setSelectedCategory(v === 'all' ? '' : v); setSelectedSubcategory(''); setSelectedMicrocategory('');}}>
                         <SelectTrigger className="w-full sm:w-[150px]">
@@ -168,36 +169,38 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                     ))}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col">
+            <CardContent className="flex-grow flex flex-col overflow-hidden">
                 <div className="border-t pt-4">
                     <p className="text-2xl font-bold text-center mb-4">
                         Total: {formatCurrency(totalAmount)}
                     </p>
                 </div>
-                <div className="space-y-4 flex-grow overflow-y-auto pr-2">
-                    {filteredAndSortedTransactions.length > 0 ? filteredAndSortedTransactions.map((transaction) => (
-                        <div key={transaction.id} className="flex items-center">
-                            <Avatar className="h-9 w-9">
-                                <AvatarFallback className="bg-secondary text-secondary-foreground">
-                                {getCategoryIcon(transaction.category)}
-                                </AvatarFallback>
-                            </Avatar>
-                            <div className="ml-4 space-y-1">
-                                <p className="text-sm font-medium leading-none">{transaction.description}</p>
-                                <p className="text-sm text-muted-foreground">{format(parseISO(transaction.date), 'dd MMM yyyy')}</p>
-                            </div>
-                            <div className="ml-auto font-medium text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <span>{formatCurrency(transaction.amount)}</span>
-                                  <Badge variant="outline" className="font-mono">{transaction.paidBy.toUpperCase()}</Badge>
+                <ScrollArea className="flex-grow">
+                    <div className="space-y-4 pr-4">
+                        {filteredAndSortedTransactions.length > 0 ? filteredAndSortedTransactions.map((transaction) => (
+                            <div key={transaction.id} className="flex items-center">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarFallback className="bg-secondary text-secondary-foreground">
+                                    {getCategoryIcon(transaction.category)}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="ml-4 space-y-1">
+                                    <p className="text-sm font-medium leading-none">{transaction.description}</p>
+                                    <p className="text-sm text-muted-foreground">{format(parseISO(transaction.date), 'dd MMM yyyy')}</p>
                                 </div>
-                                <p className="text-xs text-muted-foreground">{transaction.subcategory}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
+                                <div className="ml-auto font-medium text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                    <span>{formatCurrency(transaction.amount)}</span>
+                                    <Badge variant="outline" className="font-mono">{transaction.paidBy.toUpperCase()}</Badge>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{transaction.subcategory}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
+                                </div>
                             </div>
-                        </div>
-                    )) : (
-                        <p className="text-sm text-muted-foreground text-center pt-4">No transactions match your filters.</p>
-                    )}
-                </div>
+                        )) : (
+                            <p className="text-sm text-muted-foreground text-center pt-4">No transactions match your filters.</p>
+                        )}
+                    </div>
+                </ScrollArea>
             </CardContent>
         </Card>
     )
