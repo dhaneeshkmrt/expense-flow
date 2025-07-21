@@ -12,9 +12,11 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuChe
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 export function CategoryBreakdown({ transactions }: { transactions: Transaction[] }) {
-    const { categories, settings } = useApp();
+    const { categories } = useApp();
+    const formatCurrency = useCurrencyFormatter();
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
     const [selectedMicrocategory, setSelectedMicrocategory] = useState<string>('');
@@ -75,13 +77,6 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
             return <Icon className="w-4 h-4" />;
         }
         return null;
-    };
-    
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount).replace('$', settings.currency);
     };
 
     const handlePaidByChange = (payer: string) => {

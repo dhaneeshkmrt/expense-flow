@@ -21,6 +21,7 @@ import { Badge } from '../ui/badge';
 import AddTransactionSheet from './add-transaction-sheet';
 import { useApp } from '@/lib/provider';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 
 export const columns: ColumnDef<Transaction>[] = [
@@ -73,15 +74,10 @@ export const columns: ColumnDef<Transaction>[] = [
       );
     },
     cell: function AmountCell({ row }) {
-      const { settings } = useApp();
+      const formatCurrency = useCurrencyFormatter();
       const amount = parseFloat(row.getValue('amount'));
       
-      const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD', // The currency code doesn't matter here as we override the symbol.
-      }).format(amount).replace('$', settings.currency);
-
-      return <div className="text-right font-medium">{formatted}</div>;
+      return <div className="text-right font-medium">{formatCurrency(amount)}</div>;
     },
     filterFn: (row, id, value) => {
       const amount = row.getValue(id) as number;

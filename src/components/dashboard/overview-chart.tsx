@@ -7,6 +7,7 @@ import { useMemo, useState, useCallback } from 'react';
 import type { Transaction } from '@/lib/types';
 import CategoryTransactionsDialog from './category-transactions-dialog';
 import { format } from 'date-fns';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface OverviewChartProps {
   transactions: Transaction[];
@@ -15,7 +16,8 @@ interface OverviewChartProps {
 }
 
 export function OverviewChart({ transactions, year, month }: OverviewChartProps) {
-  const { categories, settings } = useApp();
+  const { categories } = useApp();
+  const formatCurrency = useCurrencyFormatter();
   const [selectedCategory, setSelectedCategory] = useState<{ name: string | null; transactions: Transaction[] }>({ name: null, transactions: [] });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -49,15 +51,6 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
       });
   }, [transactions, categories, year, month]);
   
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value).replace('$', settings.currency);
-  };
-
   const handleBarClick = useCallback((data: any) => {
     if (!data || !data.activePayload || !data.activePayload[0]) return;
     
@@ -80,7 +73,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
 
     return (
       <text x={x + width + 5} y={y + 11} fill={fill} textAnchor="start" fontSize={11} fontWeight="bold">
-        {formatCurrency(value)}
+        {formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </text>
     );
   };
@@ -114,7 +107,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             layout="vertical"
             margin={{ top: 5, right: 60, left: 20, bottom: 5 }}
           >
-            <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${settings.currency}${value}`} />
+            <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})} />
             <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
             <Tooltip
               content={<CustomTooltip />}

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -14,9 +15,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { MicrocategoryDialog } from '@/components/categories/microcategory-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, settings } = useApp();
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId } = useApp();
+  const formatCurrency = useCurrencyFormatter();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
@@ -64,13 +67,6 @@ export default function CategoriesPage() {
     setSelectedSubcategory(subcategory);
     setSelectedMicrocategory(microcategory);
     setMicrocategoryDialogOpen(true);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(amount).replace('$', settings.currency);
   };
 
   if (loadingCategories) {

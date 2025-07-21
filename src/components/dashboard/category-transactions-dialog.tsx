@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface CategoryTransactionsDialogProps {
   open: boolean;
@@ -33,16 +34,10 @@ export default function CategoryTransactionsDialog({
   categoryName,
   transactions,
 }: CategoryTransactionsDialogProps) {
-  const { settings, categories } = useApp();
+  const { categories } = useApp();
+  const formatCurrency = useCurrencyFormatter();
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount).replace('$', settings.currency);
-  };
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isToday, parseISO } from 'date-fns';
 import type { Transaction } from '@/lib/types';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface DashboardStatsProps {
     transactions: Transaction[];
@@ -15,7 +16,8 @@ interface DashboardStatsProps {
 }
 
 export function DashboardStats({ transactions, year, month }: DashboardStatsProps) {
-    const { settings, loading, loadingSettings } = useApp();
+    const { loading, loadingSettings } = useApp();
+    const formatCurrency = useCurrencyFormatter();
 
     const stats = useMemo(() => {
         const todaysExpense = transactions
@@ -38,13 +40,6 @@ export function DashboardStats({ transactions, year, month }: DashboardStatsProp
 
     }, [transactions]);
     
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-        }).format(amount).replace('$', settings.currency);
-    };
-
     if (loading || loadingSettings) {
         return (
             <div className="grid gap-6 md:grid-cols-2">

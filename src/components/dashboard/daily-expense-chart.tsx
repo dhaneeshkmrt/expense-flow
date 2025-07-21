@@ -2,11 +2,11 @@
 'use client';
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
-import { useApp } from '@/lib/provider';
 import { useState, useMemo, useCallback } from 'react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import type { Transaction } from '@/lib/types';
 import DayTransactionsDialog from './day-transactions-dialog';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface DailyExpenseChartProps {
     transactions: Transaction[];
@@ -15,18 +15,9 @@ interface DailyExpenseChartProps {
 }
 
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
-  const { settings } = useApp();
+  const formatCurrency = useCurrencyFormatter();
   const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value).replace('$', settings.currency);
-  };
   
   const handleBarClick = useCallback((data: any) => {
     if (!data || !data.activePayload || !data.activePayload[0]) return;
@@ -89,7 +80,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
 
     return (
       <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={11} fontWeight="bold">
-        {formatCurrency(value)}
+        {formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </text>
     );
   };
@@ -125,7 +116,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
               fontSize={12} 
               tickLine={false} 
               axisLine={false}
-              tickFormatter={(value) => `${settings.currency}${value}`}
+              tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}
           />
           <YAxis 
               type="category"

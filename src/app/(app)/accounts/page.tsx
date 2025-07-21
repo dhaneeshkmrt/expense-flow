@@ -13,6 +13,7 @@ import { ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface MonthlyRecord {
   month: string;
@@ -33,6 +34,7 @@ interface AccountData {
 
 const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: string, month: string, initialBudget: number }) => {
     const { updateCategoryBudget } = useApp();
+    const formatCurrency = useCurrencyFormatter();
     const [budget, setBudget] = useState(initialBudget);
     const [isEditing, setIsEditing] = useState(false);
     const debouncedBudget = useDebounce(budget, 500);
@@ -56,7 +58,7 @@ const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: 
                 />
             ) : (
                 <>
-                    <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(budget).replace('$', '')}</span>
+                    <span>{formatCurrency(budget, { style: 'decimal'})}</span>
                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditing(true)}>
                         <Edit2 className="h-3 w-3" />
                     </Button>
@@ -68,8 +70,9 @@ const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: 
 
 
 export default function AccountsPage() {
-  const { categories, transactions, loading, settings, user, tenants, updateCategoryBudget } = useApp();
+  const { categories, transactions, loading, user, tenants, updateCategoryBudget } = useApp();
   const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+  const formatCurrency = useCurrencyFormatter();
 
   const userTenant = useMemo(() => {
     if (!user || !tenants.length) return null;
@@ -80,13 +83,6 @@ export default function AccountsPage() {
     if (!userTenant || !user) return false;
     return !!userTenant.isRootUser && user.name === userTenant.name;
   }, [user, userTenant]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount).replace('$', settings.currency);
-  };
 
   const accountData = useMemo(() => {
     if (loading) return [];
@@ -138,7 +134,7 @@ export default function AccountsPage() {
         monthlyRecords,
       };
     });
-  }, [categories, transactions, loading, settings.currency]);
+  }, [categories, transactions, loading]);
 
   const toggleCollapsible = (id: string) => {
     setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));

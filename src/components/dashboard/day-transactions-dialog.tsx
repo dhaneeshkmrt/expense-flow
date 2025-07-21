@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 interface DayTransactionsDialogProps {
   open: boolean;
@@ -33,16 +34,10 @@ export default function DayTransactionsDialog({
   date,
   transactions,
 }: DayTransactionsDialogProps) {
-  const { settings, categories } = useApp();
+  const { categories } = useApp();
+  const formatCurrency = useCurrencyFormatter();
   const [sortKey, setSortKey] = useState<SortKey>('time');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount).replace('$', settings.currency);
-  };
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
