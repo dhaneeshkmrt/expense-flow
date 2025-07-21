@@ -1,10 +1,10 @@
 
 'use client';
 
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Dot, ReferenceLine, CartesianGrid } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useState, useMemo, useCallback } from 'react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, setDate, isValid, getDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, isValid } from 'date-fns';
 import type { Transaction } from '@/lib/types';
 import DayTransactionsDialog from './day-transactions-dialog';
 
@@ -14,46 +14,36 @@ interface DailyExpenseChartProps {
     month: number;
 }
 
-const CustomDot = (props: any) => {
-    const { cx, cy, payload, handleDotClick } = props;
-  
-    if (payload.total > 0 && handleDotClick) {
-      return (
-        <Dot
-          cx={cx}
-          cy={cy}
-          r={4}
-          fill="hsl(var(--primary))"
-          stroke="hsl(var(--primary-foreground))"
-          strokeWidth={1}
-          onClick={() => handleDotClick(payload)}
-          className="cursor-pointer"
-        />
-      );
-    }
-  
-    return null;
-};
-
 export function DailyExpenseChart({ transactions, year, month }: DailyExpenseChartProps) {
   const { settings } = useApp();
   const [selectedDay, setSelectedDay] = useState<{ date: Date | null; transactions: Transaction[] }>({ date: null, transactions: [] });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleDotClick = useCallback((payload: any) => {
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+    }).format(value).replace('$', settings.currency);
+  };
+  
+  const handleBarClick = useCallback((data: any) => {
+    if (!data || !data.activePayload || !data.activePayload[0]) return;
+    
+    const payload = data.activePayload[0].payload;
     if (!payload || !payload.date) return;
     
     const clickedDate = payload.date;
-    
     if (!isValid(clickedDate)) return;
 
     const clickedDateString = format(clickedDate, 'yyyy-MM-dd');
-    
     const dayTransactions = transactions.filter(t => format(parseISO(t.date), 'yyyy-MM-dd') === clickedDateString);
 
     setSelectedDay({ date: clickedDate, transactions: dayTransactions });
     setIsDialogOpen(true);
   }, [transactions]);
+
 
   const data = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
@@ -81,64 +71,79 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
 
     return Array.from(dailyData.values())
       .map(d => ({ 
-          name: format(d.date, 'd'), 
+          name: format(d.date, 'd MMM'), 
           total: d.total,
           date: d.date,
       }))
+      .filter(d => d.total > 0)
       .sort((a,b) => a.date.getDate() - b.date.getDate());
 
   }, [transactions, year, month]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value).replace('$', settings.currency);
+  const TotalLabel = (props: any) => {
+    const { x, y, width, value } = props;
+    
+    if (value === null || value === undefined || value === 0) {
+      return null;
+    }
+
+    return (
+      <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={11} fontWeight="bold">
+        {formatCurrency(value)}
+      </text>
+    );
   };
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      return (
+        <div className="rounded-lg border bg-background p-2 shadow-sm">
+          <p className="font-bold text-sm">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span>
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
 
   return (
     <>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart 
-          data={data} 
-          margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+        <BarChart 
+          data={data}
+          onClick={handleBarClick}
+          layout="vertical"
+          margin={{ top: 5, right: 60, left: -10, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
           <XAxis 
-              dataKey="name"
-              stroke="hsl(var(--muted-foreground))"
-              fontSize={12} 
-              tickLine={false} 
-              axisLine={false}
-              padding={{ left: 10, right: 10 }}
-          />
-          <YAxis 
+              type="number"
               stroke="hsl(var(--muted-foreground))"
               fontSize={12} 
               tickLine={false} 
               axisLine={false}
               tickFormatter={(value) => `${settings.currency}${value}`}
           />
+          <YAxis 
+              type="category"
+              dataKey="name"
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={12} 
+              tickLine={false} 
+              axisLine={false}
+              width={60}
+          />
           <Tooltip
-            contentStyle={{
-              backgroundColor: 'hsl(var(--card))',
-              borderColor: 'hsl(var(--border))',
-              borderRadius: 'var(--radius)',
-            }}
-            formatter={(value: number, name, props) => [formatCurrency(value), `Day ${props.payload.name}`]}
-            labelFormatter={() => ''}
+            content={<CustomTooltip />}
+            cursor={{ fill: 'hsl(var(--muted))' }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="total" 
-            stroke="hsl(var(--primary))" 
-            strokeWidth={2}
-            dot={<CustomDot handleDotClick={handleDotClick} />}
-            activeDot={(props) => <CustomDot {...props} r={6} handleDotClick={handleDotClick} />}
-          />
-        </LineChart>
+          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
+            <LabelList dataKey="total" content={<TotalLabel />} />
+          </Bar>
+        </BarChart>
       </ResponsiveContainer>
       <DayTransactionsDialog 
         open={isDialogOpen} 

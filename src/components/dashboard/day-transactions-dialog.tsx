@@ -87,6 +87,7 @@ export default function DayTransactionsDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="time-asc">Time (Ascending)</SelectItem>
+                <SelectItem value="time-desc">Time (Descending)</SelectItem>
                 <SelectItem value="amount-desc">Amount (High to Low)</SelectItem>
                 <SelectItem value="amount-asc">Amount (Low to High)</SelectItem>
               </SelectContent>
