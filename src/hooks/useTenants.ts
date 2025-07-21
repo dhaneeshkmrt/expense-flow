@@ -186,7 +186,7 @@ export function useTenants(
         const a = document.createElement('a');
         a.href = url;
         const date = format(new Date(), 'yyyy-MM-dd');
-        a.download = `expenseflow-backup-${date}.json`;
+        a.download = `money-purse-backup-${date}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
