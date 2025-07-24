@@ -85,7 +85,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span> / {formatCurrency(data.budget)}
           </p>
            <p className="text-xs text-muted-foreground">
-            Usage: <span className="font-medium text-foreground">{data.percentage}%</span>
+            Usage: <span className="font-medium text-foreground">{data.percentage}%</span> | Balance: <span className="font-medium text-foreground">{formatCurrency( data.budget - data.total)}</span> 
           </p>
         </div>
       );
