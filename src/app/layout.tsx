@@ -9,6 +9,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'ExpenseFlow',
   description: 'An intelligent app to track your monthly expenses.',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
