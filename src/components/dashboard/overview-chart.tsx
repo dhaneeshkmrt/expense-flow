@@ -63,6 +63,9 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
 
   const BalanceLabel = (props: any) => {
     const { x, y, width, payload } = props;
+    
+    if (!payload) return null;
+
     const { budget, total } = payload;
     
     if (budget === undefined || total === undefined) {
