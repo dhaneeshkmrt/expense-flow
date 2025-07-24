@@ -7,8 +7,9 @@ import { AppProvider } from '@/lib/provider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Money Purse',
+  title: 'ExpenseFlow',
   description: 'An intelligent app to track your monthly expenses.',
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({
@@ -25,6 +26,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
+        <meta name="theme-color" content="#4B0082" />
       </head>
       <body className={`${inter.variable} font-body antialiased`}>
         <AppProvider>
