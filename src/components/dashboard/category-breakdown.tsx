@@ -86,7 +86,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     };
     
     return (
-        <Card className="flex flex-col h-[500px]">
+        <Card className="flex flex-col md:h-[500px]">
             <CardHeader>
                 <CardTitle>Transaction Breakdown</CardTitle>
                 <CardDescription>Filter and sort transactions from the selected period.</CardDescription>
@@ -164,7 +164,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                     ))}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col overflow-hidden">
+            <CardContent className="flex-grow flex flex-col md:overflow-hidden">
                 <div className="border-t pt-4">
                     <p className="text-2xl font-bold text-center mb-4">
                         Total: {formatCurrency(totalAmount)}
