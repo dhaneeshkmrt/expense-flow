@@ -66,17 +66,18 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     
     if (!payload) return null;
 
-    const { budget, total } = payload;
+    const { budget, total, percentage } = payload;
     
-    if (budget === undefined || total === undefined) {
+    if (budget === undefined || total === undefined || percentage === undefined) {
       return null;
     }
     
     const balance = budget - total;
+    const balanceText = formatCurrency(balance, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
     return (
       <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={12} fontWeight="bold">
-        {formatCurrency(balance, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+        {`${percentage}% | ${balanceText}`}
       </text>
     );
   };
@@ -108,7 +109,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             data={data}
             onClick={handleBarClick}
             layout="vertical"
-            margin={{ top: 5, right: 60, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 120, left: 20, bottom: 5 }}
           >
             <XAxis 
                 type="number" 
