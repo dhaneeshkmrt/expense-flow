@@ -103,7 +103,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
 
   return (
     <>
-      <ResponsiveContainer width="100%" height={300}>
+      <ResponsiveContainer width="100%" minHeight={300}>
         <BarChart 
           data={data}
           onClick={handleBarClick}
