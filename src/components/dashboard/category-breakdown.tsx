@@ -86,7 +86,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
     };
     
     return (
-        <Card className="flex flex-col md:h-[500px]">
+        <Card className="flex flex-col">
             <CardHeader>
                 <CardTitle>Transaction Breakdown</CardTitle>
                 <CardDescription>Filter and sort transactions from the selected period.</CardDescription>
@@ -164,14 +164,14 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                     ))}
                 </div>
             </CardHeader>
-            <CardContent className="flex-grow flex flex-col md:overflow-hidden">
+            <CardContent className="flex-grow flex flex-col">
                 <div className="border-t pt-4">
                     <p className="text-2xl font-bold text-center mb-4">
                         Total: {formatCurrency(totalAmount)}
                     </p>
                 </div>
-                <ScrollArea className="flex-grow">
-                    <div className="space-y-4 pr-4">
+                <div className="flex-grow">
+                    <div className="space-y-4">
                         {filteredAndSortedTransactions.length > 0 ? filteredAndSortedTransactions.map((transaction) => (
                             <div key={transaction.id} className="flex items-center">
                                 <Avatar className="h-9 w-9">
@@ -195,7 +195,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                             <p className="text-sm text-muted-foreground text-center pt-4">No transactions match your filters.</p>
                         )}
                     </div>
-                </ScrollArea>
+                </div>
             </CardContent>
         </Card>
     )
