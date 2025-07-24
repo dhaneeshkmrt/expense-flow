@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo, useState, useCallback } from 'react';
 import type { Transaction } from '@/lib/types';
@@ -27,28 +27,28 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
 
     categories.forEach(cat => {
       const budget = cat.budgets?.[monthKey] || 0;
-      categoryTotals.set(cat.name, { total: 0, budget });
+      // Only include categories with a budget for this view
+      if (budget > 0) {
+        categoryTotals.set(cat.name, { total: 0, budget });
+      }
     });
 
     transactions.forEach(txn => {
-        const currentData = categoryTotals.get(txn.category) || { total: 0, budget: 0 };
-        currentData.total += txn.amount;
-        categoryTotals.set(txn.category, currentData);
+        const currentData = categoryTotals.get(txn.category);
+        if (currentData) { // Only track spending for categories with budgets
+            currentData.total += txn.amount;
+            categoryTotals.set(txn.category, currentData);
+        }
     });
 
     return Array.from(categoryTotals.entries())
       .map(([name, { total, budget }]) => ({ 
           name, 
           total,
-          balance: budget > 0 ? budget - total : null,
+          budget,
+          percentage: budget > 0 ? Math.round((total / budget) * 100) : 0,
       }))
-      .filter(item => item.total > 0 || item.balance !== null)
-      .sort((a, b) => {
-        if (a.balance === null && b.balance === null) return b.total - a.total;
-        if (a.balance === null) return 1;
-        if (b.balance === null) return -1;
-        return a.balance - b.balance;
-      });
+      .sort((a, b) => b.percentage - a.percentage);
   }, [transactions, categories, year, month]);
   
   const handleBarClick = useCallback((data: any) => {
@@ -61,19 +61,16 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     setIsDialogOpen(true);
   }, [transactions]);
 
-  const BalanceLabel = (props: any) => {
+  const PercentageLabel = (props: any) => {
     const { x, y, width, value } = props;
     
     if (value === null || value === undefined) {
       return null;
     }
 
-    const isPositive = value >= 0;
-    const fill = isPositive ? 'hsl(142.1 76.2% 41.2%)' : 'hsl(0 84.2% 60.2%)';
-
     return (
-      <text x={x + width + 5} y={y + 11} fill={fill} textAnchor="start" fontSize={11} fontWeight="bold">
-        {formatCurrency(value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+      <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={12} fontWeight="bold">
+        {`${value}%`}
       </text>
     );
   };
@@ -85,18 +82,18 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
         <div className="rounded-lg border bg-background p-2 shadow-sm">
           <p className="font-bold text-sm">{label}</p>
           <p className="text-xs text-muted-foreground">
-            Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span>
+            Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span> / {formatCurrency(data.budget)}
           </p>
-          {data.balance !== null && (
-            <p className="text-xs text-muted-foreground">
-              Balance: <span className="font-medium text-foreground">{formatCurrency(data.balance)}</span>
-            </p>
-          )}
+           <p className="text-xs text-muted-foreground">
+            Usage: <span className="font-medium text-foreground">{data.percentage}%</span>
+          </p>
         </div>
       );
     }
     return null;
   };
+  
+  const maxPercentage = Math.max(...data.map(d => d.percentage), 100);
 
   return (
     <>
@@ -107,14 +104,25 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             layout="vertical"
             margin={{ top: 5, right: 60, left: 20, bottom: 5 }}
           >
-            <XAxis type="number" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})} />
-            <YAxis type="category" dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
+            <XAxis 
+                type="number" 
+                domain={[0, maxPercentage]}
+                stroke="hsl(var(--muted-foreground))" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false} 
+                tickFormatter={(value) => `${value}%`} 
+            />
+            <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
             <Tooltip
               content={<CustomTooltip />}
               cursor={{ fill: 'hsl(var(--muted))' }}
             />
-            <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} className="cursor-pointer">
-                <LabelList dataKey="balance" content={<BalanceLabel />} />
+            <Bar dataKey="percentage" radius={[0, 4, 4, 0]} className="cursor-pointer">
+                {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.percentage > 100 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
+                ))}
+                <LabelList dataKey="percentage" content={<PercentageLabel />} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
