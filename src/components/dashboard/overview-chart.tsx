@@ -61,16 +61,19 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     setIsDialogOpen(true);
   }, [transactions]);
 
-  const PercentageLabel = (props: any) => {
-    const { x, y, width, value } = props;
+  const BalanceLabel = (props: any) => {
+    const { x, y, width, payload } = props;
+    const { budget, total } = payload;
     
-    if (value === null || value === undefined) {
+    if (budget === undefined || total === undefined) {
       return null;
     }
+    
+    const balance = budget - total;
 
     return (
       <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={12} fontWeight="bold">
-        {`${value}%`}
+        {formatCurrency(balance, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
       </text>
     );
   };
@@ -122,7 +125,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
                 {data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.percentage > 100 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
                 ))}
-                <LabelList dataKey="percentage" content={<PercentageLabel />} />
+                <LabelList dataKey="percentage" content={<BalanceLabel />} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
