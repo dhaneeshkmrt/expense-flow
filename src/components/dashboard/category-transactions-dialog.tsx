@@ -23,6 +23,8 @@ interface CategoryTransactionsDialogProps {
   onOpenChange: (open: boolean) => void;
   categoryName: string | null;
   transactions: Transaction[];
+  budget: number;
+  spent: number;
 }
 
 type SortKey = 'date' | 'amount';
@@ -33,6 +35,8 @@ export default function CategoryTransactionsDialog({
   onOpenChange,
   categoryName,
   transactions,
+  budget,
+  spent,
 }: CategoryTransactionsDialogProps) {
   const { categories } = useApp();
   const formatCurrency = useCurrencyFormatter();
@@ -48,7 +52,7 @@ export default function CategoryTransactionsDialog({
     return null;
   };
   
-  const totalAmount = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const balance = budget - spent;
 
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
@@ -67,10 +71,21 @@ export default function CategoryTransactionsDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Transactions for {categoryName}</DialogTitle>
-          <div className="flex justify-between items-center">
-            <DialogDescription>
-              Total spent: <span className="font-bold">{formatCurrency(totalAmount)}</span>
-            </DialogDescription>
+          <div className="text-sm text-muted-foreground space-y-1 pt-2">
+            <div className="flex justify-between">
+              <span>Budget:</span>
+              <span className="font-medium text-foreground">{formatCurrency(budget)}</span>
+            </div>
+             <div className="flex justify-between">
+              <span>Spent:</span>
+              <span className="font-medium text-foreground">{formatCurrency(spent)}</span>
+            </div>
+             <div className="flex justify-between">
+              <span>Balance:</span>
+              <span className="font-medium text-foreground">{formatCurrency(balance)}</span>
+            </div>
+          </div>
+          <div className="flex justify-end items-center pt-4">
             <Select value={`${sortKey}-${sortOrder}`} onValueChange={(value) => {
               const [key, order] = value.split('-') as [SortKey, SortOrder];
               setSortKey(key);
@@ -88,7 +103,7 @@ export default function CategoryTransactionsDialog({
             </Select>
           </div>
         </DialogHeader>
-        <ScrollArea className="h-[400px] pr-4">
+        <ScrollArea className="h-[400px] pr-4 -mt-4">
           <div className="space-y-4 py-4">
             {sortedTransactions.length > 0 ? (
               sortedTransactions.map((transaction) => (
@@ -114,7 +129,7 @@ export default function CategoryTransactionsDialog({
                 </div>
               ))
             ) : (
-              <p className="text-center text-muted-foreground">No transactions for this category.</p>
+              <p className="text-center text-muted-foreground pt-10">No transactions for this category in the selected period.</p>
             )}
           </div>
         </ScrollArea>

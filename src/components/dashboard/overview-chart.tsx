@@ -18,7 +18,7 @@ interface OverviewChartProps {
 export function OverviewChart({ transactions, year, month }: OverviewChartProps) {
   const { categories } = useApp();
   const formatCurrency = useCurrencyFormatter();
-  const [selectedCategory, setSelectedCategory] = useState<{ name: string | null; transactions: Transaction[] }>({ name: null, transactions: [] });
+  const [selectedCategory, setSelectedCategory] = useState<{ name: string | null; transactions: Transaction[]; budget: number, spent: number }>({ name: null, transactions: [], budget: 0, spent: 0 });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const data = useMemo(() => {
@@ -54,43 +54,51 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
   const handleBarClick = useCallback((data: any) => {
     if (!data || !data.activePayload || !data.activePayload[0]) return;
     
-    const categoryName = data.activePayload[0].payload.name;
+    const payload = data.activePayload[0].payload;
+    const categoryName = payload.name;
     const categoryTransactions = transactions.filter(t => t.category === categoryName);
 
-    setSelectedCategory({ name: categoryName, transactions: categoryTransactions });
+    setSelectedCategory({
+      name: categoryName,
+      transactions: categoryTransactions,
+      budget: payload.budget,
+      spent: payload.total
+    });
     setIsDialogOpen(true);
   }, [transactions]);
 
-  const PercentageLabel = (props: any) => {
-    const { x, y, width, value } = props;
-    
-    if (value === null || value === undefined) {
+  const CustomLabel = (props: any) => {
+    const { x, y, width, height } = props;
+
+    // The payload is sometimes not directly available on the root of props,
+    // so we get it from the 'entry' property which recharts provides for LabelList
+    const { budget, total, percentage } = props.entry || {};
+
+    if (budget === undefined || total === undefined) {
+      return null;
+    }
+    const balance = budget - total;
+
+    // Don't render label if the bar is too small
+    if (width < 50) {
       return null;
     }
 
+    const labelText = `${percentage}% | ${formatCurrency(balance)}`;
+    
     return (
-      <text x={x + width + 5} y={y + 11} fill="hsl(var(--foreground))" textAnchor="start" fontSize={12} fontWeight="bold">
-        {`${value}%`}
+      <text 
+        x={x + width - 10} 
+        y={y + height / 2} 
+        dy={4} 
+        fill="#fff" 
+        textAnchor="end" 
+        fontSize={12} 
+        fontWeight="bold"
+      >
+        {labelText}
       </text>
     );
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-bold text-sm">{label}</p>
-          <p className="text-xs text-muted-foreground">
-            Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span> / {formatCurrency(data.budget)}
-          </p>
-           <p className="text-xs text-muted-foreground">
-            Usage: <span className="font-medium text-foreground">{data.percentage}%</span> | Balance: <span className="font-medium text-foreground">{formatCurrency( data.budget - data.total)}</span> 
-          </p>
-        </div>
-      );
-    }
-    return null;
   };
   
   const maxPercentage = Math.max(...data.map(d => d.percentage), 100);
@@ -102,7 +110,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             data={data}
             onClick={handleBarClick}
             layout="vertical"
-            margin={{ top: 5, right: 60, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
           >
             <XAxis 
                 type="number" 
@@ -115,14 +123,30 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
             />
             <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
             <Tooltip
-              content={<CustomTooltip />}
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="rounded-lg border bg-background p-2 shadow-sm">
+                      <p className="font-bold text-sm">{label}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span> / {formatCurrency(data.budget)}
+                      </p>
+                       <p className="text-xs text-muted-foreground">
+                        Usage: <span className="font-medium text-foreground">{data.percentage}%</span> | Balance: <span className="font-medium text-foreground">{formatCurrency( data.budget - data.total)}</span> 
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
               cursor={{ fill: 'hsl(var(--muted))' }}
             />
             <Bar dataKey="percentage" radius={[0, 4, 4, 0]} className="cursor-pointer">
+                <LabelList dataKey="percentage" content={<CustomLabel />} />
                 {data.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.percentage > 100 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
                 ))}
-                <LabelList dataKey="percentage" content={<PercentageLabel />} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -131,6 +155,8 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
         onOpenChange={setIsDialogOpen}
         categoryName={selectedCategory.name}
         transactions={selectedCategory.transactions}
+        budget={selectedCategory.budget}
+        spent={selectedCategory.spent}
       />
     </>
   );
