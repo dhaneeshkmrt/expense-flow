@@ -101,7 +101,11 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     );
   };
   
-  const maxPercentage = Math.max(...data.map(d => d.percentage), 100);
+  const maxPercentage = useMemo(() => {
+    if (data.length === 0) return 100;
+    const max = Math.max(...data.map(d => d.percentage));
+    return max > 100 ? max : 100;
+  }, [data]);
 
   return (
     <>
@@ -161,3 +165,4 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     </>
   );
 }
+
