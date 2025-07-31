@@ -68,32 +68,33 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
   }, [transactions]);
 
   const CustomLabel = (props: any) => {
-    const { x, y, width, height } = props;
+    const { x, y, width, height, payload } = props;
 
-    // The payload is sometimes not directly available on the root of props,
-    // so we get it from the 'entry' property which recharts provides for LabelList
-    const { budget, total, percentage } = props.entry || {};
-
+    if (!payload) {
+      return null;
+    }
+  
+    const { budget, total, percentage } = payload;
+  
     if (budget === undefined || total === undefined) {
       return null;
     }
     const balance = budget - total;
-
-    // Don't render label if the bar is too small
+  
     if (width < 50) {
       return null;
     }
-
+  
     const labelText = `${percentage}% | ${formatCurrency(balance)}`;
-    
+  
     return (
-      <text 
-        x={x + width - 10} 
-        y={y + height / 2} 
-        dy={4} 
-        fill="#fff" 
-        textAnchor="end" 
-        fontSize={12} 
+      <text
+        x={x + width - 10}
+        y={y + height / 2}
+        dy={4}
+        fill="#fff"
+        textAnchor="end"
+        fontSize={12}
         fontWeight="bold"
       >
         {labelText}
@@ -104,7 +105,7 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
   const maxPercentage = useMemo(() => {
     if (data.length === 0) return 100;
     const max = Math.max(...data.map(d => d.percentage));
-    return max > 100 ? max : 100;
+    return max < 100 ? 100 : max;
   }, [data]);
 
   return (
