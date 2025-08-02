@@ -82,8 +82,12 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         return null;
     }
 
+    // Find the chart data point that corresponds to this tick
     const dataPoint = chartData.find(d => d.date === payload.value);
-    if(!dataPoint) return null;
+    
+    // It's possible for recharts to render ticks that don't perfectly align with a data point,
+    // especially if there are many data points. In this case, we'll gracefully exit.
+    if (!dataPoint) return null;
     
     const isWeekend = getDay(dataPoint.fullDate) === 0 || getDay(dataPoint.fullDate) === 6;
 
@@ -97,9 +101,11 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
   };
   
   const dataToDisplay = useMemo(() => {
+      // For cumulative view, we always show all days
       if (showCumulative) {
           return chartData;
       }
+      // For daily view, it's better to only show days with spending to avoid a cluttered chart
       return chartData.filter(d => d.dailyTotal > 0);
   }, [chartData, showCumulative]);
 
