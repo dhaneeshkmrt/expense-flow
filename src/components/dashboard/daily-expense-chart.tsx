@@ -67,7 +67,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
           date: d.date,
       }))
       .filter(d => d.total > 0)
-      .sort((a,b) => a.date.getDate() - b.date.getDate());
+      .sort((a,b) => b.date.getDate() - a.date.getDate());
 
   }, [transactions, year, month]);
 
