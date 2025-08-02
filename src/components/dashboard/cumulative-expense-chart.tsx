@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO, getDay } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,26 @@ interface CumulativeExpenseChartProps {
   year: number;
   month: number;
 }
+
+const CustomXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const { fullDate, date } = payload.payload;
+
+    if (!fullDate) {
+        return null;
+    }
+
+    const isWeekend = getDay(fullDate) === 0 || getDay(fullDate) === 6;
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={16} textAnchor="middle" fill={isWeekend ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))'} fontSize={12}>
+                {date}
+            </text>
+        </g>
+    );
+};
+
 
 export function CumulativeExpenseChart({ transactions, year, month }: CumulativeExpenseChartProps) {
   const { categories } = useApp();
@@ -41,7 +61,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         const dayKey = format(day, 'yyyy-MM-dd');
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
-            date: format(day, 'EEEEE'), // Changed to first letter of the day
+            date: format(day, 'EEEEE'), // First letter of the day
             fullDate: day,
             cumulativeTotal,
             dayOfMonth: format(day, 'd'),
@@ -87,7 +107,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
