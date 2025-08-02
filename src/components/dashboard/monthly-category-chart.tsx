@@ -41,6 +41,7 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
         
         const categorySpending = new Map<string, { total: number; budget: number; transactions: Transaction[] }>();
 
+        // Initialize map with all categories that have a budget for the selected month
         categories.forEach(cat => {
             const budget = cat.budgets?.[monthKey] || 0;
             // Only include categories that have a budget for the selected month
@@ -48,8 +49,10 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
                 categorySpending.set(cat.name, { total: 0, budget, transactions: [] });
             }
         });
-
+        
+        // Aggregate transactions for the categories that are in the map
         transactions.forEach(txn => {
+            // Check if the transaction's category has a budget for this month
             const catData = categorySpending.get(txn.category);
             if (catData) {
                 catData.total += txn.amount;
@@ -113,7 +116,8 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
                         type="category" 
                         dataKey="name" 
                         width={80} 
-                        tick={{ fontSize: 12 }} 
+                        tick={{ fontSize: 12, width: 70, textAnchor: 'end' }}
+                        interval={0}
                         stroke="hsl(var(--muted-foreground))"
                         tickLine={false} 
                         axisLine={false}
