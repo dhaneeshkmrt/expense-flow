@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Line, LineChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine } from 'recharts';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO, getDay } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
@@ -45,7 +45,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         const dailyTotal = dailyTotals.get(dayKey) || 0;
         cumulativeTotal += dailyTotal;
         return {
-            date: format(day, 'EEEEEE'), // 'Su', 'Mo', etc.
+            date: format(day, 'EEE'), // 'Sun', 'Mon', etc.
             fullDate: day,
             cumulativeTotal,
             dailyTotal,
@@ -90,11 +90,18 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
     return (
         <g transform={`translate(${x},${y})`}>
             <text x={0} y={0} dy={16} textAnchor="end" fill={isWeekend ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))'} fontSize={12} transform="rotate(-35)">
-                {payload.value}
+                {payload.value.substring(0,2)}
             </text>
         </g>
     );
   };
+  
+  const dataToDisplay = useMemo(() => {
+      if (showCumulative) {
+          return chartData;
+      }
+      return chartData.filter(d => d.dailyTotal > 0);
+  }, [chartData, showCumulative]);
 
 
   return (
@@ -124,31 +131,21 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-            {showCumulative ? (
-                <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
-                    <Tooltip content={<CustomTooltip />} />
-                    <Legend />
-                    {sundays.map(sunday => (
-                        <ReferenceLine key={sunday.key} x={sunday.x} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
-                    ))}
-                    <Line type="monotone" dataKey="cumulativeTotal" name="Cumulative Spend" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                </LineChart>
-            ) : (
-                <BarChart data={chartData.filter(d => d.dailyTotal > 0)}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
-                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
-                    <Legend />
-                    {sundays.map(sunday => (
-                        <ReferenceLine key={sunday.key} x={sunday.x} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
-                    ))}
-                    <Bar dataKey="dailyTotal" name="Daily Spend" fill="hsl(var(--primary))" />
-                </BarChart>
-            )}
+            <BarChart data={dataToDisplay}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--muted))' }} />
+                <Legend />
+                {sundays.map(sunday => (
+                    <ReferenceLine key={sunday.key} x={sunday.x} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
+                ))}
+                <Bar 
+                    dataKey={showCumulative ? "cumulativeTotal" : "dailyTotal"}
+                    name={showCumulative ? "Cumulative Spend" : "Daily Spend"}
+                    fill="hsl(var(--primary))" 
+                />
+            </BarChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
