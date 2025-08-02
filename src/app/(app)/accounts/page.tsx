@@ -7,9 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
+import { Edit2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -72,8 +71,7 @@ const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: 
 
 
 export default function AccountsPage() {
-  const { categories, transactions, loading, user, tenants, updateCategoryBudget } = useApp();
-  const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+  const { categories, transactions, loading, user, tenants } = useApp();
   const formatCurrency = useCurrencyFormatter();
 
   const userTenant = useMemo(() => {
@@ -138,10 +136,6 @@ export default function AccountsPage() {
     });
   }, [categories, transactions, loading]);
 
-  const toggleCollapsible = (id: string) => {
-    setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col gap-6">
@@ -199,58 +193,6 @@ export default function AccountsPage() {
                   Accumulated Balance: {formatCurrency(account.totalBudget)} (Budget) - {formatCurrency(account.totalSpent)} (Spent)
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {account.monthlyRecords.length > 0 ? (
-                  <Collapsible
-                    open={openCollapsibles[account.categoryId] || false}
-                    onOpenChange={() => toggleCollapsible(account.categoryId)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" className="px-0">
-                        {openCollapsibles[account.categoryId] ? <ChevronDown className="mr-2 h-4 w-4" /> : <ChevronRight className="mr-2 h-4 w-4" />}
-                        View Monthly History
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <Table className="mt-2">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Month</TableHead>
-                            <TableHead className="text-right">Budget</TableHead>
-                            <TableHead className="text-right">Spent</TableHead>
-                            <TableHead className="text-right">Balance</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {account.monthlyRecords.map(record => (
-                            <TableRow key={record.month}>
-                              <TableCell className="font-medium">{format(parseISO(`${record.month}-01`), 'MMM yyyy')}</TableCell>
-                              <TableCell className="text-right">
-                                {isRootUser ? (
-                                    <EditableBudgetCell categoryId={account.categoryId} month={record.month} initialBudget={record.budget} />
-                                ) : (
-                                    formatCurrency(record.budget)
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">{formatCurrency(record.spent)}</TableCell>
-                              <TableCell
-                                className={cn(
-                                  'text-right font-medium',
-                                  record.balance >= 0 ? 'text-green-600' : 'text-red-600'
-                                )}
-                              >
-                                {formatCurrency(record.balance)}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No budget records found. Add a budget in the Category Dialog.</p>
-                )}
-              </CardContent>
             </Card>
           );
         })}
