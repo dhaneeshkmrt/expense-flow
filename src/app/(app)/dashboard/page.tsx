@@ -6,6 +6,7 @@ import { useApp } from '@/lib/provider';
 import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
 import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 import { MonthlyCategoryChart } from '@/components/dashboard/monthly-category-chart';
+import { CumulativeExpenseChart } from '@/components/dashboard/cumulative-expense-chart';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export default function DashboardPage() {
             <MonthlyCategoryChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
         </Card>
+      </div>
+       <div className="grid grid-cols-1">
+        <CumulativeExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
       </div>
       <div className="grid grid-cols-1">
         <CategoryBreakdown transactions={filteredTransactions} />
