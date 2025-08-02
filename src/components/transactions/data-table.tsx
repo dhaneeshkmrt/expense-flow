@@ -105,42 +105,32 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   });
 
   React.useEffect(() => {
-    // Reset all filters when data changes (e.g., global month/year changes)
+    // When data changes (i.e. global filters like month/year change),
+    // reset all the local filters in the table.
     table.resetColumnFilters();
-    table.setGlobalFilter('');
+    setGlobalFilter('');
     setCategoryFilter('');
     setSubcategoryFilter('');
     setMicrocategoryFilter('');
     handleMinAmountChange('');
     handleMaxAmountChange('');
-  }, [data, table]);
+  }, [data]);
 
   React.useEffect(() => {
-    if(showFilters) {
+    // This effect handles applying the local filters to the table state
+    if (showFilters) {
       table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
-    }
-  }, [categoryFilter, table, showFilters]);
-
-  React.useEffect(() => {
-    if(showFilters) {
       table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
-    }
-  }, [subcategoryFilter, table, showFilters]);
-
-  React.useEffect(() => {
-    if(showFilters) {
       table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
-    }
-  }, [microcategoryFilter, table, showFilters]);
 
-  React.useEffect(() => {
-    const amountColumn = table.getColumn('amount');
-    if (amountColumn) {
-      const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
-      const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
-      amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+      const amountColumn = table.getColumn('amount');
+      if (amountColumn) {
+        const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
+        const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
+        amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+      }
     }
-  }, [minAmountNumeric, maxAmountNumeric, table]);
+  }, [categoryFilter, subcategoryFilter, microcategoryFilter, minAmountNumeric, maxAmountNumeric, table, showFilters]);
   
   const subcategories = React.useMemo(() => {
     if (!categoryFilter) return [];
