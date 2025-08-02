@@ -105,6 +105,17 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   });
 
   React.useEffect(() => {
+    // Reset all filters when data changes (e.g., global month/year changes)
+    table.resetColumnFilters();
+    table.setGlobalFilter('');
+    setCategoryFilter('');
+    setSubcategoryFilter('');
+    setMicrocategoryFilter('');
+    handleMinAmountChange('');
+    handleMaxAmountChange('');
+  }, [data, table]);
+
+  React.useEffect(() => {
     if(showFilters) {
       table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
     }
@@ -142,8 +153,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     const subcategory = subcategories.find(s => s.name === subcategoryFilter);
     return subcategory ? (subcategory.microcategories || []) : [];
   }, [subcategoryFilter, subcategories]);
-
-  const globalFilterFields = ['description', 'category', 'subcategory', 'microcategory', 'notes', 'paidBy'];
 
   return (
     <div>
