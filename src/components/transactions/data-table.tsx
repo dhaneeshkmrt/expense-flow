@@ -17,15 +17,6 @@ import {
   getFacetedUniqueValues,
   FilterFn,
 } from '@tanstack/react-table';
-import {
-  addDays,
-  format,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
-} from 'date-fns';
 
 import {
   Table,
@@ -44,10 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { Calendar } from '@/components/ui/calendar';
-import { cn } from '@/lib/utils';
+
 import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
@@ -88,8 +76,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
-  const [period, setPeriod] = React.useState<string>('all');
-  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   
   const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
   const { formattedValue: maxAmount, handleInputChange: handleMaxAmountChange, numericValue: maxAmountNumeric } = useCurrencyInput({});
@@ -144,39 +130,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
       amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
     }
   }, [minAmountNumeric, maxAmountNumeric, table]);
-
-  React.useEffect(() => {
-    if (!showFilters) return;
-
-    let range: DateRange | undefined;
-    const today = new Date();
-    switch (period) {
-      case 'today':
-        range = { from: today, to: today };
-        break;
-      case 'this-week':
-        range = { from: startOfWeek(today), to: endOfWeek(today) };
-        break;
-      case 'last-week':
-        const lastWeekStart = startOfWeek(addDays(today, -7));
-        const lastWeekEnd = endOfWeek(addDays(today, -7));
-        range = { from: lastWeekStart, to: lastWeekEnd };
-        break;
-      case 'this-month':
-        range = { from: startOfMonth(today), to: endOfMonth(today) };
-        break;
-      case 'last-month':
-        const lastMonth = subMonths(today, 1);
-        range = { from: startOfMonth(lastMonth), to: endOfMonth(lastMonth) };
-        break;
-      case 'custom':
-        range = dateRange;
-        break;
-      default:
-        range = undefined;
-    }
-    table.getColumn('date')?.setFilterValue(range);
-  }, [period, dateRange, table, showFilters]);
   
   const subcategories = React.useMemo(() => {
     if (!categoryFilter) return [];
@@ -258,58 +211,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                     className="w-28"
                 />
             </div>
-            <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="this-week">This Week</SelectItem>
-                <SelectItem value="last-week">Last Week</SelectItem>
-                <SelectItem value="this-month">This Month</SelectItem>
-                <SelectItem value="last-month">Last Month</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-            </SelectContent>
-            </Select>
-            {period === 'custom' && (
-            <Popover>
-                <PopoverTrigger asChild>
-                <Button
-                    id="date"
-                    variant={'outline'}
-                    className={cn(
-                    'w-[300px] justify-start text-left font-normal',
-                    !dateRange && 'text-muted-foreground'
-                    )}
-                >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateRange?.from ? (
-                    dateRange.to ? (
-                        <>
-                        {format(dateRange.from, 'LLL dd, y')} -{' '}
-                        {format(dateRange.to, 'LLL dd, y')}
-                        </>
-                    ) : (
-                        format(dateRange.from, 'LLL dd, y')
-                    )
-                    ) : (
-                    <span>Pick a date range</span>
-                    )}
-                </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={dateRange?.from}
-                    selected={dateRange}
-                    onSelect={setDateRange}
-                    numberOfMonths={2}
-                />
-                </PopoverContent>
-            </Popover>
-            )}
         </div>
        )}
       <div className="rounded-md border">
