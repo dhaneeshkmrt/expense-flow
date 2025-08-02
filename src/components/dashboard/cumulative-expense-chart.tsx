@@ -18,6 +18,10 @@ interface CumulativeExpenseChartProps {
 
 const CustomXAxisTick = (props: any) => {
     const { x, y, payload } = props;
+    // Add a guard clause to prevent crash
+    if (!payload || !payload.payload) {
+        return null;
+    }
     const { fullDate, date } = payload.payload;
 
     if (!fullDate) {
