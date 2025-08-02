@@ -7,136 +7,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Edit2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Input } from '@/components/ui/input';
-import { useDebounce } from '@/hooks/use-debounce';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-
-interface MonthlyRecord {
-  month: string;
-  budget: number;
-  spent: number;
-  balance: number;
-}
 
 interface AccountData {
   categoryId: string;
   categoryName: string;
   categoryIcon: React.ElementType;
-  totalBudget: number;
-  totalSpent: number;
-  accumulatedBalance: number;
-  monthlyRecords: MonthlyRecord[];
+  budget: number;
+  spent: number;
+  balance: number;
 }
 
 export const dynamic = 'force-dynamic';
 
-const EditableBudgetCell = ({ categoryId, month, initialBudget }: { categoryId: string, month: string, initialBudget: number }) => {
-    const { updateCategoryBudget } = useApp();
-    const formatCurrency = useCurrencyFormatter();
-    const [budget, setBudget] = useState(initialBudget);
-    const [isEditing, setIsEditing] = useState(false);
-    const debouncedBudget = useDebounce(budget, 500);
-
-    const handleSave = () => {
-        updateCategoryBudget(categoryId, month, debouncedBudget);
-        setIsEditing(false);
-    };
-    
-    return (
-        <div className="flex items-center justify-end gap-1">
-            {isEditing ? (
-                <Input 
-                    type="number"
-                    value={budget}
-                    onChange={(e) => setBudget(parseFloat(e.target.value) || 0)}
-                    onBlur={handleSave}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                    className="h-8 text-right w-24"
-                    autoFocus
-                />
-            ) : (
-                <>
-                    <span>{formatCurrency(budget, { style: 'decimal'})}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditing(true)}>
-                        <Edit2 className="h-3 w-3" />
-                    </Button>
-                </>
-            )}
-        </div>
-    )
-}
-
-
 export default function AccountsPage() {
-  const { categories, transactions, loading, user, tenants } = useApp();
+  const { categories, filteredTransactions, loading, loadingCategories, selectedYear, selectedMonth } = useApp();
   const formatCurrency = useCurrencyFormatter();
-
-  const userTenant = useMemo(() => {
-    if (!user || !tenants.length) return null;
-    return tenants.find(t => t.id === user.tenantId);
-  }, [user, tenants]);
   
-  const isRootUser = useMemo(() => {
-    if (!userTenant || !user) return false;
-    return !!userTenant.isRootUser && user.name === userTenant.name;
-  }, [user, userTenant]);
+  const selectedMonthKey = useMemo(() => {
+    return format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
+  }, [selectedYear, selectedMonth]);
 
   const accountData = useMemo(() => {
-    if (loading) return [];
+    if (loading || loadingCategories) return [];
 
     return categories.map((category): AccountData => {
-      const monthlyData: Record<string, { budget: number; spent: number }> = {};
+      const budgetForMonth = category.budgets?.[selectedMonthKey] || 0;
 
-      // Initialize with budgets for months that have them
-      if (category.budgets) {
-        for (const [monthKey, budget] of Object.entries(category.budgets)) {
-          monthlyData[monthKey] = { budget: budget, spent: 0 };
-        }
-      }
-
-      // Aggregate spending for relevant months
-      transactions
+      const spentForMonth = filteredTransactions
         .filter(t => t.category === category.name)
-        .forEach(t => {
-          const monthKey = format(parseISO(t.date), 'yyyy-MM');
-          // Only track spending if a budget exists for that month
-          if (monthlyData[monthKey]) {
-            monthlyData[monthKey].spent += t.amount;
-          }
-        });
-
-      let totalBudget = 0;
-      let totalSpent = 0;
-
-      const monthlyRecords: MonthlyRecord[] = Object.entries(monthlyData)
-        .map(([month, data]) => {
-          totalBudget += data.budget;
-          totalSpent += data.spent;
-          return {
-            month,
-            budget: data.budget,
-            spent: data.spent,
-            balance: data.budget - data.spent,
-          };
-        })
-        .sort((a, b) => b.month.localeCompare(a.month));
+        .reduce((sum, t) => sum + t.amount, 0);
 
       return {
         categoryId: category.id,
         categoryName: category.name,
         categoryIcon: typeof category.icon === 'string' ? () => null : category.icon,
-        totalBudget,
-        totalSpent,
-        accumulatedBalance: totalBudget - totalSpent,
-        monthlyRecords,
+        budget: budgetForMonth,
+        spent: spentForMonth,
+        balance: budgetForMonth - spentForMonth,
       };
-    });
-  }, [categories, transactions, loading]);
+    }).filter(account => account.budget > 0 || account.spent > 0);
+  }, [categories, filteredTransactions, loading, loadingCategories, selectedMonthKey]);
+  
+  const selectedMonthName = useMemo(() => {
+      return format(new Date(selectedYear, selectedMonth), 'MMMM yyyy');
+  }, [selectedYear, selectedMonth]);
 
-  if (loading) {
+  if (loading || loadingCategories) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -166,12 +83,12 @@ export default function AccountsPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Accounts</h1>
-        <p className="text-muted-foreground">Track your category budgets and balances.</p>
+        <p className="text-muted-foreground">Category balances for {selectedMonthName}.</p>
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {accountData.map(account => {
           const Icon = account.categoryIcon;
-          const isPositive = account.accumulatedBalance >= 0;
+          const isPositive = account.balance >= 0;
           return (
             <Card key={account.categoryId}>
               <CardHeader>
@@ -186,17 +103,24 @@ export default function AccountsPage() {
                       isPositive ? 'text-green-600' : 'text-red-600'
                     )}
                   >
-                    {formatCurrency(account.accumulatedBalance)}
+                    {formatCurrency(account.balance)}
                   </div>
                 </div>
                 <CardDescription>
-                  Accumulated Balance: {formatCurrency(account.totalBudget)} (Budget) - {formatCurrency(account.totalSpent)} (Spent)
+                  {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
                 </CardDescription>
               </CardHeader>
             </Card>
           );
         })}
       </div>
+       {accountData.length === 0 && (
+          <Card>
+              <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">No budget or spending activity for categories in {selectedMonthName}.</p>
+              </CardContent>
+          </Card>
+        )}
     </div>
   );
 }
