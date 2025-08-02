@@ -44,14 +44,17 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
             date: format(day, 'EEEEEE'), // 'Su', 'Mo', etc.
             fullDate: day,
             cumulativeTotal,
-            dayOfMonth: format(day, 'd'),
         };
     });
   }, [transactions, year, month, selectedCategory]);
   
   const sundays = useMemo(() => {
-      return chartData.filter(d => getDay(d.fullDate) === 0).map(d => d.date);
+      // Use the unique fullDate string as the key, but the short 'Su' format for the x-axis value
+      return chartData
+        .filter(d => getDay(d.fullDate) === 0)
+        .map(d => ({ key: format(d.fullDate, 'yyyy-MM-dd'), x: d.date }));
   }, [chartData]);
+
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -117,8 +120,8 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            {sundays.map(sundayDate => (
-                <ReferenceLine key={sundayDate} x={sundayDate} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
+            {sundays.map(sunday => (
+                <ReferenceLine key={sunday.key} x={sunday.x} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
             ))}
             <Line type="monotone" dataKey="cumulativeTotal" name="Cumulative Spend" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
           </LineChart>
