@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, Cell } from 'recharts';
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import { useApp } from '@/lib/provider';
 import { useMemo, useState, useCallback } from 'react';
 import type { Transaction } from '@/lib/types';
@@ -44,17 +44,19 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     return Array.from(categoryTotals.entries())
       .map(([name, { total, budget }]) => ({ 
           name, 
-          total,
+          spent: total,
           budget,
-          percentage: budget > 0 ? Math.round((total / budget) * 100) : 0,
+          percentage: budget > 0 ? Math.min((total / budget) * 100, 100) : 0, // Cap at 100 for the main bar
+          overBudget: budget > 0 ? Math.max(((total - budget) / budget) * 100, 0) : 0, // For the "over budget" segment
+          totalSpent: total,
       }))
-      .sort((a, b) => b.percentage - a.percentage);
+      .sort((a, b) => b.spent - a.spent);
   }, [transactions, categories, year, month]);
   
   const handleBarClick = useCallback((data: any) => {
-    if (!data || !data.activePayload || !data.activePayload[0]) return;
+    if (!data) return;
     
-    const payload = data.activePayload[0].payload;
+    const payload = data;
     const categoryName = payload.name;
     const categoryTransactions = transactions.filter(t => t.category === categoryName);
 
@@ -62,97 +64,70 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
       name: categoryName,
       transactions: categoryTransactions,
       budget: payload.budget,
-      spent: payload.total
+      spent: payload.totalSpent
     });
     setIsDialogOpen(true);
   }, [transactions]);
-
-  const CustomLabel = (props: any) => {
-    const { x, y, width, height, payload } = props;
-
-    if (!payload) {
-      return null;
+  
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const balance = data.budget - data.totalSpent;
+      const percentage = data.budget > 0 ? Math.round((data.totalSpent / data.budget) * 100) : 0;
+      return (
+        <div className="rounded-lg border bg-background p-2 shadow-sm">
+          <p className="font-bold text-sm">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            Spent: <span className="font-medium text-foreground">{formatCurrency(data.totalSpent)}</span> / {formatCurrency(data.budget)}
+          </p>
+           <p className="text-xs text-muted-foreground">
+            Usage: <span className="font-medium text-foreground">{percentage}%</span> | Balance: <span className="font-medium text-foreground">{formatCurrency(balance)}</span> 
+          </p>
+        </div>
+      );
     }
-  
-    const { budget, total, percentage } = payload;
-  
-    if (budget === undefined || total === undefined) {
-      return null;
-    }
-    const balance = budget - total;
-  
-    if (width < 50) {
-      return null;
-    }
-  
-    const labelText = `${percentage}% | ${formatCurrency(balance)}`;
-  
-    return (
-      <text
-        x={x + width - 10}
-        y={y + height / 2}
-        dy={4}
-        fill="#fff"
-        textAnchor="end"
-        fontSize={12}
-        fontWeight="bold"
-      >
-        {labelText}
-      </text>
-    );
+    return null;
   };
-  
-  const maxPercentage = useMemo(() => {
-    if (data.length === 0) return 100;
-    const max = Math.max(...data.map(d => d.percentage));
-    return max < 100 ? 100 : max;
-  }, [data]);
 
   return (
     <>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart 
             data={data}
-            onClick={handleBarClick}
+            onClick={(state) => {
+                if (state.activePayload && state.activePayload.length > 0) {
+                    handleBarClick(state.activePayload[0].payload)
+                }
+            }}
             layout="vertical"
+            stackOffset="none"
             margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
           >
             <XAxis 
                 type="number" 
-                domain={[0, maxPercentage]}
+                domain={[0, 100]}
                 stroke="hsl(var(--muted-foreground))" 
                 fontSize={12} 
                 tickLine={false} 
                 axisLine={false} 
                 tickFormatter={(value) => `${value}%`} 
             />
-            <YAxis type="category" dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} width={80} tick={{ textAnchor: 'end' }} />
+            <YAxis 
+                type="category" 
+                dataKey="name" 
+                stroke="hsl(var(--muted-foreground))" 
+                fontSize={12} 
+                tickLine={false} 
+                axisLine={false} 
+                width={80} 
+                tick={{ textAnchor: 'end' }} 
+            />
             <Tooltip
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const data = payload[0].payload;
-                  return (
-                    <div className="rounded-lg border bg-background p-2 shadow-sm">
-                      <p className="font-bold text-sm">{label}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Spent: <span className="font-medium text-foreground">{formatCurrency(data.total)}</span> / {formatCurrency(data.budget)}
-                      </p>
-                       <p className="text-xs text-muted-foreground">
-                        Usage: <span className="font-medium text-foreground">{data.percentage}%</span> | Balance: <span className="font-medium text-foreground">{formatCurrency( data.budget - data.total)}</span> 
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
+              content={<CustomTooltip />}
               cursor={{ fill: 'hsl(var(--muted))' }}
             />
-            <Bar dataKey="percentage" radius={[0, 4, 4, 0]} className="cursor-pointer">
-                <LabelList dataKey="percentage" content={<CustomLabel />} />
-                {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.percentage > 100 ? 'hsl(var(--destructive))' : 'hsl(var(--primary))'} />
-                ))}
-            </Bar>
+            <Bar dataKey="percentage" stackId="a" fill="hsl(var(--primary))" className="cursor-pointer" />
+            <Bar dataKey="overBudget" stackId="a" fill="hsl(var(--destructive))" className="cursor-pointer" />
           </BarChart>
         </ResponsiveContainer>
       <CategoryTransactionsDialog
@@ -166,4 +141,3 @@ export function OverviewChart({ transactions, year, month }: OverviewChartProps)
     </>
   );
 }
-
