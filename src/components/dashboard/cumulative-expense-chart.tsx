@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceLine } from 'recharts';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO, getDay } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
@@ -82,11 +82,8 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         return null;
     }
 
-    // Find the chart data point that corresponds to this tick
     const dataPoint = chartData.find(d => d.date === payload.value);
     
-    // It's possible for recharts to render ticks that don't perfectly align with a data point,
-    // especially if there are many data points. In this case, we'll gracefully exit.
     if (!dataPoint) return null;
     
     const isWeekend = getDay(dataPoint.fullDate) === 0 || getDay(dataPoint.fullDate) === 6;
@@ -101,11 +98,9 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
   };
   
   const dataToDisplay = useMemo(() => {
-      // For cumulative view, we always show all days
       if (showCumulative) {
           return chartData;
       }
-      // For daily view, it's better to only show days with spending to avoid a cluttered chart
       return chartData.filter(d => d.dailyTotal > 0);
   }, [chartData, showCumulative]);
 
@@ -137,7 +132,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dataToDisplay}>
+            <LineChart data={dataToDisplay}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
@@ -146,12 +141,15 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
                 {sundays.map(sunday => (
                     <ReferenceLine key={sunday.key} x={sunday.x} stroke="hsl(var(--destructive))" strokeDasharray="3 3" />
                 ))}
-                <Bar 
+                <Line 
+                    type="monotone"
                     dataKey={showCumulative ? "cumulativeTotal" : "dailyTotal"}
                     name={showCumulative ? "Cumulative Spend" : "Daily Spend"}
-                    fill="hsl(var(--primary))" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={2}
+                    dot={false}
                 />
-            </BarChart>
+            </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
