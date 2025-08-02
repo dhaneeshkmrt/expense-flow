@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import type { User as AuthUser } from 'firebase/auth';
 import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User } from './types';
 
@@ -10,6 +10,7 @@ import { useTenants } from '@/hooks/useTenants';
 import { useSettings } from '@/hooks/useSettings';
 import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
+import { getYear, getMonth, parseISO } from 'date-fns';
 
 // Define the shape of the context value
 interface AppContextType {
@@ -45,11 +46,18 @@ interface AppContextType {
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
   
   transactions: Transaction[];
+  filteredTransactions: Transaction[];
   addTransaction: (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   addMultipleTransactions: (transactions: Omit<Transaction, 'id' | 'tenantId' | 'userId'>[]) => Promise<void>;
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   
+  selectedYear: number;
+  setSelectedYear: (year: number) => void;
+  selectedMonth: number;
+  setSelectedMonth: (month: number) => void;
+  availableYears: number[];
+
   loading: boolean;
   loadingAuth: boolean;
   loadingCategories: boolean;
@@ -63,7 +71,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user, loadingAuth, signIn, signOut, signInWithGoogle } = useAuth();
   
-  // These hooks are just for getting the seeding functions
   const { seedDefaultSettings } = useSettings(null);
   const { seedDefaultCategories } = useCategories(null); 
 
@@ -73,6 +80,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const settingsHook = useSettings(selectedTenantId);
   const categoriesHook = useCategories(selectedTenantId);
   const transactionsHook = useTransactions(selectedTenantId, user);
+
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  
+  const availableYears = useMemo(() => {
+    const years = new Set(transactionsHook.transactions.map(t => getYear(parseISO(t.date))));
+    if (!years.has(new Date().getFullYear())) {
+      years.add(new Date().getFullYear());
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactionsHook.transactions]);
+
+  const filteredTransactions = useMemo(() => {
+    return transactionsHook.transactions.filter(t => {
+      const transactionDate = parseISO(t.date);
+      return getYear(transactionDate) === selectedYear && getMonth(transactionDate) === selectedMonth;
+    });
+  }, [transactionsHook.transactions, selectedYear, selectedMonth]);
   
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions;
 
@@ -87,13 +112,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...categoriesHook,
     ...transactionsHook,
 
+    filteredTransactions,
+    selectedYear,
+    setSelectedYear,
+    selectedMonth,
+    setSelectedMonth,
+    availableYears,
+
     loading,
     loadingAuth,
     loadingCategories: categoriesHook.loadingCategories,
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }
