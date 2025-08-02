@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
-import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO, isSaturday, isSunday } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +15,21 @@ interface CumulativeExpenseChartProps {
   year: number;
   month: number;
 }
+
+const CustomizedAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+    const { fullDate } = payload.value;
+    const isWeekend = isSaturday(fullDate) || isSunday(fullDate);
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={16} textAnchor="end" fill={isWeekend ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} transform="rotate(-35)">
+                {payload.value.dateLabel}
+            </text>
+        </g>
+    );
+};
+
 
 export function CumulativeExpenseChart({ transactions, year, month }: CumulativeExpenseChartProps) {
   const { categories } = useApp();
@@ -41,7 +56,8 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         const dayKey = format(day, 'yyyy-MM-dd');
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
-            date: format(day, 'd'),
+            dateLabel: format(day, 'd'),
+            fullDate: day,
             cumulativeTotal,
         };
     });
@@ -53,7 +69,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-bold text-sm">Day {label}</p>
+          <p className="font-bold text-sm">Day {data.dateLabel}</p>
           <p className="text-xs text-muted-foreground">
             Total Spent: <span className="font-medium text-foreground">{formatCurrency(data.cumulativeTotal)}</span>
           </p>
@@ -84,9 +100,9 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data}>
+          <LineChart data={data} margin={{ bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis dataKey="dateLabel" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomizedAxisTick />} />
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
