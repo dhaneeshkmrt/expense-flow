@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Line, LineChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ReferenceArea } from 'recharts';
 import { format, eachDayOfInterval, startOfMonth, endOfMonth, parseISO, isSaturday, isSunday } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
@@ -18,14 +18,13 @@ interface CumulativeExpenseChartProps {
 
 const CustomizedAxisTick = (props: any) => {
     const { x, y, payload } = props;
-    // The payload.value is the value from the data, which is an object { dateLabel, fullDate }
-    const { fullDate } = payload.value; 
+    const { fullDate, dateLabel } = payload.value;
     const isWeekend = isSaturday(fullDate) || isSunday(fullDate);
 
     return (
         <g transform={`translate(${x},${y})`}>
             <text x={0} y={0} dy={16} textAnchor="end" fill={isWeekend ? "hsl(var(--destructive))" : "hsl(var(--muted-foreground))"} transform="rotate(-35)">
-                {payload.value.dateLabel}
+                {dateLabel}
             </text>
         </g>
     );
@@ -37,7 +36,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
   const formatCurrency = useCurrencyFormatter();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  const data = useMemo(() => {
+  const { chartData, weekendAreas } = useMemo(() => {
     const monthStart = startOfMonth(new Date(year, month));
     const monthEnd = endOfMonth(new Date(year, month));
     const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
@@ -53,16 +52,26 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         dailyTotals.set(dayKey, (dailyTotals.get(dayKey) || 0) + txn.amount);
     });
     
-    return daysInMonth.map(day => {
+    const chartDataResult = daysInMonth.map(day => {
         const dayKey = format(day, 'yyyy-MM-dd');
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
             dateLabel: format(day, 'd'),
+            dayOfWeek: format(day, 'EEEE'),
             fullDate: day,
             cumulativeTotal,
         };
     });
 
+    const weekendAreasResult: { x1: string, x2: string }[] = [];
+    daysInMonth.forEach(day => {
+        if (isSaturday(day) || isSunday(day)) {
+            const dateLabel = format(day, 'd');
+            weekendAreasResult.push({ x1: dateLabel, x2: dateLabel });
+        }
+    });
+
+    return { chartData: chartDataResult, weekendAreas: weekendAreasResult };
   }, [transactions, year, month, selectedCategory]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -70,7 +79,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-bold text-sm">Day {data.dateLabel}</p>
+          <p className="font-bold text-sm">Day {data.dateLabel} ({data.dayOfWeek})</p>
           <p className="text-xs text-muted-foreground">
             Total Spent: <span className="font-medium text-foreground">{formatCurrency(data.cumulativeTotal)}</span>
           </p>
@@ -101,12 +110,24 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={data} margin={{ bottom: 20 }}>
+          <LineChart data={chartData} margin={{ bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="dateLabel" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomizedAxisTick />} interval={0} data={data.map(d => ({dateLabel: d.dateLabel, fullDate: d.fullDate}))} />
+            <XAxis 
+                dataKey="dateLabel" 
+                type="category" 
+                stroke="hsl(var(--muted-foreground))" 
+                fontSize={12} 
+                tick={<CustomizedAxisTick />} 
+                interval={0}
+                // Pass the necessary data to the tick renderer
+                ticks={chartData.map(d => ({ value: d.dateLabel, fullDate: d.fullDate, dateLabel: d.dateLabel }))}
+            />
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
+            {weekendAreas.map((area, index) => (
+              <ReferenceArea key={index} x1={area.x1} x2={area.x2} strokeOpacity={0.1} fill="hsl(var(--muted))" fillOpacity={0.2} />
+            ))}
             <Line type="monotone" dataKey="cumulativeTotal" name="Cumulative Spend" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
