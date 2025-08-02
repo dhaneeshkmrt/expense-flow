@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useTransition } from 'react';
+import { useState, useMemo, useEffect, useTransition, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -70,6 +70,7 @@ export default function AddTransactionSheet({
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!transaction;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -95,7 +96,7 @@ export default function AddTransactionSheet({
         date: new Date(),
         time: format(new Date(), 'HH:mm'),
         description: '',
-        amount: 0,
+        amount: undefined, // Changed from 0 to undefined
         category: '',
         subcategory: '',
         microcategory: '',
@@ -112,28 +113,34 @@ export default function AddTransactionSheet({
 
   useEffect(() => {
     if (open) {
-      const defaultValues = isEditing && transaction ? {
-        ...transaction,
-        date: parseISO(transaction.date),
-        amount: transaction.amount,
-        microcategory: transaction.microcategory || '',
-        notes: transaction.notes || '',
-      } : {
-        date: new Date(),
-        time: format(new Date(), 'HH:mm'),
-        description: '',
-        amount: 0,
-        category: '',
-        subcategory: '',
-        microcategory: '',
-        paidBy: paidByOptions[0] || '',
-        notes: '',
-      };
-      form.reset(defaultValues);
-      handleInputChange(String(defaultValues.amount));
-
+      if (isEditing && transaction) {
+        form.reset({
+          ...transaction,
+          date: parseISO(transaction.date),
+          amount: transaction.amount,
+          microcategory: transaction.microcategory || '',
+          notes: transaction.notes || '',
+        });
+        handleInputChange(String(transaction.amount));
+      } else {
+         form.reset({
+            date: new Date(),
+            time: format(new Date(), 'HH:mm'),
+            description: '',
+            amount: undefined,
+            category: '',
+            subcategory: '',
+            microcategory: '',
+            paidBy: paidByOptions[0] || '',
+            notes: '',
+        });
+        handleInputChange(''); // Reset currency input
+        setTimeout(() => {
+          amountInputRef.current?.focus();
+        }, 100);
+      }
     }
-  }, [open, isEditing, transaction, form, paidByOptions]);
+  }, [open, isEditing, transaction, form, paidByOptions, handleInputChange]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -251,6 +258,7 @@ export default function AddTransactionSheet({
                       <FormLabel>Amount</FormLabel>
                       <FormControl>
                         <Input 
+                          ref={amountInputRef}
                           type="text" 
                           placeholder="0.00" 
                           value={formattedValue}
