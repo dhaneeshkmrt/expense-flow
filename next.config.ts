@@ -26,4 +26,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+const isTurbopack = !!process.env.TURBOPACK;
+
+// Turbopack doesn't support withPWA customizations yet.
+// Conditionally apply the PWA wrapper to avoid conflicts.
+export default isTurbopack ? nextConfig : withPWA(nextConfig);
