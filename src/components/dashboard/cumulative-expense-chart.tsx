@@ -41,7 +41,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         const dayKey = format(day, 'yyyy-MM-dd');
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
-            date: format(day, 'EEE d'),
+            date: format(day, 'EEEEEE'), // 'Su', 'Mo', etc.
             fullDate: day,
             cumulativeTotal,
             dayOfMonth: format(day, 'd'),
@@ -67,6 +67,28 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
     }
     return null;
   };
+  
+   const CustomXAxisTick = (props: any) => {
+    const { x, y, payload } = props;
+
+    if (!payload || !payload.value) {
+        return null;
+    }
+
+    const dateStr = chartData.find(d => d.date === payload.value)?.fullDate;
+    if(!dateStr) return null;
+
+    const isWeekend = getDay(dateStr) === 0 || getDay(dateStr) === 6;
+
+    return (
+        <g transform={`translate(${x},${y})`}>
+            <text x={0} y={0} dy={16} textAnchor="end" fill={isWeekend ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))'} fontSize={12} transform="rotate(-35)">
+                {payload.value}
+            </text>
+        </g>
+    );
+  };
+
 
   return (
     <Card>
@@ -91,7 +113,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomXAxisTick />} />
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
