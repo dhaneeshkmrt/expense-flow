@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -51,6 +50,7 @@ import { cn } from '@/lib/utils';
 import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
+import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -89,8 +89,9 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
   const [period, setPeriod] = React.useState<string>('this-month');
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
-  const [minAmount, setMinAmount] = React.useState<string>('');
-  const [maxAmount, setMaxAmount] = React.useState<string>('');
+  
+  const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
+  const { formattedValue: maxAmount, handleInputChange: handleMaxAmountChange, numericValue: maxAmountNumeric } = useCurrencyInput({});
 
   const table = useReactTable({
     data,
@@ -137,11 +138,11 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   React.useEffect(() => {
     const amountColumn = table.getColumn('amount');
     if (amountColumn) {
-      const min = minAmount !== '' ? parseFloat(minAmount) : undefined;
-      const max = maxAmount !== '' ? parseFloat(maxAmount) : undefined;
+      const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
+      const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
       amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
     }
-  }, [minAmount, maxAmount, table]);
+  }, [minAmountNumeric, maxAmountNumeric, table]);
 
   React.useEffect(() => {
     if (!showFilters) return;
@@ -250,17 +251,17 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
             </Select>
              <div className="flex items-center gap-2">
                 <Input
-                    type="number"
+                    type="text"
                     placeholder="Min amount"
                     value={minAmount}
-                    onChange={(e) => setMinAmount(e.target.value)}
+                    onChange={(e) => handleMinAmountChange(e.target.value)}
                     className="w-28"
                 />
                 <Input
-                    type="number"
+                    type="text"
                     placeholder="Max amount"
                     value={maxAmount}
-                    onChange={(e) => setMaxAmount(e.target.value)}
+                    onChange={(e) => handleMaxAmountChange(e.target.value)}
                     className="w-28"
                 />
             </div>

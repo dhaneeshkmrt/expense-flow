@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -35,6 +34,7 @@ import { suggestTransactionCategories } from '@/ai/flows/categorize-transaction'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import type { Transaction } from '@/lib/types';
+import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 
 const transactionSchema = z.object({
   date: z.date({
@@ -104,9 +104,15 @@ export default function AddTransactionSheet({
     },
   });
 
+  const { formattedValue, handleInputChange } = useCurrencyInput({
+    initialValue: form.getValues('amount'),
+    onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
+  });
+
+
   useEffect(() => {
     if (open) {
-      form.reset(isEditing && transaction ? {
+      const defaultValues = isEditing && transaction ? {
         ...transaction,
         date: parseISO(transaction.date),
         amount: transaction.amount,
@@ -122,7 +128,10 @@ export default function AddTransactionSheet({
         microcategory: '',
         paidBy: paidByOptions[0] || '',
         notes: '',
-      });
+      };
+      form.reset(defaultValues);
+      handleInputChange(String(defaultValues.amount));
+
     }
   }, [open, isEditing, transaction, form, paidByOptions]);
 
@@ -296,7 +305,12 @@ export default function AddTransactionSheet({
                     <FormItem>
                       <FormLabel>Amount</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                        <Input 
+                          type="text" 
+                          placeholder="0.00" 
+                          value={formattedValue}
+                          onChange={(e) => handleInputChange(e.target.value)}
+                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
