@@ -67,6 +67,9 @@ export default function TransactionsPage() {
           </AddTransactionSheet>
         </div>
       </div>
+      <pre className="bg-muted p-4 rounded-md overflow-x-auto text-xs">
+        {JSON.stringify(filteredTransactions, null, 2)}
+      </pre>
       <DataTable columns={columns} data={filteredTransactions} showFilters={true} />
     </div>
   );
