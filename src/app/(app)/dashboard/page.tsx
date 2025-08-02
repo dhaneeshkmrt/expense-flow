@@ -2,7 +2,6 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { OverviewChart } from '@/components/dashboard/overview-chart';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
 import { Download, PlusCircle } from 'lucide-react';
@@ -119,16 +118,7 @@ export default function DashboardPage() {
 
       <DashboardStats transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Category Expense Overview</CardTitle>
-            <CardDescription>Your spending by category for the selected period.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <OverviewChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 lg:grid-cols-1">
         <Card>
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
