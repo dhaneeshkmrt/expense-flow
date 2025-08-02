@@ -1,12 +1,12 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Copy } from 'lucide-react';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { SubcategoryDialog } from '@/components/categories/subcategory-dialog';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
@@ -16,6 +16,7 @@ import { MicrocategoryDialog } from '@/components/categories/microcategory-dialo
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { CopyBudgetDialog } from '@/components/categories/copy-budget-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,11 +26,41 @@ export default function CategoriesPage() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
+  const [copyBudgetDialogOpen, setCopyBudgetDialogOpen] = useState(false);
 
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const [selectedMicrocategory, setSelectedMicrocategory] = useState<Microcategory | null>(null);
   const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+
+  const selectedDate = new Date(selectedYear, selectedMonth);
+  const selectedMonthKey = format(selectedDate, 'yyyy-MM');
+  const selectedMonthName = format(selectedDate, 'MMMM');
+
+  const availableBudgetMonths = useMemo(() => {
+    const months = new Set<string>();
+    categories.forEach(cat => {
+        if (cat.budgets) {
+            Object.keys(cat.budgets).forEach(monthKey => {
+                if (monthKey !== selectedMonthKey) {
+                    months.add(monthKey);
+                }
+            });
+        }
+    });
+    return Array.from(months).sort((a,b) => b.localeCompare(a));
+  }, [categories, selectedMonthKey]);
+  
+  const hasBudgetForSelectedMonth = useMemo(() => {
+      return categories.some(cat => cat.budgets && cat.budgets[selectedMonthKey] !== undefined);
+  }, [categories, selectedMonthKey]);
+  
+  useEffect(() => {
+      if (!loadingCategories && !hasBudgetForSelectedMonth && availableBudgetMonths.length > 0) {
+          setCopyBudgetDialogOpen(true);
+      }
+  }, [loadingCategories, hasBudgetForSelectedMonth, availableBudgetMonths.length]);
+
 
   const toggleCollapsible = (id: string) => {
     setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));
@@ -100,11 +131,6 @@ export default function CategoriesPage() {
       );
   }
 
-  const selectedDate = new Date(selectedYear, selectedMonth);
-  const selectedMonthKey = format(selectedDate, 'yyyy-MM');
-  const selectedMonthName = format(selectedDate, 'MMMM');
-
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -112,10 +138,18 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
           <p className="text-muted-foreground">Manage your expense categories and subcategories.</p>
         </div>
-        <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
-          <PlusCircle className="mr-2" />
-          Add Category
-        </Button>
+        <div className="flex items-center gap-2">
+            {availableBudgetMonths.length > 0 && (
+                 <Button onClick={() => setCopyBudgetDialogOpen(true)} variant="outline">
+                    <Copy className="mr-2" />
+                    Copy Budget
+                </Button>
+            )}
+            <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
+                <PlusCircle className="mr-2" />
+                Add Category
+            </Button>
+        </div>
       </div>
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
@@ -256,6 +290,7 @@ export default function CategoriesPage() {
       <CategoryDialog open={categoryDialogOpen} setOpen={setCategoryDialogOpen} category={selectedCategory} />
       <SubcategoryDialog open={subcategoryDialogOpen} setOpen={setSubcategoryDialogOpen} category={selectedCategory} subcategory={selectedSubcategory} />
       <MicrocategoryDialog open={microcategoryDialogOpen} setOpen={setMicrocategoryDialogOpen} category={selectedCategory} subcategory={selectedSubcategory} microcategory={selectedMicrocategory} />
+      <CopyBudgetDialog open={copyBudgetDialogOpen} setOpen={setCopyBudgetDialogOpen} />
     </div>
   );
 }

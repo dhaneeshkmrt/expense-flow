@@ -44,6 +44,7 @@ interface AppContextType {
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
+  copyBudgetsFromMonth: (sourceMonthKey: string, targetMonthKey: string) => Promise<void>;
   
   transactions: Transaction[];
   filteredTransactions: Transaction[];

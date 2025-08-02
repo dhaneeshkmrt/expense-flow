@@ -194,6 +194,32 @@ export function useCategories(tenantId: string | null) {
       } : c
     ));
   };
+  
+    const copyBudgetsFromMonth = async (sourceMonthKey: string, targetMonthKey: string) => {
+        if (!tenantId) return;
+
+        const batch = writeBatch(db);
+        const updatedCategories = [...categories];
+
+        categories.forEach((category, index) => {
+            const sourceBudget = category.budgets?.[sourceMonthKey];
+            if (sourceBudget !== undefined) {
+                const categoryRef = doc(db, 'categories', category.id);
+                batch.update(categoryRef, { [`budgets.${targetMonthKey}`]: sourceBudget });
+                
+                updatedCategories[index] = {
+                    ...category,
+                    budgets: {
+                        ...category.budgets,
+                        [targetMonthKey]: sourceBudget,
+                    },
+                };
+            }
+        });
+
+        await batch.commit();
+        setCategories(updatedCategories);
+    };
 
   const deleteCategory = async (categoryId: string) => {
     const categoryRef = doc(db, 'categories', categoryId);
@@ -280,6 +306,7 @@ export function useCategories(tenantId: string | null) {
     addSubcategory, editSubcategory, deleteSubcategory,
     addMicrocategory, editMicrocategory, deleteMicrocategory,
     updateCategoryBudget,
+    copyBudgetsFromMonth,
     seedDefaultCategories,
   };
 }
