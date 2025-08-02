@@ -42,6 +42,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
             date: format(day, 'd'),
+            fullDate: day,
             cumulativeTotal,
         };
     });
@@ -49,9 +50,10 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-bold text-sm">Day {label}</p>
+          <p className="font-bold text-sm">Day {label} ({format(data.fullDate, 'EEEE')})</p>
           <p className="text-xs text-muted-foreground">
             Total Spent: <span className="font-medium text-foreground">{formatCurrency(payload[0].value)}</span>
           </p>
