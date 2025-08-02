@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
@@ -140,7 +141,7 @@ export default function AddTransactionSheet({
         }, 100);
       }
     }
-  }, [open, isEditing, transaction, form, paidByOptions, handleInputChange]);
+  }, [open, isEditing, transaction, paidByOptions]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
