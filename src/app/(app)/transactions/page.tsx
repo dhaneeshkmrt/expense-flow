@@ -14,7 +14,7 @@ import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 export const dynamic = 'force-dynamic';
 
 export default function TransactionsPage() {
-  const { user, tenants, transactions, loading, loadingCategories, selectedTenantId } = useApp();
+  const { user, tenants, filteredTransactions, loading, loadingCategories, selectedTenantId } = useApp();
 
   const isMainTenantUser = useMemo(() => {
     if (!user || !tenants.length) return false;
@@ -67,7 +67,7 @@ export default function TransactionsPage() {
           </AddTransactionSheet>
         </div>
       </div>
-      <DataTable columns={columns} data={transactions} showFilters={true} />
+      <DataTable columns={columns} data={filteredTransactions} showFilters={true} />
     </div>
   );
 }
