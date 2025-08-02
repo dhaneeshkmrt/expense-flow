@@ -67,7 +67,7 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
           date: d.date,
       }))
       .filter(d => d.total > 0)
-      .sort((a,b) => b.date.getDate() - a.date.getDate());
+      .sort((a,b) => a.date.getDate() - b.date.getDate());
 
   }, [transactions, year, month]);
 
@@ -99,11 +99,15 @@ export function DailyExpenseChart({ transactions, year, month }: DailyExpenseCha
     }
     return null;
   };
+  
+    if (data.length === 0) {
+        return <p className="text-muted-foreground text-center py-10">No expenses for this month.</p>;
+    }
 
 
   return (
     <>
-      <ResponsiveContainer width="100%" minHeight={500}>
+      <ResponsiveContainer width="100%" height={300}>
         <BarChart 
           data={data}
           onClick={handleBarClick}

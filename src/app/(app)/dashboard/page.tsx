@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getYear, getMonth, parseISO, format } from 'date-fns';
 import Papa from 'papaparse';
 import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
+import { MonthlyCategoryChart } from '@/components/dashboard/monthly-category-chart';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,14 +119,23 @@ export default function DashboardPage() {
 
       <DashboardStats transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
 
-      <div className="grid gap-6 lg:grid-cols-1">
+       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
             <CardDescription>Your spending by day for the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
+            <DailyExpenseChart transactions={filteredTransactions} year={year} month={month} />
+          </CardContent>
+        </Card>
+        <Card>
+           <CardHeader>
+            <CardTitle>Monthly Category Expenses</CardTitle>
+            <CardDescription>Spending vs. budget for each category.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MonthlyCategoryChart transactions={filteredTransactions} year={year} month={month} />
           </CardContent>
         </Card>
       </div>

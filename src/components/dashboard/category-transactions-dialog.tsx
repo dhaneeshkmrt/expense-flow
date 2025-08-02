@@ -43,7 +43,8 @@ export default function CategoryTransactionsDialog({
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
-  const getCategoryIcon = (categoryName: string) => {
+  const getCategoryIcon = (categoryName: string | null) => {
+    if (!categoryName) return null;
     const category = categories.find(c => c.name === categoryName);
     if (category && category.icon) {
       const Icon = typeof category.icon === 'string' ? () => null : category.icon;
@@ -58,7 +59,9 @@ export default function CategoryTransactionsDialog({
     return [...transactions].sort((a, b) => {
       let comparison = 0;
       if (sortKey === 'date') {
-        comparison = parseISO(a.date).getTime() - parseISO(b.date).getTime();
+        const dateA = new Date(`${a.date}T${a.time || '00:00:00'}`).getTime();
+        const dateB = new Date(`${b.date}T${b.time || '00:00:00'}`).getTime();
+        comparison = dateA - dateB;
       } else { // amount
         comparison = a.amount - b.amount;
       }
@@ -82,7 +85,7 @@ export default function CategoryTransactionsDialog({
             </div>
              <div className="flex justify-between">
               <span>Balance:</span>
-              <span className="font-medium text-foreground">{formatCurrency(balance)}</span>
+              <span className={`font-medium ${balance < 0 ? 'text-destructive' : 'text-foreground'}`}>{formatCurrency(balance)}</span>
             </div>
           </div>
           <div className="flex justify-end items-center pt-4">
