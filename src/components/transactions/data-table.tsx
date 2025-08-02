@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -87,7 +88,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
-  const [period, setPeriod] = React.useState<string>('this-month');
+  const [period, setPeriod] = React.useState<string>('all');
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   
   const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
@@ -177,14 +178,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     table.getColumn('date')?.setFilterValue(range);
   }, [period, dateRange, table, showFilters]);
   
-  // Set default period on mount
-  React.useEffect(() => {
-    if(showFilters){
-        setPeriod('this-month');
-    }
-  },[showFilters]);
-
-
   const subcategories = React.useMemo(() => {
     if (!categoryFilter) return [];
     const category = categories.find((c) => c.name === categoryFilter);
