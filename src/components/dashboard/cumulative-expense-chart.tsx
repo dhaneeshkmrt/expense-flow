@@ -73,14 +73,14 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
   
    const CustomXAxisTick = (props: any) => {
     const { x, y, payload } = props;
-
+    
     if (!payload || !payload.value) {
         return null;
     }
 
     const dateStr = chartData.find(d => d.date === payload.value)?.fullDate;
     if(!dateStr) return null;
-
+    
     const isWeekend = getDay(dateStr) === 0 || getDay(dateStr) === 6;
 
     return (
