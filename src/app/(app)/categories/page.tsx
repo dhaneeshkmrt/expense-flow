@@ -20,7 +20,7 @@ import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 export const dynamic = 'force-dynamic';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId } = useApp();
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, selectedYear, selectedMonth } = useApp();
   const formatCurrency = useCurrencyFormatter();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
@@ -100,7 +100,10 @@ export default function CategoriesPage() {
       );
   }
 
-  const currentMonthKey = format(new Date(), 'yyyy-MM');
+  const selectedDate = new Date(selectedYear, selectedMonth);
+  const selectedMonthKey = format(selectedDate, 'yyyy-MM');
+  const selectedMonthName = format(selectedDate, 'MMMM');
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -117,7 +120,7 @@ export default function CategoriesPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
-          const monthlyBudget = category.budgets?.[currentMonthKey];
+          const monthlyBudget = category.budgets?.[selectedMonthKey];
           return (
             <Card key={category.id}>
               <CardHeader className="flex-row items-start justify-between">
@@ -126,9 +129,9 @@ export default function CategoriesPage() {
                         {Icon && <Icon className="w-6 h-6 text-primary" />}
                         <span>{category.name}</span>
                     </CardTitle>
-                    {monthlyBudget && monthlyBudget > 0 && (
+                    {monthlyBudget !== undefined && monthlyBudget > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
-                            Budget for {format(new Date(), 'MMMM')}: <span className="font-semibold">{formatCurrency(monthlyBudget)}</span>
+                            Budget for {selectedMonthName}: <span className="font-semibold">{formatCurrency(monthlyBudget)}</span>
                         </p>
                     )}
                 </div>
