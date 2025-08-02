@@ -18,7 +18,8 @@ interface CumulativeExpenseChartProps {
 
 const CustomizedAxisTick = (props: any) => {
     const { x, y, payload } = props;
-    const { fullDate } = payload.value;
+    // The payload.value is the value from the data, which is an object { dateLabel, fullDate }
+    const { fullDate } = payload.value; 
     const isWeekend = isSaturday(fullDate) || isSunday(fullDate);
 
     return (
@@ -102,7 +103,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data} margin={{ bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="dateLabel" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomizedAxisTick />} />
+            <XAxis dataKey="dateLabel" type="category" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={<CustomizedAxisTick />} interval={0} data={data.map(d => ({dateLabel: d.dateLabel, fullDate: d.fullDate}))} />
             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => formatCurrency(value, {notation: 'compact'})}/>
             <Tooltip content={<CustomTooltip />} />
             <Legend />
