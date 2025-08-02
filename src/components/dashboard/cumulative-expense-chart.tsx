@@ -41,9 +41,10 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
         const dayKey = format(day, 'yyyy-MM-dd');
         cumulativeTotal += dailyTotals.get(dayKey) || 0;
         return {
-            date: format(day, 'd'),
+            date: format(day, 'EEEEE'), // Changed to first letter of the day
             fullDate: day,
             cumulativeTotal,
+            dayOfMonth: format(day, 'd'),
         };
     });
   }, [transactions, year, month, selectedCategory]);
@@ -53,7 +54,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
       const data = payload[0].payload;
       return (
         <div className="rounded-lg border bg-background p-2 shadow-sm">
-          <p className="font-bold text-sm">Day {label} ({format(data.fullDate, 'EEEE')})</p>
+          <p className="font-bold text-sm">Day {data.dayOfMonth} ({format(data.fullDate, 'EEEE')})</p>
           <p className="text-xs text-muted-foreground">
             Total Spent: <span className="font-medium text-foreground">{formatCurrency(payload[0].value)}</span>
           </p>
