@@ -41,13 +41,13 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
         
         const categorySpending = new Map<string, { total: number; budget: number; transactions: Transaction[] }>();
 
-        // Initialize map with all categories
+        // Initialize map with all categories and their budgets for the selected month
         categories.forEach(cat => {
             const budget = cat.budgets?.[monthKey] || 0;
             categorySpending.set(cat.name, { total: 0, budget, transactions: [] });
         });
         
-        // Aggregate transactions for all categories
+        // Aggregate transactions for all categories from the already filtered transactions
         transactions.forEach(txn => {
             const catData = categorySpending.get(txn.category);
             if (catData) {
@@ -61,13 +61,13 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
                 name,
                 total,
                 budget,
-                percentage: budget > 0 ? Math.round((total / budget) * 100) : 0,
+                percentage: budget > 0 ? Math.round((total / budget) * 100) : (total > 0 ? 100 : 0),
                 balance: budget - total,
                 transactions
             }))
             // Only show categories that have a budget OR have spending
             .filter(d => d.budget > 0 || d.total > 0)
-            .sort((a, b) => b.budget - a.budget);
+            .sort((a, b) => b.budget - a.budget || b.total - a.total);
     }, [categories, transactions, year, month]);
 
     const maxPercentage = useMemo(() => {
