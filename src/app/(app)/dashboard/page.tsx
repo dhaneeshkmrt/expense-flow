@@ -126,7 +126,7 @@ export default function DashboardPage() {
             <CardDescription>Your spending by day for the selected period.</CardDescription>
           </CardHeader>
           <CardContent>
-            <DailyExpenseChart transactions={filteredTransactions} year={year} month={month} />
+            <DailyExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
         </Card>
         <Card>
@@ -135,7 +135,7 @@ export default function DashboardPage() {
             <CardDescription>Spending vs. budget for each category.</CardDescription>
           </CardHeader>
           <CardContent>
-            <MonthlyCategoryChart transactions={filteredTransactions} year={year} month={month} />
+            <MonthlyCategoryChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
           </CardContent>
         </Card>
       </div>
