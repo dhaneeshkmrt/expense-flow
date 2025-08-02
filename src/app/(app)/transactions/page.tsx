@@ -71,3 +71,4 @@ export default function TransactionsPage() {
     </div>
   );
 }
+public/icons/dn-logo.png
