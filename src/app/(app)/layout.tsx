@@ -7,8 +7,6 @@ import { redirect } from 'next/navigation';
 import { useEffect } from 'react';
 
 // This layout will apply to all pages that need authentication
-export const dynamic = 'force-dynamic';
-
 export default function AppLayout({
   children,
 }: Readonly<{

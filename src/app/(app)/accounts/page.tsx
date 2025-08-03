@@ -18,8 +18,6 @@ interface AccountData {
   balance: number;
 }
 
-export const dynamic = 'force-dynamic';
-
 export default function AccountsPage() {
   const { categories, filteredTransactions, loading, loadingCategories, selectedYear, selectedMonth } = useApp();
   const formatCurrency = useCurrencyFormatter();

@@ -10,8 +10,6 @@ import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
-export const dynamic = 'force-dynamic';
-
 export default function YearlyReportPage() {
   const { categories, transactions, loading, loadingCategories, selectedYear } = useApp();
   const formatCurrency = useCurrencyFormatter();

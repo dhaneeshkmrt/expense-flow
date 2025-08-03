@@ -18,8 +18,6 @@ import { format } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { CopyBudgetDialog } from '@/components/categories/copy-budget-dialog';
 
-export const dynamic = 'force-dynamic';
-
 export default function CategoriesPage() {
   const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, selectedYear, selectedMonth } = useApp();
   const formatCurrency = useCurrencyFormatter();

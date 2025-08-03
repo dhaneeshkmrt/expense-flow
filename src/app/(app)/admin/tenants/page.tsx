@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -9,8 +10,6 @@ import { columns as createTenantColumns } from '@/components/tenants/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import { TenantDialog } from '@/components/tenants/tenant-dialog';
 import type { Tenant } from '@/lib/types';
-
-export const dynamic = 'force-dynamic';
 
 export default function TenantsPage() {
   const { tenants, loadingTenants } = useApp();
