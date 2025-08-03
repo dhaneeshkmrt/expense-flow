@@ -3,7 +3,7 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ChevronsUpDown, Check, PlusCircle, Download } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import AddTransactionSheet from './transactions/add-transaction-sheet';
 import Papa from 'papaparse';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfMonth } from 'date-fns';
 
 const months = [
   { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
@@ -25,17 +25,36 @@ export function AppShellHeader() {
   const { 
     tenants, selectedTenantId, setSelectedTenantId, loadingTenants, isRootUser,
     selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, availableYears,
-    filteredTransactions
+    filteredTransactions, categories
   } = useApp();
   const [tenantPopoverOpen, setTenantPopoverOpen] = useState(false);
 
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   const handleDownloadCsv = () => {
-    if (!filteredTransactions.length) return;
+    const monthKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
+    const firstPaidBy = selectedTenant?.paidByOptions?.[0] || '';
+    
+    const budgetData = categories
+        .map(cat => ({
+            name: cat.name,
+            budget: cat.budgets?.[monthKey] || 0
+        }))
+        .filter(cat => cat.budget > 0)
+        .map(cat => ({
+            'Date': format(startOfMonth(new Date(selectedYear, selectedMonth)), 'd-MMM-yy'),
+            'Cate': 'Income',
+            'sub': cat.name,
+            'Amount': cat.budget.toFixed(2),
+            'Paid by': firstPaidBy,
+            'Desc': '',
+            'Notes': '',
+            '': '',
+            ' ': '',
+        }));
 
-    const dataToExport = filteredTransactions.map(t => ({
-      'Date': format(parseISO(t.date), 'dd-MMM-yy'),
+    const transactionData = filteredTransactions.map(t => ({
+      'Date': format(parseISO(t.date), 'd-MMM-yy'),
       'Cate': t.category,
       'sub': t.subcategory,
       'Amount': t.amount.toFixed(2),
@@ -45,8 +64,12 @@ export function AppShellHeader() {
       '': '',
       ' ': '',
     }));
+    
+    const dataToExport = [...budgetData, ...transactionData];
 
-    const csv = Papa.unparse(dataToExport);
+    if (dataToExport.length === 0) return;
+
+    const csv = Papa.unparse(dataToExport, { header: false });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -88,7 +111,7 @@ export function AppShellHeader() {
               ))}
             </SelectContent>
           </Select>
-           <Button onClick={handleDownloadCsv} variant="outline" disabled={filteredTransactions.length === 0}>
+           <Button onClick={handleDownloadCsv} variant="outline" disabled={filteredTransactions.length === 0 && !categories.some(c => c.budgets?.[format(new Date(selectedYear, selectedMonth), 'yyyy-MM')])}>
             <Download className="mr-2" />
             Download
           </Button>
