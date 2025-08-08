@@ -8,6 +8,8 @@ import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 import { MonthlyCategoryChart } from '@/components/dashboard/monthly-category-chart';
 import { CumulativeExpenseChart } from '@/components/dashboard/cumulative-expense-chart';
 
+export const dynamic = 'force-dynamic';
+
 export default function DashboardPage() {
   const { filteredTransactions, selectedYear, selectedMonth } = useApp();
 

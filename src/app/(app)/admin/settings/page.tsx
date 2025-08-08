@@ -14,6 +14,8 @@ import type { Settings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+export const dynamic = 'force-dynamic';
+
 const countryLocales = [
   { value: 'en-US', label: 'United States (USD)' },
   { value: 'en-IN', label: 'India (INR)' },

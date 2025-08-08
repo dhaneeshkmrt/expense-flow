@@ -11,6 +11,8 @@ import { DataTable } from '@/components/transactions/data-table';
 import { TenantDialog } from '@/components/tenants/tenant-dialog';
 import type { Tenant } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+
 export default function TenantsPage() {
   const { tenants, loadingTenants } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);

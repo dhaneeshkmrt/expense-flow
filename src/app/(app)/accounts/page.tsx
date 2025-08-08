@@ -9,6 +9,8 @@ import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
+export const dynamic = 'force-dynamic';
+
 interface AccountData {
   categoryId: string;
   categoryName: string;
