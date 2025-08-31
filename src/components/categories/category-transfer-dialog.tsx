@@ -31,13 +31,15 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const transferSchema = z.object({
+const getTransferSchema = (sourceCategoryBalance: number) => z.object({
   sourceCategoryId: z.string().min(1, 'Please select a source category.'),
   amount: z.coerce.number().positive('Transfer amount must be positive.'),
   notes: z.string().optional(),
+}).refine(data => data.amount <= sourceCategoryBalance, {
+    message: "Transfer amount cannot exceed the source category's available balance.",
+    path: ['amount'],
 });
 
-type TransferFormValues = z.infer<typeof transferSchema>;
 
 interface CategoryTransferDialogProps {
   open: boolean;
@@ -67,8 +69,17 @@ export default function CategoryTransferDialog({
     return Math.max(0, spent - budget);
   }, [destinationCategory, filteredTransactions]);
 
+  const sourceCategories = useMemo(() => {
+    return allCategories.filter(c => c.id !== destinationCategory.id && c.name !== 'Loan');
+  }, [allCategories, destinationCategory.id]);
+  
+  // A bit of a workaround to get the balance into the resolver
+  const [sourceCategoryBalance, setSourceCategoryBalance] = useState(0);
+
+  type TransferFormValues = z.infer<ReturnType<typeof getTransferSchema>>;
+  
   const form = useForm<TransferFormValues>({
-    resolver: zodResolver(transferSchema),
+    resolver: zodResolver(getTransferSchema(sourceCategoryBalance)),
     defaultValues: {
       sourceCategoryId: '',
       amount: overageAmount > 0 ? overageAmount : undefined,
@@ -76,6 +87,27 @@ export default function CategoryTransferDialog({
     },
   });
   
+  const selectedSourceCategoryId = form.watch('sourceCategoryId');
+
+  useEffect(() => {
+    if (!selectedSourceCategoryId) {
+      setSourceCategoryBalance(0);
+      return;
+    };
+    const sourceCategory = allCategories.find(c => c.id === selectedSourceCategoryId);
+    if (!sourceCategory) {
+        setSourceCategoryBalance(0);
+        return;
+    };
+
+    const spent = filteredTransactions
+      .filter(t => t.category === sourceCategory.name)
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const balance = (sourceCategory.budget || 0) - spent;
+    setSourceCategoryBalance(balance);
+  }, [selectedSourceCategoryId, allCategories, filteredTransactions]);
+
   useEffect(() => {
       form.reset({
         sourceCategoryId: '',
@@ -84,23 +116,6 @@ export default function CategoryTransferDialog({
       });
   }, [destinationCategory, overageAmount, form, open]);
 
-
-  const sourceCategories = useMemo(() => {
-    return allCategories.filter(c => c.id !== destinationCategory.id && c.name !== 'Loan');
-  }, [allCategories, destinationCategory.id]);
-  
-  const selectedSourceCategoryId = form.watch('sourceCategoryId');
-
-  const sourceCategoryBalance = useMemo(() => {
-    if (!selectedSourceCategoryId) return 0;
-    const sourceCategory = allCategories.find(c => c.id === selectedSourceCategoryId);
-    if (!sourceCategory) return 0;
-
-    const spent = filteredTransactions
-      .filter(t => t.category === sourceCategory.name)
-      .reduce((sum, t) => sum + t.amount, 0);
-    return (sourceCategory.budget || 0) - spent;
-  }, [selectedSourceCategoryId, allCategories, filteredTransactions]);
 
   const onSubmit = async (data: TransferFormValues) => {
     setIsSubmitting(true);
