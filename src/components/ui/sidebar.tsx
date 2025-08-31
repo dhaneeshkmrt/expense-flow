@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -331,7 +332,7 @@ const SidebarInset = React.forwardRef<
         className
       )}
       {...props}
-      style="width: calc(100% - 260px)"
+      style={{ width: "calc(100% - 260px)" }}
     />
   )
 })
