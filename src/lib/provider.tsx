@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
@@ -167,7 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const transferSubCategory = "Category Transfer";
-    const date = format(new Date(selectedYear, selectedMonth, 1), 'yyyy-MM-dd');
+    const date = format(new Date(), 'yyyy-MM-dd');
     const time = format(new Date(), 'HH:mm');
     const defaultPaidBy = tenantHook.tenants.find(t => t.id === tenantHook.selectedTenantId)?.paidByOptions?.[0] || 'N/A';
 
@@ -197,7 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     await transactionsHook.addMultipleTransactions([debitTransaction, creditTransaction]);
 
-  }, [categoriesHook.categories, selectedYear, selectedMonth, tenantHook.tenants, tenantHook.selectedTenantId, transactionsHook.addMultipleTransactions]);
+  }, [categoriesHook.categories, tenantHook.tenants, tenantHook.selectedTenantId, transactionsHook.addMultipleTransactions]);
 
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions;
 
