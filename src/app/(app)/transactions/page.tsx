@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
-import { columns } from '@/components/transactions/columns';
+import { createColumns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,15 @@ import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 export const dynamic = 'force-dynamic';
 
 export default function TransactionsPage() {
-  const { user, tenants, filteredTransactions, loading, loadingCategories, selectedTenantId } = useApp();
+  const { user, tenants, filteredTransactions, loading, loadingCategories, selectedTenantId, isMonthLocked } = useApp();
 
   const isMainTenantUser = useMemo(() => {
     if (!user || !tenants.length) return false;
     const userTenant = tenants.find(t => t.id === user.tenantId);
     return !!userTenant && user.name === userTenant.name;
   }, [user, tenants]);
+
+  const columns = useMemo(() => createColumns(isMonthLocked), [isMonthLocked]);
 
 
   if (loading || loadingCategories) {

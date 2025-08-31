@@ -3,8 +3,8 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { Transaction } from '@/lib/types';
-import { ArrowUpDown, Edit, MoreHorizontal, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { ArrowUpDown, Edit, MoreHorizontal, Trash2, Lock } from 'lucide-react';
+import { format, getYear, getMonth, parseISO } from 'date-fns';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 
-export const columns: ColumnDef<Transaction>[] = [
+export const createColumns = (isMonthLocked: (year: number, month: number) => boolean): ColumnDef<Transaction>[] => [
   {
     accessorKey: 'date',
     header: ({ column }) => {
@@ -36,7 +36,19 @@ export const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       const date = new Date(row.getValue('date'));
       const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
-      return <span className="block w-24">{format(utcDate, 'PPP')}</span>;
+      const transactionDate = parseISO(row.getValue('date'));
+      const year = getYear(transactionDate);
+      const month = getMonth(transactionDate);
+      const isLocked = isMonthLocked(year, month);
+      
+      return (
+        <div className="flex items-center gap-2 w-28">
+          <span>{format(utcDate, 'MMM dd')}</span>
+          {isLocked && (
+            <Lock className="h-3 w-3 text-orange-500" title="Month is locked after processing" />
+          )}
+        </div>
+      );
     },
   },
   {
@@ -171,3 +183,6 @@ export const columns: ColumnDef<Transaction>[] = [
     },
   },
 ];
+
+// Fallback for backward compatibility
+export const columns = createColumns(() => false);

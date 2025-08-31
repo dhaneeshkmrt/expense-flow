@@ -24,16 +24,17 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, getYear, getMonth } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
 import { suggestTransactionCategories } from '@/ai/flows/categorize-transaction';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { Transaction } from '@/lib/types';
 import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 
@@ -67,7 +68,7 @@ export default function AddTransactionSheet({
   transaction,
 }: AddTransactionSheetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { categories, addTransaction, editTransaction, tenants, selectedTenantId } = useApp();
+  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,6 +111,20 @@ export default function AddTransactionSheet({
     initialValue: form.getValues('amount'),
     onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
   });
+
+  // Check if the selected date is in a locked month
+  const selectedDate = form.watch('date');
+  const isSelectedMonthLocked = useMemo(() => {
+    if (!selectedDate) return false;
+    const year = getYear(selectedDate);
+    const month = getMonth(selectedDate);
+    return isMonthLocked(year, month);
+  }, [selectedDate, isMonthLocked]);
+
+  const lockedMonthMessage = useMemo(() => {
+    if (!isSelectedMonthLocked || !selectedDate) return null;
+    return `This month (${format(selectedDate, 'MMMM yyyy')}) is locked after month-end processing. Please select a different date.`;
+  }, [isSelectedMonthLocked, selectedDate]);
 
 
   useEffect(() => {
@@ -247,6 +262,16 @@ export default function AddTransactionSheet({
         <SheetHeader>
           <SheetTitle>{sheetTitle}</SheetTitle>
         </SheetHeader>
+        
+        {lockedMonthMessage && (
+          <Alert className="border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              {lockedMonthMessage}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto pr-6 -mr-6 space-y-6 py-4">
@@ -464,7 +489,7 @@ export default function AddTransactionSheet({
                 />
               </div>
                <SheetFooter className="mt-auto bg-background pt-4 sticky bottom-0">
-                <Button type="submit" disabled={isSubmitting} className="w-full">
+                <Button type="submit" disabled={isSubmitting || isSelectedMonthLocked} className="w-full">
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isEditing ? 'Save Changes' : 'Save Transaction'}
                 </Button>
