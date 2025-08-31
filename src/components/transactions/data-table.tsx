@@ -123,18 +123,6 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   });
 
   React.useEffect(() => {
-    // When data changes (i.e. global filters like month/year change),
-    // reset all the local filters in the table.
-    table.resetColumnFilters();
-    setGlobalFilter('');
-    setCategoryFilter('');
-    setSubcategoryFilter('');
-    setMicrocategoryFilter('');
-    handleMinAmountChange('');
-    handleMaxAmountChange('');
-  }, [data, table, handleMinAmountChange, handleMaxAmountChange]);
-
-  React.useEffect(() => {
     // This effect handles applying the local filters to the table state
     if (showFilters) {
       table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
