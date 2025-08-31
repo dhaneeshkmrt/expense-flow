@@ -78,6 +78,10 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState('')
+  const [pagination, setPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
 
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
@@ -103,6 +107,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -119,24 +124,26 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
       columnVisibility,
       rowSelection,
       globalFilter,
+      pagination,
     },
   });
 
+
   React.useEffect(() => {
-    table.getColumn('category')?.setFilterValue(categoryFilter || undefined);
+    table.getColumn('category')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
   }, [categoryFilter, table]);
 
   React.useEffect(() => {
-    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter || undefined);
+    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter && subcategoryFilter.trim() ? [subcategoryFilter] : undefined);
   }, [subcategoryFilter, table]);
   
   React.useEffect(() => {
-    table.getColumn('microcategory')?.setFilterValue(microcategoryFilter || undefined);
+    table.getColumn('microcategory')?.setFilterValue(microcategoryFilter && microcategoryFilter.trim() ? [microcategoryFilter] : undefined);
   }, [microcategoryFilter, table]);
 
   React.useEffect(() => {
-    const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
-    const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
+    const min = minAmountNumeric !== null && minAmountNumeric > 0 ? minAmountNumeric : undefined;
+    const max = maxAmountNumeric !== null && maxAmountNumeric > 0 ? maxAmountNumeric : undefined;
     table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
   }, [minAmountNumeric, maxAmountNumeric, table]);
 
@@ -265,13 +272,19 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
         <div className="flex items-center space-x-2">
             <p className="text-sm font-medium">Rows per page</p>
             <Select
-            value={`${table.getState().pagination.pageSize}`}
+            value={table.getState().pagination.pageSize >= 1000 ? 'all' : `${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
-                table.setPageSize(Number(value))
+                if (value === 'all') {
+                    table.setPageSize(Math.max(table.getFilteredRowModel().rows.length, 1000))
+                } else {
+                    table.setPageSize(Number(value))
+                }
             }}
             >
-            <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={table.getState().pagination.pageSize} />
+            <SelectTrigger className="h-8 w-[80px]">
+                <SelectValue>
+                    {table.getState().pagination.pageSize >= 1000 ? 'Show All' : table.getState().pagination.pageSize}
+                </SelectValue>
             </SelectTrigger>
             <SelectContent side="top">
                 {[10, 20, 30, 40, 50].map((pageSize) => (
@@ -279,6 +292,9 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                     {pageSize}
                 </SelectItem>
                 ))}
+                <SelectItem value="all">
+                    Show All
+                </SelectItem>
             </SelectContent>
             </Select>
         </div>
@@ -287,6 +303,14 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
             {table.getPageCount()}
         </div>
         <div className="flex items-center space-x-2">
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+            >
+            First
+            </Button>
             <Button
             variant="outline"
             size="sm"
@@ -302,6 +326,14 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
             disabled={!table.getCanNextPage()}
             >
             Next
+            </Button>
+            <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+            >
+            Last
             </Button>
         </div>
       </div>
