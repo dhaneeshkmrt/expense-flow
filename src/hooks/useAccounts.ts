@@ -235,7 +235,7 @@ export function useAccounts(tenantId: string | null) {
         if (!category.budget || category.budget <= 0) continue;
 
         const spent = categorySpending.get(category.name) || 0;
-        const surplus = category.budget - spent;
+        const surplus = Math.round((category.budget - spent) * 100) / 100;
 
         if (surplus > 0) {
           // Create or get account

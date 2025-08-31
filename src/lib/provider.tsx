@@ -245,7 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     
     const currentSpent = monthTransactions.reduce((sum, t) => sum + t.amount, 0);
     const newSpent = currentSpent + transaction.amount;
-    const overspend = newSpent - category.budget;
+    const overspend = Math.round((newSpent - category.budget) * 100) / 100;
     
     if (overspend > 0) {
       console.log(`Category ${transaction.category} overspent by ${overspend}. Attempting withdrawal...`);

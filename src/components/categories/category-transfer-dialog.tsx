@@ -66,7 +66,9 @@ export default function CategoryTransferDialog({
       .filter(t => t.category === destinationCategory.name)
       .reduce((sum, t) => sum + t.amount, 0);
     const budget = destinationCategory.budget || 0;
-    return Math.max(0, spent - budget);
+    const overage = spent - budget;
+    // Round to 2 decimal places to fix floating-point precision issues
+    return Math.max(0, Math.round(overage * 100) / 100);
   }, [destinationCategory, filteredTransactions]);
 
   const sourceCategories = useMemo(() => {
