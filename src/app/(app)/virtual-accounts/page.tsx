@@ -50,6 +50,10 @@ export default function VirtualAccountsPage() {
         return { label: 'Surplus Transfer', color: 'bg-green-500' };
       case 'overspend_withdrawal':
         return { label: 'Overspend Withdrawal', color: 'bg-red-500' };
+      case 'overspend_deficit':
+        return { label: 'Overspend Deficit', color: 'bg-red-600' };
+      case 'zero_balance':
+        return { label: 'Zero Balance', color: 'bg-blue-500' };
       default:
         return { label: type, color: 'bg-gray-500' };
     }
@@ -97,7 +101,9 @@ export default function VirtualAccountsPage() {
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-green-600">
+          <div className={`text-2xl font-bold ${
+            totalBalance >= 0 ? 'text-green-600' : 'text-red-600'
+          }`}>
             {formatCurrency(totalBalance)}
           </div>
           <p className="text-xs text-muted-foreground">
@@ -150,7 +156,9 @@ export default function VirtualAccountsPage() {
                           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                             <div>
                               <p className="text-sm text-muted-foreground">Current Balance</p>
-                              <p className="text-2xl font-bold text-green-600">
+                              <p className={`text-2xl font-bold ${
+                                account.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
                                 {formatCurrency(account.currentBalance)}
                               </p>
                             </div>
@@ -191,9 +199,9 @@ export default function VirtualAccountsPage() {
                                         </TableCell>
                                         <TableCell>{txn.description}</TableCell>
                                         <TableCell className={`text-right font-medium ${
-                                          txn.amount > 0 ? 'text-green-600' : 'text-red-600'
+                                          txn.amount > 0 ? 'text-green-600' : txn.amount < 0 ? 'text-red-600' : 'text-blue-600'
                                         }`}>
-                                          {txn.amount > 0 ? '+' : ''}{formatCurrency(txn.amount)}
+                                          {txn.amount > 0 ? '+' : txn.amount === 0 ? '=' : ''}{formatCurrency(txn.amount)}
                                         </TableCell>
                                       </TableRow>
                                     );
@@ -211,7 +219,9 @@ export default function VirtualAccountsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Balance</span>
-                      <span className="font-semibold text-green-600">
+                      <span className={`font-semibold ${
+                        account.currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
+                      }`}>
                         {formatCurrency(account.currentBalance)}
                       </span>
                     </div>

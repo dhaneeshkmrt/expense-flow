@@ -237,14 +237,15 @@ export function useAccounts(tenantId: string | null) {
         const spent = categorySpending.get(category.name) || 0;
         const surplus = Math.round((category.budget - spent) * 100) / 100;
 
-        if (surplus > 0) {
-          // Create or get account
-          const account = await createOrGetAccount(category.id, category.name);
-          if (!accounts.some(acc => acc.id === account.id)) {
-            result.accountsCreated++;
-          }
+        // Create or get account for all categories (even zero balance ones for tracking)
+        const account = await createOrGetAccount(category.id, category.name);
+        const isNewAccount = !accounts.some(acc => acc.id === account.id);
+        if (isNewAccount) {
+          result.accountsCreated++;
+        }
 
-          // Add surplus transaction
+        if (surplus > 0) {
+          // Positive surplus - transfer to virtual account
           await addAccountTransaction(
             account.id,
             category.id,
@@ -253,19 +254,39 @@ export function useAccounts(tenantId: string | null) {
             `Month-end surplus from ${category.name} for ${monthName}`,
             monthYear
           );
-
-          result.processedCategories.push({
-            categoryId: category.id,
-            categoryName: category.name,
-            budget: category.budget,
-            spent,
-            surplus,
-            accountId: account.id
-          });
-
-          result.totalSurplus += surplus;
-          result.transactionsCreated++;
+        } else if (surplus < 0) {
+          // Overspending - create negative balance in virtual account
+          await addAccountTransaction(
+            account.id,
+            category.id,
+            surplus, // Already negative
+            'overspend_deficit',
+            `Month-end overspend deficit from ${category.name} for ${monthName} (overspent by ${Math.abs(surplus)})`,
+            monthYear
+          );
+        } else {
+          // Zero balance - track for monitoring purposes
+          await addAccountTransaction(
+            account.id,
+            category.id,
+            0,
+            'zero_balance',
+            `Month-end zero balance from ${category.name} for ${monthName} (spent exactly budget amount)`,
+            monthYear
+          );
         }
+
+        result.processedCategories.push({
+          categoryId: category.id,
+          categoryName: category.name,
+          budget: category.budget,
+          spent,
+          surplus,
+          accountId: account.id
+        });
+
+        result.totalSurplus += surplus; // This will be net (positive surplus minus negative deficit)
+        result.transactionsCreated++;
       }
 
       // Lock the month

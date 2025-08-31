@@ -104,7 +104,7 @@ export type VirtualAccount = {
   updatedAt: string;
 };
 
-export type AccountTransactionType = 'surplus_transfer' | 'overspend_withdrawal';
+export type AccountTransactionType = 'surplus_transfer' | 'overspend_withdrawal' | 'overspend_deficit' | 'zero_balance';
 
 export type AccountTransaction = {
   id: string;
