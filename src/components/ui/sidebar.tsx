@@ -331,6 +331,7 @@ const SidebarInset = React.forwardRef<
         className
       )}
       {...props}
+      style="width: calc(100% - 260px)"
     />
   )
 })
