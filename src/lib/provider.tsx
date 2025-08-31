@@ -14,6 +14,13 @@ import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { getYear, getMonth, parseISO, format } from 'date-fns';
 
+interface CategoryTransferData {
+    sourceCategoryId: string;
+    destinationCategoryId: string;
+    amount: number;
+    notes?: string;
+}
+
 // Define the shape of the context value
 interface AppContextType {
   user: User | null;
@@ -53,6 +60,8 @@ interface AppContextType {
   editTransaction: (transactionId: string, transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => Promise<void>;
   deleteTransaction: (transactionId: string) => Promise<void>;
   
+  handleCategoryTransfer: (data: CategoryTransferData) => Promise<void>;
+
   selectedYear: number;
   setSelectedYear: (year: number) => void;
   selectedMonth: number;
@@ -143,6 +152,49 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return dataToSave;
   }, [selectedTenantId]);
 
+  const handleCategoryTransfer = useCallback(async (data: CategoryTransferData) => {
+    const { sourceCategoryId, destinationCategoryId, amount, notes } = data;
+    const sourceCategory = categoriesHook.categories.find(c => c.id === sourceCategoryId);
+    const destinationCategory = categoriesHook.categories.find(c => c.id === destinationCategoryId);
+    const loanCategory = categoriesHook.categories.find(c => c.name === "Loan");
+
+    if (!sourceCategory || !destinationCategory || !loanCategory) {
+        throw new Error("Source, destination, or Loan category not found.");
+    }
+
+    const transferSubCategory = "Category Transfer";
+    const date = format(new Date(selectedYear, selectedMonth, 1), 'yyyy-MM-dd');
+    const time = format(new Date(), 'HH:mm');
+    const defaultPaidBy = tenantHook.tenants.find(t => t.id === tenantHook.selectedTenantId)?.paidByOptions?.[0] || 'N/A';
+
+    // Transaction 1: Debit from source category
+    const debitTransaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'> = {
+        date,
+        time,
+        description: `Transfer to ${destinationCategory.name}`,
+        amount: amount,
+        category: sourceCategory.name,
+        subcategory: transferSubCategory,
+        paidBy: defaultPaidBy,
+        notes,
+    };
+
+    // Transaction 2: Credit to destination category (via Loan category)
+    const creditTransaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'> = {
+        date,
+        time,
+        description: `Transfer from ${sourceCategory.name}`,
+        amount: -amount,
+        category: loanCategory.name,
+        subcategory: transferSubCategory,
+        paidBy: defaultPaidBy,
+        notes,
+    };
+    
+    await transactionsHook.addMultipleTransactions([debitTransaction, creditTransaction]);
+
+  }, [categoriesHook.categories, selectedYear, selectedMonth, tenantHook.tenants, tenantHook.selectedTenantId, transactionsHook.addMultipleTransactions]);
+
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions;
 
   const contextValue = useMemo(() => ({
@@ -156,6 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...categoriesHook,
     ...transactionsHook,
 
+    handleCategoryTransfer,
     filteredTransactions,
     selectedYear,
     setSelectedYear,
@@ -173,7 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, handleCategoryTransfer, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

@@ -13,6 +13,7 @@ import {
   User,
   Building,
   Apple,
+  RefreshCw,
 } from 'lucide-react';
 
 // This data is used to seed the database on first run if it's empty.
@@ -107,6 +108,15 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
         { id: 'emergency_tour', name: 'Tour', microcategories: [] },
         { id: 'emergency_gift', name: 'Gift', microcategories: [] },
         { id: 'emergency_bike', name: 'Bike', microcategories: [] },
+        { id: 'emergency_category_transfer', name: 'Category Transfer', microcategories: [] },
+    ],
+  },
+  {
+    name: 'Loan',
+    icon: RefreshCw,
+    budget: 0,
+    subcategories: [
+        { id: 'loan_category_transfer', name: 'Category Transfer', microcategories: [] },
     ],
   },
   {

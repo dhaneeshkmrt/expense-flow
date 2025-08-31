@@ -7,11 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2 } from 'lucide-react';
+import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
-import type { BalanceSheet } from '@/lib/types';
+import type { BalanceSheet, Category } from '@/lib/types';
+import CategoryTransferDialog from '@/components/categories/category-transfer-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,9 @@ export default function BalanceSheetPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedData, setSavedData] = useState<BalanceSheet | null>(null);
   const [loadingSavedData, setLoadingSavedData] = useState(true);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [selectedCategoryForTransfer, setSelectedCategoryForTransfer] = useState<Category | null>(null);
+
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -126,6 +130,14 @@ export default function BalanceSheetPage() {
         setIsSaving(false);
     }
   };
+
+  const handleOpenTransferDialog = (categoryName: string) => {
+    const category = categories.find(c => c.name === categoryName);
+    if (category) {
+        setSelectedCategoryForTransfer(category);
+        setTransferDialogOpen(true);
+    }
+  };
   
   if (loading || loadingCategories || loadingSavedData) {
     return (
@@ -157,6 +169,7 @@ export default function BalanceSheetPage() {
   }
 
   return (
+    <>
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Balance Sheet</h1>
@@ -239,8 +252,16 @@ export default function BalanceSheetPage() {
                       {formatCurrency(account.balance)}
                     </div>
                   </div>
-                  <CardDescription>
-                    {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
+                   <CardDescription className="flex items-center justify-between">
+                    <span>
+                        {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
+                    </span>
+                    {!isPositive && (
+                        <Button variant="outline" size="sm" onClick={() => handleOpenTransferDialog(account.categoryName)}>
+                            <Shuffle className="mr-2 h-4 w-4" />
+                            Transfer
+                        </Button>
+                    )}
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -277,7 +298,16 @@ export default function BalanceSheetPage() {
               </Button>
           </CardContent>
       </Card>
-
     </div>
+    {selectedCategoryForTransfer && (
+        <CategoryTransferDialog 
+            open={transferDialogOpen}
+            setOpen={setTransferDialogOpen}
+            destinationCategory={selectedCategoryForTransfer}
+            allCategories={categories}
+            filteredTransactions={filteredTransactions}
+        />
+    )}
+    </>
   );
 }
