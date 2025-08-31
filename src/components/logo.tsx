@@ -9,7 +9,6 @@ export function Logo() {
         alt="Money Purse logo"
         width="48"
         height="48"
-        loader={firebaseImageLoader} 
       />
       <h1 className="text-xl font-bold tracking-tight text-primary">ExpenseFlow</h1>
     </div>
