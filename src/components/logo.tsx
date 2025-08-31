@@ -1,5 +1,5 @@
 import Image from 'next/image';
-
+import firebaseImageLoader from '../../loader';
 
 export function Logo() {
   return (

@@ -40,6 +40,7 @@ import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
 import { useCurrencyInput } from '@/hooks/useCurrencyInput';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -65,6 +66,7 @@ interface DataTableProps<TData, TValue> {
 
 export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories } = useApp();
+  const isMobile = useIsMobile();
   const [sorting, setSorting] = React.useState<SortingState>(
     showFilters ? [{ id: 'date', desc: true }] : []
   );
@@ -79,6 +81,18 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   
   const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
   const { formattedValue: maxAmount, handleInputChange: handleMaxAmountChange, numericValue: maxAmountNumeric } = useCurrencyInput({});
+
+  React.useEffect(() => {
+    if (isMobile) {
+      setColumnVisibility({
+        subcategory: false,
+        microcategory: false,
+        paidBy: false,
+      });
+    } else {
+      setColumnVisibility({});
+    }
+  }, [isMobile]);
 
   const table = useReactTable({
     data,

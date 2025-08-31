@@ -27,7 +27,7 @@ export const columns: ColumnDef<Transaction>[] = [
     accessorKey: 'date',
     header: ({ column }) => {
       return (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}>
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-2">
           Date
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
@@ -36,7 +36,7 @@ export const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       const date = new Date(row.getValue('date'));
       const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
-      return <span>{format(utcDate, 'PPP')}</span>;
+      return <span className="block w-24">{format(utcDate, 'PPP')}</span>;
     },
   },
   {
