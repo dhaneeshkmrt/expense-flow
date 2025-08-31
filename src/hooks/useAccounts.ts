@@ -195,6 +195,14 @@ export function useAccounts(tenantId: string | null) {
     await setDoc(doc(db, 'monthLocks', lockId), monthLock);
   }, [tenantId]);
 
+  // Unlock a month
+  const unlockMonth = useCallback(async (year: number, month: number): Promise<void> => {
+    if (!tenantId) throw new Error('No tenant selected');
+
+    const lockId = `${tenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
+    await deleteDoc(doc(db, 'monthLocks', lockId));
+  }, [tenantId]);
+
   // Process month-end (main function)
   const processMonthEnd = useCallback(async (
     year: number,
@@ -353,6 +361,7 @@ export function useAccounts(tenantId: string | null) {
     processMonthEnd,
     isMonthLocked,
     lockMonth,
+    unlockMonth,
     getTotalBalance,
     getAccountTransactions,
     handleOverspendWithdrawal

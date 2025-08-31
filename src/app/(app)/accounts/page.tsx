@@ -45,7 +45,7 @@ export default function BalanceSheetPage() {
       categories, filteredTransactions, loading, loadingCategories, selectedMonthName, selectedMonth, selectedYear,
       tenants, selectedTenantId,
       fetchBalanceSheet, saveBalanceSheet,
-      processMonthEnd, isMonthLocked, loadingProcessing, user
+      processMonthEnd, isMonthLocked, unlockMonth, loadingProcessing, user
    } = useApp();
   const formatCurrency = useCurrencyFormatter();
   const { toast } = useToast();
@@ -190,6 +190,23 @@ export default function BalanceSheetPage() {
     } catch (error: any) {
       toast({
         title: 'Processing Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnlockMonth = async () => {
+    try {
+      await unlockMonth(selectedYear, selectedMonth);
+      
+      toast({
+        title: 'Month Unlocked',
+        description: `${selectedMonthName} ${selectedYear} has been unlocked for processing.`,
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Unlock Failed',
         description: error.message,
         variant: 'destructive',
       });
@@ -366,10 +383,15 @@ export default function BalanceSheetPage() {
                 </Button>
                 
                 {isCurrentMonthLocked ? (
-                  <Button variant="secondary" disabled>
-                    <Lock className="mr-2 h-4 w-4" />
-                    Month Locked
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="secondary" disabled>
+                      <Lock className="mr-2 h-4 w-4" />
+                      Month Locked
+                    </Button>
+                    <Button variant="outline" onClick={handleUnlockMonth}>
+                      Unlock Month
+                    </Button>
+                  </div>
                 ) : (
                   <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
                     <DialogTrigger asChild>

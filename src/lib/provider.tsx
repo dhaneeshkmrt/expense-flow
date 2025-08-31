@@ -79,6 +79,7 @@ interface AppContextType {
   monthLocks: MonthLock[];
   processMonthEnd: (year: number, month: number, lockedBy: string) => Promise<MonthEndProcessResult>;
   isMonthLocked: (year: number, month: number) => boolean;
+  unlockMonth: (year: number, month: number) => Promise<void>;
   getTotalAccountBalance: () => number;
   getAccountTransactions: (accountId: string) => AccountTransaction[];
   handleOverspendWithdrawal: (categoryId: string, categoryName: string, overspendAmount: number, monthYear: string) => Promise<boolean>;
@@ -378,6 +379,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     monthLocks: accountsHook.monthLocks,
     processMonthEnd,
     isMonthLocked: accountsHook.isMonthLocked,
+    unlockMonth: accountsHook.unlockMonth,
     getTotalAccountBalance: accountsHook.getTotalBalance,
     getAccountTransactions: accountsHook.getAccountTransactions,
     handleOverspendWithdrawal: accountsHook.handleOverspendWithdrawal,
