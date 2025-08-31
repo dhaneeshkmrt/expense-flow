@@ -17,7 +17,7 @@ const baseNavItemsTemplate = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
-  { href: '/accounts', label: 'Accounts', icon: Landmark },
+  { href: '/accounts', label: 'Balance Sheet', icon: Landmark },
   { href: '/yearly-report', label: 'Yearly Report', icon: Database },
 ];
 
