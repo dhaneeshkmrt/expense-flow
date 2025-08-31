@@ -7,13 +7,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2, Shuffle, Eye } from 'lucide-react';
+import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2, Shuffle, Eye, Lock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { BalanceSheet, Category } from '@/lib/types';
 import CategoryTransferDialog from '@/components/categories/category-transfer-dialog';
 import CategoryTransactionsDialog from '@/components/dashboard/category-transactions-dialog';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger
+} from '@/components/ui/dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +45,7 @@ export default function BalanceSheetPage() {
       categories, filteredTransactions, loading, loadingCategories, selectedMonthName, selectedMonth, selectedYear,
       tenants, selectedTenantId,
       fetchBalanceSheet, saveBalanceSheet,
+      processMonthEnd, isMonthLocked, loadingProcessing, user
    } = useApp();
   const formatCurrency = useCurrencyFormatter();
   const { toast } = useToast();
@@ -48,6 +58,10 @@ export default function BalanceSheetPage() {
   const [selectedCategoryForTransactions, setSelectedCategoryForTransactions] = useState<string | null>(null);
   const [selectedCategoryTransactions, setSelectedCategoryTransactions] = useState<any[]>([]);
   const [selectedCategoryBudget, setSelectedCategoryBudget] = useState(0);
+  
+  // Month-end processing state
+  const isCurrentMonthLocked = isMonthLocked(selectedYear, selectedMonth);
+  const [processDialogOpen, setProcessDialogOpen] = useState(false);
   const [selectedCategorySpent, setSelectedCategorySpent] = useState(0);
 
 
@@ -152,6 +166,34 @@ export default function BalanceSheetPage() {
     setSelectedCategoryBudget(budget);
     setSelectedCategorySpent(spent);
     setTransactionsDialogOpen(true);
+  };
+
+  const handleProcessMonthEnd = async () => {
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'User information not available',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const result = await processMonthEnd(selectedYear, selectedMonth, user.name);
+      
+      toast({
+        title: 'Month-End Processing Complete',
+        description: `Successfully processed ${result.processedCategories.length} categories with ${formatCurrency(result.totalSurplus)} total surplus transferred to virtual accounts. ${result.accountsCreated} new accounts created.`,
+      });
+
+      setProcessDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: 'Processing Failed',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
   };
   
   if (loading || loadingCategories || loadingSavedData) {
@@ -316,11 +358,73 @@ export default function BalanceSheetPage() {
                     </p>
                 )}
               </div>
-              <Button onClick={handleSaveSnapshot} disabled={isSaving}>
-                  {isSaving && <Loader2 className="mr-2 animate-spin" />}
-                  <Save className="mr-2"/>
-                  {savedData ? 'Update Snapshot' : 'Save Snapshot'}
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={handleSaveSnapshot} disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                    <Save className="mr-2"/>
+                    {savedData ? 'Update Snapshot' : 'Save Snapshot'}
+                </Button>
+                
+                {isCurrentMonthLocked ? (
+                  <Button variant="secondary" disabled>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Month Locked
+                  </Button>
+                ) : (
+                  <Dialog open={processDialogOpen} onOpenChange={setProcessDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" disabled={loadingProcessing}>
+                        {loadingProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                        Process Month-End
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Process Month-End for {selectedMonthName} {selectedYear}</DialogTitle>
+                        <DialogDescription>
+                          This will transfer budget surpluses to virtual accounts and lock the month from further changes.
+                          This action cannot be undone.
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      <div className="space-y-4">
+                        <div className="bg-muted p-4 rounded-lg">
+                          <h4 className="font-medium mb-2">What will happen:</h4>
+                          <ul className="text-sm space-y-1 text-muted-foreground">
+                            <li>• Calculate surplus for each category (Budget - Spent)</li>
+                            <li>• Create virtual accounts for categories with surplus</li>
+                            <li>• Transfer surplus amounts to respective virtual accounts</li>
+                            <li>• Lock the month to prevent further transactions</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground">
+                          Categories with surplus will have their extra budget moved to virtual savings accounts.
+                          You can view and monitor these accounts in the Virtual Accounts page.
+                        </div>
+                      </div>
+                      
+                      <DialogFooter>
+                        <Button 
+                          variant="outline" 
+                          onClick={() => setProcessDialogOpen(false)}
+                          disabled={loadingProcessing}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          onClick={handleProcessMonthEnd} 
+                          disabled={loadingProcessing}
+                        >
+                          {loadingProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Process Month-End
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
           </CardContent>
       </Card>
     </div>

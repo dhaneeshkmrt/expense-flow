@@ -92,3 +92,53 @@ export type BalanceSheet = {
   paidByData: BalanceSheetPaidBy[];
   updatedAt: string; // ISO string
 };
+
+// Virtual Banking System Types
+export type VirtualAccount = {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  tenantId: string;
+  currentBalance: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AccountTransactionType = 'surplus_transfer' | 'overspend_withdrawal';
+
+export type AccountTransaction = {
+  id: string;
+  accountId: string;
+  categoryId: string;
+  tenantId: string;
+  amount: number; // positive for deposits, negative for withdrawals
+  type: AccountTransactionType;
+  description: string; // "Month-end surplus from Food for Dec 2024"
+  monthYear: string; // "2024-12"
+  date: string;
+  createdAt: string;
+};
+
+export type MonthLock = {
+  id: string; // format: tenantId_2024-12
+  tenantId: string;
+  year: number;
+  month: number;
+  lockedAt: string;
+  lockedBy: string;
+};
+
+// Month-end processing result
+export type MonthEndProcessResult = {
+  processedCategories: {
+    categoryId: string;
+    categoryName: string;
+    budget: number;
+    spent: number;
+    surplus: number;
+    accountId: string;
+  }[];
+  totalSurplus: number;
+  transactionsCreated: number;
+  accountsCreated: number;
+};
