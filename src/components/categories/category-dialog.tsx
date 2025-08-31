@@ -45,7 +45,7 @@ import {
     Calendar,
     Apple
 } from 'lucide-react';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, startOfMonth } from 'date-fns';
 
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
@@ -84,13 +84,13 @@ interface CategoryDialogProps {
 }
 
 export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps) {
-  const { addCategory, editCategory } = useApp();
+  const { addCategory, editCategory, selectedYear, selectedMonth } = useApp();
   const isEditing = !!category;
   
-  const now = new Date();
-  const currentMonthKey = format(now, 'yyyy-MM');
-  const previousMonthKey = format(subMonths(now, 1), 'yyyy-MM');
-  const currentMonthName = format(now, 'MMMM');
+  const selectedDate = startOfMonth(new Date(selectedYear, selectedMonth));
+  const selectedMonthKey = format(selectedDate, 'yyyy-MM');
+  const previousMonthKey = format(subMonths(selectedDate, 1), 'yyyy-MM');
+  const selectedMonthName = format(selectedDate, 'MMMM');
 
 
   const form = useForm<CategoryFormValues>({
@@ -106,19 +106,19 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
     if (open) {
       if (isEditing && category) {
         const iconName = iconList.find(icon => icon.component === category.icon)?.name;
-        const currentMonthBudget = category.budgets?.[currentMonthKey];
+        const selectedMonthBudget = category.budgets?.[selectedMonthKey];
         const previousMonthBudget = category.budgets?.[previousMonthKey] || 0;
         
         form.reset({
           name: category.name,
           icon: iconName || '',
-          budget: currentMonthBudget !== undefined ? currentMonthBudget : previousMonthBudget,
+          budget: selectedMonthBudget !== undefined ? selectedMonthBudget : previousMonthBudget,
         });
       } else {
         form.reset({ name: '', icon: '', budget: 0 });
       }
     }
-  }, [category, isEditing, open, form, currentMonthKey, previousMonthKey]);
+  }, [category, isEditing, open, form, selectedMonthKey, previousMonthKey]);
 
   const onSubmit = (data: CategoryFormValues) => {
     const categoryData = {
@@ -193,7 +193,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
               name="budget"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Budget for {currentMonthName}</FormLabel>
+                  <FormLabel>Budget for {selectedMonthName}</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
                   </FormControl>

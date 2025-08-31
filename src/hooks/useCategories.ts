@@ -34,7 +34,7 @@ type EditCategoryData = {
     budget?: number;
 };
 
-export function useCategories(tenantId: string | null) {
+export function useCategories(tenantId: string | null, selectedYear: number, selectedMonth: number) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
@@ -117,7 +117,7 @@ export function useCategories(tenantId: string | null) {
   const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => {
     if (!tenantId) return;
     const id = `${tenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
-    const currentMonthKey = format(new Date(), 'yyyy-MM');
+    const selectedMonthKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
 
     const newCategory: Category = {
       id,
@@ -125,7 +125,7 @@ export function useCategories(tenantId: string | null) {
       icon: getIconComponent(categoryData.icon),
       subcategories: [],
       tenantId: tenantId,
-      budgets: categoryData.budget ? { [currentMonthKey]: categoryData.budget } : {},
+      budgets: categoryData.budget ? { [selectedMonthKey]: categoryData.budget } : {},
     };
 
     const docRef = doc(db, 'categories', id);
@@ -148,8 +148,8 @@ export function useCategories(tenantId: string | null) {
     }
     
     if (categoryUpdate.budget !== undefined) {
-        const currentMonthKey = format(new Date(), 'yyyy-MM');
-        dbUpdate[`budgets.${currentMonthKey}`] = categoryUpdate.budget;
+        const selectedMonthKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
+        dbUpdate[`budgets.${selectedMonthKey}`] = categoryUpdate.budget;
     }
     
     if (Object.keys(dbUpdate).length > 0) {
@@ -166,10 +166,10 @@ export function useCategories(tenantId: string | null) {
                 updatedCat.icon = categoryUpdate.icon;
             }
             if (categoryUpdate.budget !== undefined) {
-                const currentMonthKey = format(new Date(), 'yyyy-MM');
+                const selectedMonthKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
                 updatedCat.budgets = {
                     ...(updatedCat.budgets || {}),
-                    [currentMonthKey]: categoryUpdate.budget,
+                    [selectedMonthKey]: categoryUpdate.budget,
                 };
             }
             return updatedCat;

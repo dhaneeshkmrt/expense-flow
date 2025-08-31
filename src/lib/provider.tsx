@@ -72,18 +72,19 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user, loadingAuth, signIn, signOut, signInWithGoogle } = useAuth();
   
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+
   const { seedDefaultSettings } = useSettings(null);
-  const { seedDefaultCategories } = useCategories(null); 
+  const { seedDefaultCategories } = useCategories(null, selectedYear, selectedMonth); 
 
   const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
   const { selectedTenantId } = tenantHook;
 
   const settingsHook = useSettings(selectedTenantId);
-  const categoriesHook = useCategories(selectedTenantId);
+  const categoriesHook = useCategories(selectedTenantId, selectedYear, selectedMonth);
   const transactionsHook = useTransactions(selectedTenantId, user);
 
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   
   const availableYears = useMemo(() => {
     const years = new Set(transactionsHook.transactions.map(t => getYear(parseISO(t.date))));
