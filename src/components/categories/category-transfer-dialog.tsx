@@ -29,6 +29,7 @@ import type { Category, Transaction } from '@/lib/types';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const transferSchema = z.object({
   sourceCategoryId: z.string().min(1, 'Please select a source category.'),
