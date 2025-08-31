@@ -40,7 +40,7 @@ import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
 import { useCurrencyInput } from '@/hooks/useCurrencyInput';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useContainerWidth } from '@/hooks/useContainerWidth';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -64,9 +64,13 @@ interface DataTableProps<TData, TValue> {
   showFilters?: boolean;
 }
 
+const MOBILE_TABLE_BREAKPOINT = 640; // pixels
+
 export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories } = useApp();
-  const isMobile = useIsMobile();
+  const [ref, width] = useContainerWidth<HTMLDivElement>();
+  const isMobile = width < MOBILE_TABLE_BREAKPOINT;
+  
   const [sorting, setSorting] = React.useState<SortingState>(
     showFilters ? [{ id: 'date', desc: true }] : []
   );
@@ -128,7 +132,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     setMicrocategoryFilter('');
     handleMinAmountChange('');
     handleMaxAmountChange('');
-  }, [data]);
+  }, [data, table, handleMinAmountChange, handleMaxAmountChange]);
 
   React.useEffect(() => {
     // This effect handles applying the local filters to the table state
@@ -159,7 +163,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   }, [subcategoryFilter, subcategories]);
 
   return (
-    <div>
+    <div ref={ref}>
        {showFilters && (
         <div className="flex flex-wrap items-center gap-2 py-4">
             <Input
@@ -314,3 +318,5 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     </div>
   );
 }
+
+    
