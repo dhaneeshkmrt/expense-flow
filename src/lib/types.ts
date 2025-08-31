@@ -1,3 +1,4 @@
+
 'use client';
 import type { ElementType } from 'react';
 export type Microcategory = {
@@ -19,11 +20,11 @@ export type Category = {
   tenantId: string;
   userId?: string;
   isDefault?: boolean;
-  budgets?: Record<string, number>; // e.g. { "2024-07": 500 }
+  budget?: number;
 };
 
 export type Transaction = {
-  id: string;
+  id:string;
   date: string;
   time: string;
   description: string;

@@ -1,11 +1,10 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
@@ -21,18 +20,14 @@ interface AccountData {
 }
 
 export default function AccountsPage() {
-  const { categories, filteredTransactions, loading, loadingCategories, selectedYear, selectedMonth } = useApp();
+  const { categories, filteredTransactions, loading, loadingCategories, selectedMonthName } = useApp();
   const formatCurrency = useCurrencyFormatter();
   
-  const selectedMonthKey = useMemo(() => {
-    return format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
-  }, [selectedYear, selectedMonth]);
-
   const accountData = useMemo(() => {
     if (loading || loadingCategories) return [];
 
     return categories.map((category): AccountData => {
-      const budgetForMonth = category.budgets?.[selectedMonthKey] || 0;
+      const budgetForMonth = category.budget || 0;
 
       const spentForMonth = filteredTransactions
         .filter(t => t.category === category.name)
@@ -47,12 +42,8 @@ export default function AccountsPage() {
         balance: budgetForMonth - spentForMonth,
       };
     }).filter(account => account.budget > 0 || account.spent > 0);
-  }, [categories, filteredTransactions, loading, loadingCategories, selectedMonthKey]);
+  }, [categories, filteredTransactions, loading, loadingCategories]);
   
-  const selectedMonthName = useMemo(() => {
-      return format(new Date(selectedYear, selectedMonth), 'MMMM yyyy');
-  }, [selectedYear, selectedMonth]);
-
   if (loading || loadingCategories) {
     return (
       <div className="flex flex-col gap-6">

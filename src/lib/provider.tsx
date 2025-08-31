@@ -34,17 +34,15 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
 
   categories: Category[];
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budgets'> & { icon: string, budget?: number }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => Promise<void>;
   editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
-  updateCategoryBudget: (categoryId: string, month: string, budget: number) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
   editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => Promise<void>;
   deleteSubcategory: (categoryId: string, subcategoryId: string) => Promise<void>;
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
-  copyBudgetsFromMonth: (sourceMonthKey: string, targetMonthKey: string) => Promise<void>;
   
   transactions: Transaction[];
   filteredTransactions: Transaction[];
@@ -76,13 +74,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
   const { seedDefaultSettings } = useSettings(null);
-  const { seedDefaultCategories } = useCategories(null, selectedYear, selectedMonth); 
+  const { seedDefaultCategories } = useCategories(null); 
 
   const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
   const { selectedTenantId } = tenantHook;
 
   const settingsHook = useSettings(selectedTenantId);
-  const categoriesHook = useCategories(selectedTenantId, selectedYear, selectedMonth);
+  const categoriesHook = useCategories(selectedTenantId);
   const transactionsHook = useTransactions(selectedTenantId, user);
 
   

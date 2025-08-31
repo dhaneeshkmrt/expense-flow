@@ -20,6 +20,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Monthly',
     icon: Calendar,
+    budget: 50000,
     subcategories: [
       { id: 'monthly_grocery', name: 'Grocery', microcategories: [] },
       { id: 'monthly_petrol', name: 'petrol', microcategories: [] },
@@ -38,6 +39,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Food & Snack',
     icon: Utensils,
+    budget: 5000,
     subcategories: [
       { id: 'food_snack_food', name: 'Food', microcategories: [] },
       { id: 'food_snack_snacks', name: 'Snacks', microcategories: [] },
@@ -46,6 +48,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Fruits',
     icon: Apple,
+    budget: 3000,
     subcategories: [
         { id: 'fruits_fruits', name: 'Fruits', microcategories: [] },
         { id: 'fruits_nuts', name: 'Nuts', microcategories: [] },
@@ -54,6 +57,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Gift',
     icon: Gift,
+    budget: 5000,
     subcategories: [
         { id: 'gift_relatives', name: 'Relatives', microcategories: [] },
         { id: 'gift_close_relatives', name: 'Close Relatives', microcategories: [] },
@@ -65,6 +69,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Medical',
     icon: HeartPulse,
+    budget: 10000,
     subcategories: [
         { id: 'medical_hospital_bill', name: 'Hospital Bill', microcategories: [] },
         { id: 'medical_medical_bill', name: 'Medical Bill', microcategories: [] },
@@ -80,6 +85,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Tour',
     icon: Plane,
+    budget: 20000,
     subcategories: [
         { id: 'tour_travel', name: 'Travel', microcategories: [] },
         { id: 'tour_stay', name: 'Stay', microcategories: [] },
@@ -94,6 +100,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Emergency',
     icon: ShieldAlert,
+    budget: 10000,
     subcategories: [
         { id: 'emergency_home', name: 'Home', microcategories: [] },
         { id: 'emergency_medical', name: 'Medical', microcategories: [] },
@@ -105,6 +112,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Home',
     icon: Home,
+    budget: 15000,
     subcategories: [
         { id: 'home_electrical', name: 'Electrical', microcategories: [] },
         { id: 'home_plumbing', name: 'Plumbing', microcategories: [] },
@@ -118,6 +126,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'DK professional',
     icon: Briefcase,
+    budget: 5000,
     subcategories: [
         { id: 'dk_professional_subscriptions', name: 'Subscriptions', microcategories: [] },
         { id: 'dk_professional_meetups', name: 'Meetups', microcategories: [] },
@@ -127,6 +136,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Nisha',
     icon: User,
+    budget: 10000,
     subcategories: [
         { id: 'nisha_invesment', name: 'Invesment', microcategories: [] },
         { id: 'nisha_mobile', name: 'Mobile', microcategories: [] },
@@ -140,6 +150,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'Dk',
     icon: User,
+    budget: 10000,
     subcategories: [
         { id: 'dk_invesment', name: 'Invesment', microcategories: [] },
         { id: 'dk_mobile_internet', name: 'Mobile&Internet', microcategories: [] },
@@ -155,6 +166,7 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
   {
     name: 'WFO',
     icon: Building,
+    budget: 25000,
     subcategories: [
         { id: 'wfo_travel', name: 'Travel', microcategories: [] },
         { id: 'wfo_food', name: 'Food', microcategories: [] },

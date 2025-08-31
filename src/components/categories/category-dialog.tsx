@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -45,7 +46,7 @@ import {
     Calendar,
     Apple
 } from 'lucide-react';
-import { format, subMonths, startOfMonth } from 'date-fns';
+import { format } from 'date-fns';
 
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
@@ -84,14 +85,8 @@ interface CategoryDialogProps {
 }
 
 export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps) {
-  const { addCategory, editCategory, selectedYear, selectedMonth } = useApp();
+  const { addCategory, editCategory, selectedMonthName } = useApp();
   const isEditing = !!category;
-  
-  const selectedDate = startOfMonth(new Date(selectedYear, selectedMonth));
-  const selectedMonthKey = format(selectedDate, 'yyyy-MM');
-  const previousMonthKey = format(subMonths(selectedDate, 1), 'yyyy-MM');
-  const selectedMonthName = format(selectedDate, 'MMMM');
-
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categorySchema),
@@ -106,19 +101,16 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
     if (open) {
       if (isEditing && category) {
         const iconName = iconList.find(icon => icon.component === category.icon)?.name;
-        const selectedMonthBudget = category.budgets?.[selectedMonthKey];
-        const previousMonthBudget = category.budgets?.[previousMonthKey] || 0;
-        
         form.reset({
           name: category.name,
           icon: iconName || '',
-          budget: selectedMonthBudget !== undefined ? selectedMonthBudget : previousMonthBudget,
+          budget: category.budget || 0,
         });
       } else {
         form.reset({ name: '', icon: '', budget: 0 });
       }
     }
-  }, [category, isEditing, open, form, selectedMonthKey, previousMonthKey]);
+  }, [category, isEditing, open, form]);
 
   const onSubmit = (data: CategoryFormValues) => {
     const categoryData = {
@@ -193,7 +185,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
               name="budget"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Budget for {selectedMonthName}</FormLabel>
+                  <FormLabel>Budget</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
                   </FormControl>

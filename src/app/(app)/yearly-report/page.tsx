@@ -25,8 +25,7 @@ export default function YearlyReportPage() {
 
     return categories.map(category => {
       const monthlyData = Array(12).fill(null).map((_, monthIndex) => {
-        const monthKey = format(new Date(selectedYear, monthIndex), 'yyyy-MM');
-        const budget = category.budgets?.[monthKey] || 0;
+        const budget = category.budget || 0;
 
         const spent = yearTransactions
           .filter(t => t.category === category.name && getMonth(parseISO(t.date)) === monthIndex)

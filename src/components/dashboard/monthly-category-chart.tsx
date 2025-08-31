@@ -5,14 +5,11 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, LabelList, C
 import { useState, useMemo, useCallback } from 'react';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
-import { format } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import CategoryTransactionsDialog from './category-transactions-dialog';
 
 interface MonthlyCategoryChartProps {
     transactions: Transaction[];
-    year: number;
-    month: number;
 }
 
 interface ChartData {
@@ -24,7 +21,7 @@ interface ChartData {
     transactions: Transaction[];
 }
 
-export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCategoryChartProps) {
+export function MonthlyCategoryChart({ transactions }: MonthlyCategoryChartProps) {
     const { categories } = useApp();
     const formatCurrency = useCurrencyFormatter();
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -37,13 +34,11 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
     }, []);
 
     const data = useMemo(() => {
-        const monthKey = format(new Date(year, month), 'yyyy-MM');
-        
         const categorySpending = new Map<string, { total: number; budget: number; transactions: Transaction[] }>();
 
-        // Initialize map with all categories and their budgets for the selected month
+        // Initialize map with all categories and their budgets
         categories.forEach(cat => {
-            const budget = cat.budgets?.[monthKey] || 0;
+            const budget = cat.budget || 0;
             categorySpending.set(cat.name, { total: 0, budget, transactions: [] });
         });
         
@@ -68,7 +63,7 @@ export function MonthlyCategoryChart({ transactions, year, month }: MonthlyCateg
             // Only show categories that have a budget OR have spending
             .filter(d => d.budget > 0 || d.total > 0)
             .sort((a, b) => b.budget - a.budget || b.total - a.total);
-    }, [categories, transactions, year, month]);
+    }, [categories, transactions]);
 
     const maxPercentage = useMemo(() => {
         const max = Math.max(...data.map(d => d.percentage), 100);

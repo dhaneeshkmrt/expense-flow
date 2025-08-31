@@ -3,7 +3,7 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ChevronsUpDown, Check, PlusCircle, Download } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useApp } from '@/lib/provider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
@@ -32,13 +32,12 @@ export function AppShellHeader() {
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   const handleDownloadCsv = () => {
-    const monthKey = format(new Date(selectedYear, selectedMonth), 'yyyy-MM');
     const firstPaidBy = selectedTenant?.paidByOptions?.[0] || '';
     
     const budgetData = categories
         .map(cat => ({
             name: cat.name,
-            budget: cat.budgets?.[monthKey] || 0
+            budget: cat.budget || 0
         }))
         .filter(cat => cat.budget > 0)
         .map(cat => ({
@@ -111,7 +110,7 @@ export function AppShellHeader() {
               ))}
             </SelectContent>
           </Select>
-           <Button onClick={handleDownloadCsv} variant="outline" disabled={filteredTransactions.length === 0 && !categories.some(c => c.budgets?.[format(new Date(selectedYear, selectedMonth), 'yyyy-MM')])}>
+           <Button onClick={handleDownloadCsv} variant="outline" disabled={filteredTransactions.length === 0 && !categories.some(c => c.budget)}>
             <Download className="mr-2" />
             Download
           </Button>
