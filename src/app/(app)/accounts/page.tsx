@@ -107,7 +107,7 @@ export default function BalanceSheetPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Balance Sheet</h1>
         <p className="text-muted-foreground">Financial overview for {selectedMonthName}.</p>
@@ -166,42 +166,45 @@ export default function BalanceSheetPage() {
           </Card>
        )}
 
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {accountData.map(account => {
-          const Icon = account.categoryIcon;
-          const isPositive = account.balance >= 0;
-          return (
-            <Card key={account.categoryId}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <Icon className="w-6 h-6 text-primary" />
-                    <CardTitle>{account.categoryName}</CardTitle>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-4">Category Breakdown</h2>
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {accountData.map(account => {
+            const Icon = account.categoryIcon;
+            const isPositive = account.balance >= 0;
+            return (
+              <Card key={account.categoryId}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon className="w-6 h-6 text-primary" />
+                      <CardTitle>{account.categoryName}</CardTitle>
+                    </div>
+                    <div
+                      className={cn(
+                        'text-lg font-bold',
+                        isPositive ? 'text-green-600' : 'text-red-600'
+                      )}
+                    >
+                      {formatCurrency(account.balance)}
+                    </div>
                   </div>
-                  <div
-                    className={cn(
-                      'text-lg font-bold',
-                      isPositive ? 'text-green-600' : 'text-red-600'
-                    )}
-                  >
-                    {formatCurrency(account.balance)}
-                  </div>
-                </div>
-                <CardDescription>
-                  {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
-                </CardDescription>
-              </CardHeader>
+                  <CardDescription>
+                    {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            );
+          })}
+        </div>
+         {accountData.length === 0 && (
+            <Card className="mt-4">
+                <CardContent className="pt-6">
+                    <p className="text-center text-muted-foreground">No budget or spending activity for categories in {selectedMonthName}.</p>
+                </CardContent>
             </Card>
-          );
-        })}
+          )}
       </div>
-       {accountData.length === 0 && (
-          <Card>
-              <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">No budget or spending activity for categories in {selectedMonthName}.</p>
-              </CardContent>
-          </Card>
-        )}
     </div>
   );
 }
