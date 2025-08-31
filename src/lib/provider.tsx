@@ -156,10 +156,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const { sourceCategoryId, destinationCategoryId, amount, notes } = data;
     const sourceCategory = categoriesHook.categories.find(c => c.id === sourceCategoryId);
     const destinationCategory = categoriesHook.categories.find(c => c.id === destinationCategoryId);
-    const loanCategory = categoriesHook.categories.find(c => c.name === "Loan");
 
-    if (!sourceCategory || !destinationCategory || !loanCategory) {
-        throw new Error("Source, destination, or Loan category not found.");
+    if (!sourceCategory || !destinationCategory) {
+        throw new Error("Source or destination category not found.");
+    }
+    
+    const emergencyCategory = categoriesHook.categories.find(c => c.name === "Emergency");
+    if (!emergencyCategory) {
+        throw new Error("The 'Emergency' category is required for transfers but could not be found.");
     }
 
     const transferSubCategory = "Category Transfer";
@@ -179,13 +183,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         notes,
     };
 
-    // Transaction 2: Credit to destination category (via Loan category)
+    // Transaction 2: Credit to destination category (via Emergency category)
     const creditTransaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'> = {
         date,
         time,
         description: `Transfer from ${sourceCategory.name}`,
-        amount: -amount,
-        category: loanCategory.name,
+        amount: -amount, // Negative amount to credit the destination budget
+        category: destinationCategory.name,
         subcategory: transferSubCategory,
         paidBy: defaultPaidBy,
         notes,
