@@ -7,12 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2, Shuffle } from 'lucide-react';
+import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2, Shuffle, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { BalanceSheet, Category } from '@/lib/types';
 import CategoryTransferDialog from '@/components/categories/category-transfer-dialog';
+import CategoryTransactionsDialog from '@/components/dashboard/category-transactions-dialog';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,11 @@ export default function BalanceSheetPage() {
   const [loadingSavedData, setLoadingSavedData] = useState(true);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [selectedCategoryForTransfer, setSelectedCategoryForTransfer] = useState<Category | null>(null);
+  const [transactionsDialogOpen, setTransactionsDialogOpen] = useState(false);
+  const [selectedCategoryForTransactions, setSelectedCategoryForTransactions] = useState<string | null>(null);
+  const [selectedCategoryTransactions, setSelectedCategoryTransactions] = useState<any[]>([]);
+  const [selectedCategoryBudget, setSelectedCategoryBudget] = useState(0);
+  const [selectedCategorySpent, setSelectedCategorySpent] = useState(0);
 
 
   useEffect(() => {
@@ -137,6 +143,15 @@ export default function BalanceSheetPage() {
         setSelectedCategoryForTransfer(category);
         setTransferDialogOpen(true);
     }
+  };
+
+  const handleOpenTransactionsDialog = (categoryName: string, budget: number, spent: number) => {
+    const categoryTransactions = filteredTransactions.filter(t => t.category === categoryName);
+    setSelectedCategoryForTransactions(categoryName);
+    setSelectedCategoryTransactions(categoryTransactions);
+    setSelectedCategoryBudget(budget);
+    setSelectedCategorySpent(spent);
+    setTransactionsDialogOpen(true);
   };
   
   if (loading || loadingCategories || loadingSavedData) {
@@ -252,16 +267,26 @@ export default function BalanceSheetPage() {
                       {formatCurrency(account.balance)}
                     </div>
                   </div>
-                   <CardDescription className="flex items-center justify-between">
-                    <span>
+                  <CardDescription>
+                    <div className="mb-2">
                         {formatCurrency(account.budget)} (Budget) - {formatCurrency(account.spent)} (Spent)
-                    </span>
-                    {!isPositive && (
-                        <Button variant="outline" size="sm" onClick={() => handleOpenTransferDialog(account.categoryName)}>
-                            <Shuffle className="mr-2 h-4 w-4" />
-                            Transfer
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleOpenTransactionsDialog(account.categoryName, account.budget, account.spent)}
+                        >
+                            <Eye className="mr-1 h-3 w-3" />
+                            View
                         </Button>
-                    )}
+                        {!isPositive && (
+                            <Button variant="outline" size="sm" onClick={() => handleOpenTransferDialog(account.categoryName)}>
+                                <Shuffle className="mr-1 h-3 w-3" />
+                                Transfer
+                            </Button>
+                        )}
+                    </div>
                   </CardDescription>
                 </CardHeader>
               </Card>
@@ -308,6 +333,15 @@ export default function BalanceSheetPage() {
             filteredTransactions={filteredTransactions}
         />
     )}
+    
+    <CategoryTransactionsDialog
+        open={transactionsDialogOpen}
+        onOpenChange={setTransactionsDialogOpen}
+        categoryName={selectedCategoryForTransactions}
+        transactions={selectedCategoryTransactions}
+        budget={selectedCategoryBudget}
+        spent={selectedCategorySpent}
+    />
     </>
   );
 }
