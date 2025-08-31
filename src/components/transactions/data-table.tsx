@@ -123,21 +123,23 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   });
 
   React.useEffect(() => {
-    // This effect handles applying the local filters to the table state
-    if (showFilters) {
-      table.getColumn('category')?.setFilterValue(categoryFilter ? [categoryFilter] : undefined);
-      table.getColumn('subcategory')?.setFilterValue(subcategoryFilter ? [subcategoryFilter] : undefined);
-      table.getColumn('microcategory')?.setFilterValue(microcategoryFilter ? [microcategoryFilter] : undefined);
+    table.getColumn('category')?.setFilterValue(categoryFilter || undefined);
+  }, [categoryFilter, table]);
 
-      const amountColumn = table.getColumn('amount');
-      if (amountColumn) {
-        const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
-        const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
-        amountColumn.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
-      }
-    }
-  }, [categoryFilter, subcategoryFilter, microcategoryFilter, minAmountNumeric, maxAmountNumeric, table, showFilters]);
+  React.useEffect(() => {
+    table.getColumn('subcategory')?.setFilterValue(subcategoryFilter || undefined);
+  }, [subcategoryFilter, table]);
   
+  React.useEffect(() => {
+    table.getColumn('microcategory')?.setFilterValue(microcategoryFilter || undefined);
+  }, [microcategoryFilter, table]);
+
+  React.useEffect(() => {
+    const min = minAmountNumeric !== null ? minAmountNumeric : undefined;
+    const max = maxAmountNumeric !== null ? maxAmountNumeric : undefined;
+    table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+  }, [minAmountNumeric, maxAmountNumeric, table]);
+
   const subcategories = React.useMemo(() => {
     if (!categoryFilter) return [];
     const category = categories.find((c) => c.name === categoryFilter);
