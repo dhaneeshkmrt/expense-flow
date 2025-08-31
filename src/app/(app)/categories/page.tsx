@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { CopyBudgetDialog } from '@/components/categories/copy-budget-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,12 +140,27 @@ export default function CategoriesPage() {
           <p className="text-muted-foreground">Manage your expense categories and subcategories.</p>
         </div>
         <div className="flex items-center gap-2">
-            {availableBudgetMonths.length > 0 && (
-                 <Button onClick={() => setCopyBudgetDialogOpen(true)} variant="outline">
-                    <Copy className="mr-2" />
-                    Copy Budget
-                </Button>
-            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button 
+                      onClick={() => setCopyBudgetDialogOpen(true)} 
+                      variant="outline" 
+                      disabled={availableBudgetMonths.length === 0}
+                    >
+                      <Copy className="mr-2" />
+                      Copy Budget
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {availableBudgetMonths.length === 0 && (
+                  <TooltipContent>
+                    <p>No budgets from previous months to copy.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
             <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
                 <PlusCircle className="mr-2" />
                 Add Category
