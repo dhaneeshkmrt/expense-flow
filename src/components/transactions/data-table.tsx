@@ -118,6 +118,9 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     globalFilterFn: fuzzyFilter,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    filterFns: {
+      fuzzy: fuzzyFilter,
+    },
     state: {
       sorting,
       columnFilters,

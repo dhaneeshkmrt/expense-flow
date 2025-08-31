@@ -42,7 +42,7 @@ export default function DashboardPage() {
             <CardDescription>Spending vs. budget for each category.</CardDescription>
           </CardHeader>
           <CardContent>
-            <MonthlyCategoryChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
+            <MonthlyCategoryChart transactions={filteredTransactions} />
           </CardContent>
         </Card>
       </div>

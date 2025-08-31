@@ -13,6 +13,28 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/provider';
 
+type NavItemWithHref = {
+  href: string;
+  label: string;
+  icon: React.ComponentType;
+};
+
+type NavItemWithSubItems = {
+  label: string;
+  icon: React.ComponentType;
+  subItems: NavItemWithHref[];
+};
+
+type NavItem = NavItemWithHref | NavItemWithSubItems;
+
+function hasHref(item: NavItem): item is NavItemWithHref {
+  return 'href' in item;
+}
+
+function hasSubItems(item: NavItem): item is NavItemWithSubItems {
+  return 'subItems' in item;
+}
+
 const baseNavItemsTemplate = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
@@ -88,13 +110,13 @@ export function AppShellNav() {
         const sectionKey = item.label.toLowerCase() as 'admin';
         const isNavigating = navigatingTo === item.href;
 
-        return item.subItems ? (
+        return hasSubItems(item) ? (
           <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
                   <SidebarMenuButton
                       className="w-full justify-start"
-                      variant={pathname.startsWith(`/${sectionKey}`) ? 'default' : 'ghost'}
+                      variant={pathname.startsWith(`/${sectionKey}`) ? 'default' : 'outline'}
                   >
                     <>
                       <item.icon />
@@ -105,16 +127,14 @@ export function AppShellNav() {
             </SidebarMenuItem>
             <CollapsibleContent>
               <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
-                  {item.subItems.map(subItem => {
+                  {item.subItems.map((subItem: NavItemWithHref) => {
                       const isSubItemNavigating = navigatingTo === subItem.href;
                       return (
                        <SidebarMenuItem key={subItem.href}>
                           <Link href={subItem.href} onClick={() => handleNavClick(subItem.href)}>
                               <SidebarMenuButton
-                                  as="span"
                                   isActive={pathname === subItem.href}
                                   className="h-8"
-                                  tooltip={subItem.label}
                                   disabled={isSubItemNavigating}
                               >
                                   {isSubItemNavigating ? <Loader2 className="animate-spin" /> : <subItem.icon />}
@@ -129,15 +149,13 @@ export function AppShellNav() {
           </Collapsible>
         ) : (
           <SidebarMenuItem key={item.href}>
-             <Link href={item.href} onClick={() => handleNavClick(item.href)}>
+             <Link href={hasHref(item) ? item.href : '#'} onClick={() => hasHref(item) && handleNavClick(item.href)}>
                   <SidebarMenuButton
-                      as="span"
-                      isActive={pathname === item.href}
-                      tooltip={item.label}
+                      isActive={hasHref(item) && pathname === item.href}
                       disabled={isNavigating}
                   >
                       {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon />}
-                       <span>{item.href === '/dashboard' && selectedTenant ? `Dashboard (${selectedTenant.name})` : item.label}</span>
+                       <span>{hasHref(item) && item.href === '/dashboard' && selectedTenant ? `Dashboard (${selectedTenant.name})` : item.label}</span>
                   </SidebarMenuButton>
              </Link>
           </SidebarMenuItem>

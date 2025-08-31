@@ -46,7 +46,7 @@ interface CopyBudgetDialogProps {
 }
 
 export function CopyBudgetDialog({ open, setOpen }: CopyBudgetDialogProps) {
-  const { categories, selectedMonth, selectedYear, copyBudgetsFromMonth } = useApp();
+  const { categories, selectedMonth, selectedYear } = useApp();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,12 +56,13 @@ export function CopyBudgetDialog({ open, setOpen }: CopyBudgetDialogProps) {
   const availableBudgetMonths = useMemo(() => {
     const months = new Set<string>();
     categories.forEach((cat) => {
-      if (cat.budgets) {
-        Object.keys(cat.budgets).forEach((monthKey) => {
-          if (monthKey !== targetMonthKey) {
-            months.add(monthKey);
-          }
-        });
+      if (cat.budget) {
+        // For now, we'll just add the current month as available
+        // This would need to be enhanced with actual budget history storage
+        const currentMonthKey = format(new Date(), 'yyyy-MM');
+        if (currentMonthKey !== targetMonthKey) {
+          months.add(currentMonthKey);
+        }
       }
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a));
