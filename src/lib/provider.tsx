@@ -5,6 +5,7 @@ import type { User as AuthUser } from 'firebase/auth';
 import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User, BalanceSheet } from './types';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { ThemeProvider } from '@/components/theme-provider';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenants } from '@/hooks/useTenants';
@@ -231,7 +232,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingTransactions: transactionsHook.loadingTransactions,
   }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, handleCategoryTransfer, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
 
-  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+  return (
+    <ThemeProvider>
+      <AppContext.Provider value={contextValue}>
+        {children}
+      </AppContext.Provider>
+    </ThemeProvider>
+  );
 }
 
 export function useApp() {

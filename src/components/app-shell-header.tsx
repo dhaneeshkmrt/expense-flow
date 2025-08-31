@@ -11,6 +11,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import AddTransactionSheet from './transactions/add-transaction-sheet';
+import { ThemeSelector } from './theme-selector';
 import Papa from 'papaparse';
 import { format, parseISO, startOfMonth } from 'date-fns';
 
@@ -123,6 +124,7 @@ export function AppShellHeader() {
         </div>
       <div className="flex-1" />
       <div className="flex items-center gap-4">
+        <ThemeSelector />
         {isRootUser && (
           <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
             <PopoverTrigger asChild>
