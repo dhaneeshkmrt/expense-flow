@@ -1,16 +1,18 @@
 
 'use client';
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import type { User as AuthUser } from 'firebase/auth';
-import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User } from './types';
+import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User, BalanceSheet } from './types';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenants } from '@/hooks/useTenants';
 import { useSettings } from '@/hooks/useSettings';
 import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
-import { getYear, getMonth, parseISO } from 'date-fns';
+import { getYear, getMonth, parseISO, format } from 'date-fns';
 
 // Define the shape of the context value
 interface AppContextType {
@@ -56,6 +58,10 @@ interface AppContextType {
   selectedMonth: number;
   setSelectedMonth: (month: number) => void;
   availableYears: number[];
+  selectedMonthName: string;
+
+  fetchBalanceSheet: (year: number, month: number) => Promise<BalanceSheet | null>;
+  saveBalanceSheet: (year: number, month: number, data: Omit<BalanceSheet, 'id'|'year'|'month'|'tenantId'|'updatedAt'>) => Promise<BalanceSheet>;
 
   loading: boolean;
   loadingAuth: boolean;
@@ -99,6 +105,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [transactionsHook.transactions, selectedYear, selectedMonth]);
   
+  const selectedMonthName = useMemo(() => {
+    return format(new Date(selectedYear, selectedMonth), 'MMMM');
+  }, [selectedYear, selectedMonth]);
+
+  const fetchBalanceSheet = useCallback(async (year: number, month: number): Promise<BalanceSheet | null> => {
+    if (!selectedTenantId) return null;
+    const docId = `${selectedTenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
+    const docRef = doc(db, 'balanceSheets', docId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.data() as BalanceSheet;
+    }
+    return null;
+  }, [selectedTenantId]);
+
+  const saveBalanceSheet = useCallback(async (
+    year: number,
+    month: number,
+    data: Omit<BalanceSheet, 'id'|'year'|'month'|'tenantId'|'updatedAt'>
+  ): Promise<BalanceSheet> => {
+    if (!selectedTenantId) throw new Error('No tenant selected');
+    
+    const docId = `${selectedTenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
+    const docRef = doc(db, 'balanceSheets', docId);
+
+    const dataToSave: BalanceSheet = {
+        ...data,
+        id: docId,
+        tenantId: selectedTenantId,
+        year,
+        month,
+        updatedAt: new Date().toISOString(),
+    };
+
+    await setDoc(docRef, dataToSave, { merge: true });
+    return dataToSave;
+  }, [selectedTenantId]);
+
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions;
 
   const contextValue = useMemo(() => ({
@@ -118,6 +162,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     selectedMonth,
     setSelectedMonth,
     availableYears,
+    selectedMonthName,
+
+    fetchBalanceSheet,
+    saveBalanceSheet,
 
     loading,
     loadingAuth,
@@ -125,7 +173,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingSettings: settingsHook.loadingSettings,
     loadingTenants: tenantHook.loadingTenants,
     loadingTransactions: transactionsHook.loadingTransactions,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
 
   return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
 }

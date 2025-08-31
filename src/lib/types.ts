@@ -1,4 +1,3 @@
-
 'use client';
 import type { ElementType } from 'react';
 export type Microcategory = {
@@ -66,4 +65,30 @@ export type Tenant = {
 export type User = {
   name: string;
   tenantId: string;
+};
+
+export type BalanceSheetAccount = {
+  categoryId: string;
+  categoryName: string;
+  budget: number;
+  spent: number;
+  balance: number;
+};
+
+export type BalanceSheetPaidBy = {
+  name: string;
+  amount: number;
+};
+
+export type BalanceSheet = {
+  id: string; // e.g., tenantId_2024-07
+  tenantId: string;
+  year: number;
+  month: number;
+  totalBudget: number;
+  totalSpent: number;
+  balance: number;
+  accountData: BalanceSheetAccount[];
+  paidByData: BalanceSheetPaidBy[];
+  updatedAt: string; // ISO string
 };

@@ -1,13 +1,17 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
-import { PiggyBank, Landmark, Wallet, CreditCard } from 'lucide-react';
+import { PiggyBank, Landmark, Wallet, CreditCard, Save, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
+import { format, formatDistanceToNow } from 'date-fns';
+import type { BalanceSheet } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,8 +30,27 @@ interface PaidByData {
 }
 
 export default function BalanceSheetPage() {
-  const { categories, filteredTransactions, loading, loadingCategories, selectedMonthName, tenants, selectedTenantId } = useApp();
+  const { 
+      categories, filteredTransactions, loading, loadingCategories, selectedMonthName, selectedMonth, selectedYear,
+      tenants, selectedTenantId,
+      fetchBalanceSheet, saveBalanceSheet,
+   } = useApp();
   const formatCurrency = useCurrencyFormatter();
+  const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedData, setSavedData] = useState<BalanceSheet | null>(null);
+  const [loadingSavedData, setLoadingSavedData] = useState(true);
+
+  useEffect(() => {
+    const loadSavedData = async () => {
+        if (!selectedTenantId) return;
+        setLoadingSavedData(true);
+        const data = await fetchBalanceSheet(selectedYear, selectedMonth);
+        setSavedData(data);
+        setLoadingSavedData(false);
+    };
+    loadSavedData();
+  }, [selectedYear, selectedMonth, selectedTenantId, fetchBalanceSheet]);
   
   const selectedTenant = useMemo(() => tenants.find(t => t.id === selectedTenantId), [tenants, selectedTenantId]);
   const paidByOptions = useMemo(() => selectedTenant?.paidByOptions || [], [selectedTenant]);
@@ -76,8 +99,35 @@ export default function BalanceSheetPage() {
         paidByData: paidBy,
     };
   }, [categories, filteredTransactions, loading, loadingCategories, paidByOptions]);
+
+  const handleSaveSnapshot = async () => {
+    setIsSaving(true);
+    try {
+        const snapshotData = {
+            totalBudget,
+            totalSpent,
+            balance,
+            accountData: accountData.map(({ categoryIcon, ...rest }) => rest), // Remove icon component before saving
+            paidByData,
+        };
+        const savedDoc = await saveBalanceSheet(selectedYear, selectedMonth, snapshotData);
+        setSavedData(savedDoc);
+        toast({
+            title: 'Snapshot Saved',
+            description: `Balance sheet for ${selectedMonthName} has been saved.`,
+        });
+    } catch (error: any) {
+        toast({
+            title: 'Save Failed',
+            description: error.message,
+            variant: 'destructive',
+        });
+    } finally {
+        setIsSaving(false);
+    }
+  };
   
-  if (loading || loadingCategories) {
+  if (loading || loadingCategories || loadingSavedData) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -138,7 +188,7 @@ export default function BalanceSheetPage() {
                     <Landmark className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className={cn("text-2xl font-bold", balance < 0 ? "text-red-600" : "text-green-600")}>
+                    <div className={cn("text-2xl font-bold", balance < 0 ? "text-red-500" : "text-green-500")}>
                         {formatCurrency(balance)}
                     </div>
                 </CardContent>
@@ -183,7 +233,7 @@ export default function BalanceSheetPage() {
                     <div
                       className={cn(
                         'text-lg font-bold',
-                        isPositive ? 'text-green-600' : 'text-red-600'
+                        isPositive ? 'text-green-500' : 'text-red-500'
                       )}
                     >
                       {formatCurrency(account.balance)}
@@ -205,6 +255,29 @@ export default function BalanceSheetPage() {
             </Card>
           )}
       </div>
+
+      <Card className="mt-8">
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <h3 className="font-semibold">Monthly Snapshot</h3>
+                {savedData ? (
+                    <p className="text-sm text-muted-foreground">
+                        Last saved: {formatDistanceToNow(new Date(savedData.updatedAt), { addSuffix: true })}
+                    </p>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        No snapshot saved for {selectedMonthName} {selectedYear}.
+                    </p>
+                )}
+              </div>
+              <Button onClick={handleSaveSnapshot} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 animate-spin" />}
+                  <Save className="mr-2"/>
+                  {savedData ? 'Update Snapshot' : 'Save Snapshot'}
+              </Button>
+          </CardContent>
+      </Card>
+
     </div>
   );
 }
