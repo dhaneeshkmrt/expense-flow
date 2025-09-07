@@ -55,7 +55,7 @@ export default function LoginPage() {
     } else {
       toast({
         title: 'Login Failed',
-        description: 'Invalid email or secret token.',
+        description: 'Invalid email or secret token. Please ensure an admin has added your tenant data to the system.',
         variant: 'destructive',
       });
     }
@@ -83,7 +83,7 @@ export default function LoginPage() {
           <Logo />
           <CardTitle className="pt-4">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in with your provider or email.
+            Sign in with your provider or email. Only users whose tenant data has been added by an admin can login.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

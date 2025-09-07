@@ -67,9 +67,13 @@ interface TenantDialogProps {
 }
 
 export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: TenantDialogProps) {
-  const { addTenant, editTenant } = useApp();
+  const { addTenant, editTenant, isRootUser } = useApp();
   const { toast } = useToast();
   const isEditing = !!tenant;
+
+  if (!isRootUser) {
+    return null;
+  }
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),

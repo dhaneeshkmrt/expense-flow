@@ -86,12 +86,16 @@ export const columns = (
     id: 'actions',
     cell: function Actions({ row }) {
       const tenant = row.original;
-      const { deleteTenant } = useApp();
+      const { deleteTenant, isRootUser } = useApp();
       
       const handleEdit = () => {
         setSelectedTenant(tenant);
         setDialogOpen(true);
       };
+
+      if (!isRootUser) {
+        return null;
+      }
 
       return (
         <>

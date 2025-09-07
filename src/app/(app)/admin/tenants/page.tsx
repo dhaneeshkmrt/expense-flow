@@ -14,7 +14,7 @@ import type { Tenant } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export default function TenantsPage() {
-  const { tenants, loadingTenants } = useApp();
+  const { tenants, loadingTenants, isRootUser } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
@@ -55,10 +55,12 @@ export default function TenantsPage() {
             Manage your tenants and their members.
           </p>
         </div>
-        <Button onClick={handleAddTenant}>
-          <PlusCircle className="mr-2" />
-          Add Tenant
-        </Button>
+        {isRootUser && (
+          <Button onClick={handleAddTenant}>
+            <PlusCircle className="mr-2" />
+            Add Tenant
+          </Button>
+        )}
       </div>
       <DataTable columns={tenantColumns} data={tenants} />
       <TenantDialog open={dialogOpen} setOpen={setDialogOpen} tenant={selectedTenant} setSelectedTenant={setSelectedTenant} />

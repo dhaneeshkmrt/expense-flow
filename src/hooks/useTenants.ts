@@ -100,6 +100,11 @@ export function useTenants(
     };
 
     const addTenant = async (tenantData: Partial<Omit<Tenant, 'id'>>) => {
+        if (!isRootUser) {
+            console.error("Access denied: Only root users can add tenants");
+            return;
+        }
+        
         try {
             const docRef = await addDoc(collection(db, 'tenants'), tenantData);
             const newTenant = { id: docRef.id, ...tenantData } as Tenant;
@@ -115,6 +120,11 @@ export function useTenants(
     };
 
     const editTenant = async (tenantId: string, tenantData: Partial<Omit<Tenant, 'id'>>) => {
+        if (!isRootUser) {
+            console.error("Access denied: Only root users can edit tenants");
+            return;
+        }
+        
         try {
             const tenantRef = doc(db, 'tenants', tenantId);
             await updateDoc(tenantRef, tenantData);
@@ -125,6 +135,11 @@ export function useTenants(
     };
 
     const deleteTenant = async (tenantId: string) => {
+        if (!isRootUser) {
+            console.error("Access denied: Only root users can delete tenants");
+            return;
+        }
+        
         try {
             if(user?.tenantId === tenantId) {
                 alert("You cannot delete the tenant you are currently logged into.");
