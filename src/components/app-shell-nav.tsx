@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -42,6 +42,7 @@ const baseNavItemsTemplate = [
   { href: '/accounts', label: 'Balance Sheet', icon: Landmark },
   { href: '/virtual-accounts', label: 'Virtual Accounts', icon: Wallet },
   { href: '/yearly-report', label: 'Yearly Report', icon: Database },
+  { href: '/ai-image-studio', label: 'AI Image Studio', icon: Wand2 },
 ];
 
 const settingsNavItem = { href: '/admin/settings', label: 'Settings', icon: Settings };
