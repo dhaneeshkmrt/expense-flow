@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '@/lib/provider';
 
 interface UseCurrencyInputProps {
@@ -8,9 +8,24 @@ interface UseCurrencyInputProps {
   onValueChange?: (value: number) => void;
 }
 
+// Simple and safe arithmetic evaluation
+const evaluate = (expr: string): number | null => {
+  try {
+    // Only allow numbers and basic operators. This is a simple sanitization.
+    if (/[^0-9+\-*/. ]/.test(expr)) {
+      return null;
+    }
+    // Using Function constructor is safer than eval()
+    return new Function(`return ${expr}`)();
+  } catch (error) {
+    return null;
+  }
+};
+
 export function useCurrencyInput({ initialValue = 0, onValueChange }: UseCurrencyInputProps) {
   const { settings } = useApp();
-  
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const getLocaleParts = useCallback(() => {
     const formatter = new Intl.NumberFormat(settings.locale, {
       style: 'decimal',
@@ -20,75 +35,86 @@ export function useCurrencyInput({ initialValue = 0, onValueChange }: UseCurrenc
     const decimal = parts.find((part) => part.type === 'decimal')?.value || '.';
     return { group, decimal };
   }, [settings.locale]);
-
+  
   const [localeParts, setLocaleParts] = useState(getLocaleParts());
 
   useEffect(() => {
     setLocaleParts(getLocaleParts());
   }, [settings.locale, getLocaleParts]);
 
-  const parse = useCallback((value: string): number => {
-    const { group, decimal } = localeParts;
-    let cleanValue = value.replace(new RegExp(`\\${group}`, 'g'), '');
-    cleanValue = cleanValue.replace(new RegExp(`\\${decimal}`), '.');
-    return parseFloat(cleanValue) || 0;
-  }, [localeParts]);
-  
+  const [rawValue, setRawValue] = useState<string>('');
+  const [formattedValue, setFormattedValue] = useState<string>('');
+  const [calculationResult, setCalculationResult] = useState<string | null>(null);
+
   const format = useCallback((num: number): string => {
       if (isNaN(num)) return '';
       const formatter = new Intl.NumberFormat(settings.locale, {
           style: 'decimal',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 20, // Allow many decimal places during input
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
       });
       return formatter.format(num);
   }, [settings.locale]);
 
-  const [formattedValue, setFormattedValue] = useState<string>('');
-  const [numericValue, setNumericValue] = useState<number | null>(null);
 
   const handleInputChange = useCallback((value: string) => {
-    const { decimal } = localeParts;
-    // Allow only numbers and the locale's decimal separator
-    const numericString = value.replace(new RegExp(`[^0-9\\${decimal}]`, 'g'), '');
+    setRawValue(value);
     
-    // Split into integer and fraction parts
-    const parts = numericString.split(decimal);
-    const integerPart = parts[0];
-    const fractionPart = parts.length > 1 ? parts.slice(1).join('') : '';
+    // Check for arithmetic operators
+    const isExpression = /[+\-*/]/.test(value);
 
-    const parsedInteger = parseInt(integerPart, 10);
-    const formattedInteger = isNaN(parsedInteger) ? '' : format(parsedInteger);
-
-    let finalFormattedValue = formattedInteger;
-    if (parts.length > 1) {
-        finalFormattedValue += decimal + fractionPart;
+    if (isExpression) {
+      setFormattedValue(value);
+      const result = evaluate(value);
+      if (result !== null && isFinite(result)) {
+        setCalculationResult(format(result));
+        if (onValueChange) {
+          onValueChange(result);
+        }
+      } else {
+        setCalculationResult(null);
+        if (onValueChange) {
+          onValueChange(0);
+        }
+      }
+    } else {
+      setCalculationResult(null);
+      // It's a number, not an expression, so format it as currency
+      const { decimal, group } = localeParts;
+      const cleanValue = value.replace(new RegExp(`\\${group}`, 'g'), '').replace(decimal, '.');
+      const numericValue = parseFloat(cleanValue);
+      
+      if (!isNaN(numericValue)) {
+        setFormattedValue(value); // Keep user's typing
+        if (onValueChange) {
+          onValueChange(numericValue);
+        }
+      } else {
+        setFormattedValue('');
+        if (onValueChange) {
+          onValueChange(0);
+        }
+      }
     }
-
-    setFormattedValue(finalFormattedValue);
-    
-    // Also update the numeric value for the form
-    const parsed = parse(finalFormattedValue);
-    setNumericValue(isNaN(parsed) ? null : parsed);
-    if(onValueChange) {
-        onValueChange(isNaN(parsed) ? 0 : parsed);
-    }
-  }, [localeParts, format, parse, onValueChange]);
+  }, [localeParts, onValueChange, format]);
 
   useEffect(() => {
-    const initialNumeric = typeof initialValue === 'string' ? parse(initialValue) : initialValue;
-    if (initialNumeric !== null && !isNaN(initialNumeric)) {
-        setFormattedValue(format(initialNumeric));
-        setNumericValue(initialNumeric);
+    const initialNumeric = typeof initialValue === 'string' ? parseFloat(initialValue) : initialValue;
+    if (initialNumeric !== null && !isNaN(initialNumeric) && initialNumeric > 0) {
+        const formatted = format(initialNumeric);
+        setFormattedValue(formatted);
+        setRawValue(formatted);
     } else {
         setFormattedValue('');
-        setNumericValue(null);
+        setRawValue('');
     }
-  }, [initialValue, format, parse]);
+  }, [initialValue, format]);
+
 
   return {
+    inputRef,
     formattedValue,
-    numericValue,
     handleInputChange,
+    calculationResult,
   };
 }

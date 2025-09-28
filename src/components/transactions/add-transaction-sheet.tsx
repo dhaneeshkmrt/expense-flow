@@ -63,7 +63,7 @@ interface AddTransactionSheetProps {
 
 export default function AddTransactionSheet({
   children,
-  open: controlledOpen,
+  controlledOpen,
   setOpen: setControlledOpen,
   transaction,
 }: AddTransactionSheetProps) {
@@ -107,7 +107,12 @@ export default function AddTransactionSheet({
     },
   });
 
-  const { formattedValue, handleInputChange } = useCurrencyInput({
+  const {
+    inputRef,
+    formattedValue,
+    handleInputChange,
+    calculationResult,
+  } = useCurrencyInput({
     initialValue: form.getValues('amount'),
     onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
   });
@@ -156,7 +161,7 @@ export default function AddTransactionSheet({
         }, 100);
       }
     }
-  }, [open, isEditing, transaction, paidByOptions]);
+  }, [open, isEditing, transaction, paidByOptions, form, handleInputChange]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -284,13 +289,18 @@ export default function AddTransactionSheet({
                       <FormLabel>Amount</FormLabel>
                       <FormControl>
                         <Input 
-                          ref={amountInputRef}
+                          ref={inputRef}
                           type="text" 
-                          placeholder="0.00" 
+                          placeholder="0.00 or 50+25" 
                           value={formattedValue}
                           onChange={(e) => handleInputChange(e.target.value)}
                          />
                       </FormControl>
+                      {calculationResult && (
+                        <div className="text-xs text-muted-foreground pt-1">
+                          = {calculationResult}
+                        </div>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
