@@ -106,6 +106,10 @@ export default function AddTransactionSheet({
     },
   });
 
+  const onAmountChange = useCallback((value: number) => {
+    form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
+  }, [form]);
+
   const {
     inputRef,
     formattedValue,
@@ -114,7 +118,7 @@ export default function AddTransactionSheet({
     calculationResult,
     setValue: setCurrencyValue,
   } = useCurrencyInput({
-    onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
+    onValueChange: onAmountChange,
   });
 
   // Check if the selected date is in a locked month
