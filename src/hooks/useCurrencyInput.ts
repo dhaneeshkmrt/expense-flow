@@ -32,54 +32,62 @@ function convertLessThanThousand(n: number): string {
   return result;
 }
 
+function convertIntegerToWords(num: number): string {
+    if (num === 0) return '';
+
+    let result = '';
+    const numStr = Math.floor(num).toString();
+
+    if (numStr.length > 7) {
+        const crore = parseInt(numStr.slice(0, -7));
+        result += convertIntegerToWords(crore) + 'Crore ';
+    }
+
+    if (numStr.length > 5) {
+        const lakh = parseInt(numStr.slice(-7, -5));
+        if (lakh > 0) {
+            result += convertLessThanThousand(lakh) + 'Lakh ';
+        }
+    }
+    
+    if (numStr.length > 3) {
+        const thousand = parseInt(numStr.slice(-5, -3));
+        if (thousand > 0) {
+            result += convertLessThanThousand(thousand) + 'Thousand ';
+        }
+    }
+
+    const hundred = parseInt(numStr.slice(-3));
+    if (hundred > 0) {
+        result += convertLessThanThousand(hundred);
+    }
+    
+    return result;
+}
+
 
 function numberToWords(num: number): string {
-    if (num === 0) return 'Zero';
+    if (num === 0) return 'Zero Rupees';
     if (num < 0) return 'Negative ' + numberToWords(Math.abs(num));
 
     const integerPart = Math.floor(num);
     const decimalPart = Math.round((num - integerPart) * 100);
 
-    let result = '';
-
+    let integerWords = '';
     if (integerPart > 0) {
-        const numStr = integerPart.toString();
-        let crore = '';
-        let lakh = '';
-        let thousand = '';
-        let hundred = '';
-        
-        if (numStr.length > 7) {
-            crore = numStr.slice(0, -7);
-            result += numberToWords(parseInt(crore)) + ' Crore ';
-        }
-
-        if (numStr.length > 5) {
-            lakh = numStr.slice(-7, -5);
-            if (parseInt(lakh) > 0) {
-              result += convertLessThanThousand(parseInt(lakh)) + 'Lakh ';
-            }
-        }
-        
-        if (numStr.length > 3) {
-            thousand = numStr.slice(-5, -3);
-            if (parseInt(thousand) > 0) {
-              result += convertLessThanThousand(parseInt(thousand)) + 'Thousand ';
-            }
-        }
-
-        hundred = numStr.slice(-3);
-        if (parseInt(hundred) > 0) {
-          result += convertLessThanThousand(parseInt(hundred));
-        }
-
-        result = result.trim() + ' Rupees';
+        integerWords = convertIntegerToWords(integerPart).trim() + ' Rupees';
     }
 
-
+    let decimalWords = '';
     if (decimalPart > 0) {
-        if(result) result += ' and ';
-        result += convertLessThanThousand(decimalPart).trim() + ' Paise';
+        decimalWords = convertLessThanThousand(decimalPart).trim() + ' Paise';
+    }
+
+    let result = '';
+    if (integerWords && decimalWords) {
+        result = integerWords + ' and ' + decimalWords;
+    } else {
+        result = integerWords || decimalWords;
     }
 
     // Capitalize first letter of each word
