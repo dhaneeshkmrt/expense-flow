@@ -72,7 +72,6 @@ export default function AddTransactionSheet({
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const amountInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!transaction;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -157,12 +156,10 @@ export default function AddTransactionSheet({
             notes: '',
         });
         setCurrencyValue(''); // Reset currency input
-        setTimeout(() => {
-          amountInputRef.current?.focus();
-        }, 100);
+        inputRef.current?.focus();
       }
     }
-  }, [open, isEditing, transaction, paidByOptions, form, setCurrencyValue]);
+  }, [open, isEditing, transaction, paidByOptions, form, setCurrencyValue, inputRef]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');

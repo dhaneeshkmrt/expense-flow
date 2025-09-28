@@ -75,7 +75,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     } else {
       setCalculationResult(null);
       // It's a number, not an expression, so format it as currency
-      const { decimal, group } = localeParts;
+      const { decimal, group } = getLocaleParts();
       const cleanValue = value.replace(new RegExp(`\\${group}`, 'g'), '').replace(decimal, '.');
       const numericValue = parseFloat(cleanValue);
       
@@ -91,7 +91,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
         }
       }
     }
-  }, [localeParts, onValueChange, format]);
+  }, [onValueChange, format, getLocaleParts]);
   
   const handleBlur = useCallback(() => {
     const currentValue = formattedValue;
