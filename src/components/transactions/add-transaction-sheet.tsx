@@ -97,7 +97,7 @@ export default function AddTransactionSheet({
         date: new Date(),
         time: format(new Date(), 'HH:mm'),
         description: '',
-        amount: undefined, // Changed from 0 to undefined
+        amount: undefined,
         category: '',
         subcategory: '',
         microcategory: '',
@@ -116,9 +116,10 @@ export default function AddTransactionSheet({
     handleInputChange,
     handleBlur,
     calculationResult,
-    setValue: setCurrencyValue,
+    setValue,
+    amountInWords,
   } = useCurrencyInput({
-    onValueChange: onAmountChange,
+    onValueChange,
   });
 
   // Check if the selected date is in a locked month
@@ -146,7 +147,7 @@ export default function AddTransactionSheet({
           microcategory: transaction.microcategory || '',
           notes: transaction.notes || '',
         });
-        setCurrencyValue(String(transaction.amount));
+        setValue(String(transaction.amount));
       } else {
          form.reset({
             date: new Date(),
@@ -159,11 +160,11 @@ export default function AddTransactionSheet({
             paidBy: paidByOptions[0] || '',
             notes: '',
         });
-        setCurrencyValue(''); // Reset currency input
+        setValue(''); // Reset currency input
         inputRef.current?.focus();
       }
     }
-  }, [open, isEditing, transaction, paidByOptions, form, setCurrencyValue, inputRef]);
+  }, [open, isEditing, transaction, paidByOptions, form, setValue, inputRef]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -302,6 +303,11 @@ export default function AddTransactionSheet({
                       {calculationResult && (
                         <div className="text-xs text-muted-foreground pt-1">
                           = {calculationResult}
+                        </div>
+                      )}
+                      {amountInWords && (
+                        <div className="text-xs text-muted-foreground pt-1 font-medium italic">
+                          {amountInWords}
                         </div>
                       )}
                       <FormMessage />

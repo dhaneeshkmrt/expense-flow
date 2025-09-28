@@ -8,6 +8,75 @@ interface UseCurrencyInputProps {
   onValueChange?: (value: number) => void;
 }
 
+// --- Number to Words Converter ---
+const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+const thousands = ['', 'Thousand', 'Million', 'Billion', 'Trillion'];
+
+function convertGroup(n: number): string {
+    if (n === 0) return '';
+    
+    let result = '';
+    
+    if (n >= 100) {
+        result += ones[Math.floor(n / 100)] + ' Hundred ';
+        n %= 100;
+    }
+    
+    if (n >= 20) {
+        result += tens[Math.floor(n / 10)] + ' ';
+        n %= 10;
+    } else if (n >= 10) {
+        return result + teens[n - 10] + ' ';
+    }
+
+    if (n > 0) {
+        result += ones[n] + ' ';
+    }
+
+    return result;
+}
+
+function numberToWords(num: number): string {
+    if (num === 0) return 'Zero';
+    if (num < 0) return 'Negative ' + numberToWords(Math.abs(num));
+    
+    let integerPart = Math.floor(num);
+    const decimalPart = Math.round((num - integerPart) * 100);
+
+    let result = '';
+    let i = 0;
+
+    if (integerPart === 0) {
+        // No integer part, will be handled later
+    } else {
+        do {
+            const group = integerPart % 1000;
+            if (group !== 0) {
+                result = convertGroup(group) + thousands[i] + ' ' + result;
+            }
+            integerPart = Math.floor(integerPart / 1000);
+            i++;
+        } while (integerPart > 0);
+    }
+
+    let finalResult = result.trim();
+    if (finalResult.length > 0) {
+      finalResult += ' Rupees';
+    }
+
+    if (decimalPart > 0) {
+        if(finalResult) finalResult += ' and ';
+        finalResult += convertGroup(decimalPart).trim() + ' Paise';
+    }
+    
+    // Capitalize first letter of each word
+    return finalResult.trim().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+}
+// --- End of Converter ---
+
+
 // Simple and safe arithmetic evaluation
 const evaluate = (expr: string): number | null => {
   try {
@@ -36,7 +105,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     return { group, decimal };
   }, [settings.locale]);
   
-  const [localeParts, setLocaleParts] = useState(getLocaleParts());
+  const [localeParts, setLocaleParts] = useState(getLocaleParts);
 
   useEffect(() => {
     setLocaleParts(getLocaleParts());
@@ -44,6 +113,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
 
   const [formattedValue, setFormattedValue] = useState<string>('');
   const [calculationResult, setCalculationResult] = useState<string | null>(null);
+  const [amountInWords, setAmountInWords] = useState<string | null>(null);
 
   const format = useCallback((num: number): string => {
       if (isNaN(num)) return '';
@@ -57,40 +127,40 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
 
   const processValue = useCallback((value: string) => {
     const isExpression = /[+\-*/]/.test(value);
+    setFormattedValue(value);
+
+    let numericResult: number | null = null;
 
     if (isExpression) {
-      setFormattedValue(value);
       const result = evaluate(value);
       if (result !== null && isFinite(result)) {
+        numericResult = result;
         setCalculationResult(format(result));
-        if (onValueChange) {
-          onValueChange(result);
-        }
       } else {
         setCalculationResult(null);
-        if (onValueChange) {
-          onValueChange(0);
-        }
       }
     } else {
       setCalculationResult(null);
-      // It's a number, not an expression, so format it as currency
       const { decimal, group } = getLocaleParts();
       const cleanValue = value.replace(new RegExp(`\\${group}`, 'g'), '').replace(decimal, '.');
-      const numericValue = parseFloat(cleanValue);
-      
-      if (!isNaN(numericValue)) {
-        setFormattedValue(value); // Keep user's typing
-        if (onValueChange) {
-          onValueChange(numericValue);
-        }
-      } else if (value === '') {
-        setFormattedValue('');
-         if (onValueChange) {
-          onValueChange(0);
-        }
+      const parsedValue = parseFloat(cleanValue);
+      if (!isNaN(parsedValue)) {
+        numericResult = parsedValue;
       }
     }
+
+    if (numericResult !== null) {
+        setAmountInWords(numberToWords(numericResult));
+        if (onValueChange) {
+            onValueChange(numericResult);
+        }
+    } else {
+        setAmountInWords(null);
+        if (onValueChange) {
+            onValueChange(0);
+        }
+    }
+
   }, [onValueChange, format, getLocaleParts]);
   
   const handleBlur = useCallback(() => {
@@ -112,6 +182,8 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
       const numericValue = parseFloat(cleanValue);
       if (!isNaN(numericValue)) {
         setFormattedValue(format(numericValue));
+      } else if (currentValue === '') {
+        setAmountInWords(null);
       }
     }
   }, [formattedValue, localeParts, onValueChange, format]);
@@ -131,5 +203,6 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     handleBlur,
     calculationResult,
     setValue,
+    amountInWords,
   };
 }
