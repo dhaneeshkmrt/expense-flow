@@ -111,6 +111,7 @@ export default function AddTransactionSheet({
     inputRef,
     formattedValue,
     handleInputChange,
+    handleBlur,
     calculationResult,
     setValue: setCurrencyValue,
   } = useCurrencyInput({
@@ -294,6 +295,7 @@ export default function AddTransactionSheet({
                           placeholder="0.00 or 50+25" 
                           value={formattedValue}
                           onChange={handleInputChange}
+                          onBlur={handleBlur}
                          />
                       </FormControl>
                       {calculationResult && (

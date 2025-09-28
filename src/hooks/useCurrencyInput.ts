@@ -84,14 +84,37 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
         if (onValueChange) {
           onValueChange(numericValue);
         }
-      } else {
+      } else if (value === '') {
         setFormattedValue('');
-        if (onValueChange) {
+         if (onValueChange) {
           onValueChange(0);
         }
       }
     }
   }, [localeParts, onValueChange, format]);
+  
+  const handleBlur = useCallback(() => {
+    const currentValue = formattedValue;
+    const isExpression = /[+\-*/]/.test(currentValue);
+
+    if (isExpression) {
+      const result = evaluate(currentValue);
+      if (result !== null && isFinite(result)) {
+        setFormattedValue(format(result));
+        setCalculationResult(null);
+        if (onValueChange) {
+          onValueChange(result);
+        }
+      }
+    } else {
+      const { decimal, group } = localeParts;
+      const cleanValue = currentValue.replace(new RegExp(`\\${group}`, 'g'), '').replace(decimal, '.');
+      const numericValue = parseFloat(cleanValue);
+      if (!isNaN(numericValue)) {
+        setFormattedValue(format(numericValue));
+      }
+    }
+  }, [formattedValue, localeParts, onValueChange, format]);
 
   const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     processValue(event.target.value);
@@ -105,7 +128,8 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     inputRef,
     formattedValue,
     handleInputChange,
+    handleBlur,
     calculationResult,
-    setValue, // Expose the new setter
+    setValue,
   };
 }
