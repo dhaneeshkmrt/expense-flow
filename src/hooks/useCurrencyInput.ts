@@ -5,7 +5,6 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useApp } from '@/lib/provider';
 
 interface UseCurrencyInputProps {
-  initialValue?: number | string;
   onValueChange?: (value: number) => void;
 }
 
@@ -43,7 +42,6 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     setLocaleParts(getLocaleParts());
   }, [settings.locale, getLocaleParts]);
 
-  const [rawValue, setRawValue] = useState<string>('');
   const [formattedValue, setFormattedValue] = useState<string>('');
   const [calculationResult, setCalculationResult] = useState<string | null>(null);
 
@@ -57,11 +55,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
       return formatter.format(num);
   }, [settings.locale]);
 
-
-  const handleInputChange = useCallback((value: string) => {
-    setRawValue(value);
-    
-    // Check for arithmetic operators
+  const processValue = useCallback((value: string) => {
     const isExpression = /[+\-*/]/.test(value);
 
     if (isExpression) {
@@ -99,12 +93,19 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     }
   }, [localeParts, onValueChange, format]);
 
+  const handleInputChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    processValue(event.target.value);
+  }, [processValue]);
+  
+  const setValue = useCallback((value: string) => {
+    processValue(value);
+  }, [processValue]);
+
   return {
     inputRef,
     formattedValue,
     handleInputChange,
     calculationResult,
+    setValue, // Expose the new setter
   };
 }
-
-    

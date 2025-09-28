@@ -112,6 +112,7 @@ export default function AddTransactionSheet({
     formattedValue,
     handleInputChange,
     calculationResult,
+    setValue: setCurrencyValue,
   } = useCurrencyInput({
     onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
   });
@@ -141,7 +142,7 @@ export default function AddTransactionSheet({
           microcategory: transaction.microcategory || '',
           notes: transaction.notes || '',
         });
-        handleInputChange(String(transaction.amount));
+        setCurrencyValue(String(transaction.amount));
       } else {
          form.reset({
             date: new Date(),
@@ -154,13 +155,13 @@ export default function AddTransactionSheet({
             paidBy: paidByOptions[0] || '',
             notes: '',
         });
-        handleInputChange(''); // Reset currency input
+        setCurrencyValue(''); // Reset currency input
         setTimeout(() => {
           amountInputRef.current?.focus();
         }, 100);
       }
     }
-  }, [open, isEditing, transaction, paidByOptions, form, handleInputChange]);
+  }, [open, isEditing, transaction, paidByOptions, form, setCurrencyValue]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -292,7 +293,7 @@ export default function AddTransactionSheet({
                           type="text" 
                           placeholder="0.00 or 50+25" 
                           value={formattedValue}
-                          onChange={(e) => handleInputChange(e.target.value)}
+                          onChange={handleInputChange}
                          />
                       </FormControl>
                       {calculationResult && (
@@ -509,5 +510,3 @@ export default function AddTransactionSheet({
     </Sheet>
   );
 }
-
-    
