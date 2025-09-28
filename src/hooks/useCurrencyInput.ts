@@ -8,71 +8,82 @@ interface UseCurrencyInputProps {
   onValueChange?: (value: number) => void;
 }
 
-// --- Number to Words Converter ---
+// --- Number to Words Converter (Indian Numbering System) ---
 const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
 const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
 const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-const thousands = ['', 'Thousand', 'Million', 'Billion', 'Trillion'];
 
-function convertGroup(n: number): string {
-    if (n === 0) return '';
-    
-    let result = '';
-    
-    if (n >= 100) {
-        result += ones[Math.floor(n / 100)] + ' Hundred ';
-        n %= 100;
-    }
-    
-    if (n >= 20) {
-        result += tens[Math.floor(n / 10)] + ' ';
-        n %= 10;
-    } else if (n >= 10) {
-        return result + teens[n - 10] + ' ';
-    }
-
-    if (n > 0) {
-        result += ones[n] + ' ';
-    }
-
-    return result;
+function convertLessThanThousand(n: number): string {
+  let result = '';
+  if (n >= 100) {
+    result += ones[Math.floor(n / 100)] + ' Hundred ';
+    n %= 100;
+  }
+  if (n >= 20) {
+    result += tens[Math.floor(n / 10)] + ' ';
+    n %= 10;
+  } else if (n >= 10) {
+    result += teens[n - 10] + ' ';
+    n = 0;
+  }
+  if (n > 0) {
+    result += ones[n] + ' ';
+  }
+  return result;
 }
+
 
 function numberToWords(num: number): string {
     if (num === 0) return 'Zero';
     if (num < 0) return 'Negative ' + numberToWords(Math.abs(num));
-    
-    let integerPart = Math.floor(num);
+
+    const integerPart = Math.floor(num);
     const decimalPart = Math.round((num - integerPart) * 100);
 
     let result = '';
-    let i = 0;
 
-    if (integerPart === 0) {
-        // No integer part, will be handled later
-    } else {
-        do {
-            const group = integerPart % 1000;
-            if (group !== 0) {
-                result = convertGroup(group) + thousands[i] + ' ' + result;
+    if (integerPart > 0) {
+        const numStr = integerPart.toString();
+        let crore = '';
+        let lakh = '';
+        let thousand = '';
+        let hundred = '';
+        
+        if (numStr.length > 7) {
+            crore = numStr.slice(0, -7);
+            result += numberToWords(parseInt(crore)) + ' Crore ';
+        }
+
+        if (numStr.length > 5) {
+            lakh = numStr.slice(-7, -5);
+            if (parseInt(lakh) > 0) {
+              result += convertLessThanThousand(parseInt(lakh)) + 'Lakh ';
             }
-            integerPart = Math.floor(integerPart / 1000);
-            i++;
-        } while (integerPart > 0);
+        }
+        
+        if (numStr.length > 3) {
+            thousand = numStr.slice(-5, -3);
+            if (parseInt(thousand) > 0) {
+              result += convertLessThanThousand(parseInt(thousand)) + 'Thousand ';
+            }
+        }
+
+        hundred = numStr.slice(-3);
+        if (parseInt(hundred) > 0) {
+          result += convertLessThanThousand(parseInt(hundred));
+        }
+
+        result = result.trim() + ' Rupees';
     }
 
-    let finalResult = result.trim();
-    if (finalResult.length > 0) {
-      finalResult += ' Rupees';
-    }
 
     if (decimalPart > 0) {
-        if(finalResult) finalResult += ' and ';
-        finalResult += convertGroup(decimalPart).trim() + ' Paise';
+        if(result) result += ' and ';
+        result += convertLessThanThousand(decimalPart).trim() + ' Paise';
     }
-    
+
     // Capitalize first letter of each word
-    return finalResult.trim().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+    return result.trim().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 }
 // --- End of Converter ---
 
