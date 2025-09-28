@@ -63,7 +63,7 @@ interface AddTransactionSheetProps {
 
 export default function AddTransactionSheet({
   children,
-  controlledOpen,
+  open: controlledOpen,
   setOpen: setControlledOpen,
   transaction,
 }: AddTransactionSheetProps) {
@@ -113,7 +113,6 @@ export default function AddTransactionSheet({
     handleInputChange,
     calculationResult,
   } = useCurrencyInput({
-    initialValue: form.getValues('amount'),
     onValueChange: (value) => form.setValue('amount', value, { shouldValidate: true, shouldDirty: true }),
   });
 
@@ -510,3 +509,5 @@ export default function AddTransactionSheet({
     </Sheet>
   );
 }
+
+    

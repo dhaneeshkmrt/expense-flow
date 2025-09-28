@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -22,7 +23,7 @@ const evaluate = (expr: string): number | null => {
   }
 };
 
-export function useCurrencyInput({ initialValue = 0, onValueChange }: UseCurrencyInputProps) {
+export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
   const { settings } = useApp();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -98,19 +99,6 @@ export function useCurrencyInput({ initialValue = 0, onValueChange }: UseCurrenc
     }
   }, [localeParts, onValueChange, format]);
 
-  useEffect(() => {
-    const initialNumeric = typeof initialValue === 'string' ? parseFloat(initialValue) : initialValue;
-    if (initialNumeric !== null && !isNaN(initialNumeric) && initialNumeric > 0) {
-        const formatted = format(initialNumeric);
-        setFormattedValue(formatted);
-        setRawValue(formatted);
-    } else {
-        setFormattedValue('');
-        setRawValue('');
-    }
-  }, [initialValue, format]);
-
-
   return {
     inputRef,
     formattedValue,
@@ -118,3 +106,5 @@ export function useCurrencyInput({ initialValue = 0, onValueChange }: UseCurrenc
     calculationResult,
   };
 }
+
+    
