@@ -106,7 +106,7 @@ export default function AddTransactionSheet({
     },
   });
 
-  const onAmountChange = useCallback((value: number) => {
+  const onValueChange = useCallback((value: number) => {
     form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
   }, [form]);
 
@@ -519,5 +519,7 @@ export default function AddTransactionSheet({
     </Sheet>
   );
 }
+
+    
 
     
