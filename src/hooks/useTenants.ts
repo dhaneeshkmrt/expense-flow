@@ -155,6 +155,10 @@ export function useTenants(
             const categoriesQuery = query(collection(db, 'categories'), where('tenantId', '==', tenantId));
             const categoriesSnapshot = await getDocs(categoriesQuery);
             categoriesSnapshot.forEach(doc => batch.delete(doc.ref));
+            
+            // Delete budgets
+            const budgetsRef = doc(db, 'budgets', tenantId);
+            batch.delete(budgetsRef);
 
             // Delete transactions
             const transactionsQuery = query(collection(db, 'transactions'), where('tenantId', '==', tenantId));
@@ -186,8 +190,9 @@ export function useTenants(
             categories: [],
             transactions: [],
             settings: [],
+            budgets: [],
         };
-        const collectionsToBackup = ['tenants', 'categories', 'transactions', 'settings'];
+        const collectionsToBackup = ['tenants', 'categories', 'transactions', 'settings', 'budgets'];
 
         for (const collectionName of collectionsToBackup) {
             const querySnapshot = await getDocs(collection(db, collectionName));
@@ -212,7 +217,7 @@ export function useTenants(
 
     const restoreAllData = async (data: { [key: string]: any[] }) => {
         console.log("Starting restore...");
-        const collectionsToDelete = ['tenants', 'categories', 'transactions', 'settings'];
+        const collectionsToDelete = ['tenants', 'categories', 'transactions', 'settings', 'budgets'];
         const batch = writeBatch(db);
         
         // Clear all current data

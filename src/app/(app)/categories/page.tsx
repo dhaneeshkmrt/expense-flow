@@ -6,7 +6,7 @@ import { useApp } from '@/lib/provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { SubcategoryDialog } from '@/components/categories/subcategory-dialog';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
@@ -15,11 +15,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { MicrocategoryDialog } from '@/components/categories/microcategory-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 export const dynamic = 'force-dynamic';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, selectedMonthName } = useApp();
+  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, selectedMonthName, isCopyingBudget } = useApp();
   const formatCurrency = useCurrencyFormatter();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
@@ -80,6 +81,15 @@ export default function CategoriesPage() {
             </div>
             <Skeleton className="h-10 w-32" />
           </div>
+          {isCopyingBudget && (
+            <Alert>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertTitle>Setting up new month...</AlertTitle>
+                <AlertDescription>
+                    Copying budgets from the previous month. Please wait.
+                </AlertDescription>
+            </Alert>
+          )}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map(i => (
                 <Card key={i}>
@@ -104,7 +114,7 @@ export default function CategoriesPage() {
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
-          <p className="text-muted-foreground">Manage your expense categories and subcategories.</p>
+          <p className="text-muted-foreground">Manage your expense categories and their budgets for {selectedMonthName}.</p>
         </div>
         <div className="flex items-center gap-2">
             <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
@@ -113,6 +123,15 @@ export default function CategoriesPage() {
             </Button>
         </div>
       </div>
+      {isCopyingBudget && (
+        <Alert>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertTitle>Setting up new month...</AlertTitle>
+            <AlertDescription>
+                Copying budgets from the previous month. Please wait.
+            </AlertDescription>
+        </Alert>
+      )}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {categories.map((category) => {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
@@ -145,7 +164,7 @@ export default function CategoriesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the <strong>{category.name}</strong> category and all its subcategories.
+                            This action cannot be undone. This will permanently delete the <strong>{category.name}</strong> category and all its subcategories and budget history.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

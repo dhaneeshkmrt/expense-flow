@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
@@ -44,7 +45,7 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
 
   categories: Category[];
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number }) => Promise<void>;
   editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
@@ -92,6 +93,7 @@ interface AppContextType {
   loadingTransactions: boolean;
   loadingAccounts: boolean;
   loadingProcessing: boolean;
+  isCopyingBudget: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -103,13 +105,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
   const { seedDefaultSettings } = useSettings(null);
-  const { seedDefaultCategories } = useCategories(null); 
+  const { seedDefaultCategories } = useCategories(null, selectedYear, selectedMonth); 
 
   const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
   const { selectedTenantId } = tenantHook;
 
   const settingsHook = useSettings(selectedTenantId);
-  const categoriesHook = useCategories(selectedTenantId);
+  const categoriesHook = useCategories(selectedTenantId, selectedYear, selectedMonth);
   const transactionsHook = useTransactions(selectedTenantId, user);
   const accountsHook = useAccounts(selectedTenantId);
 
@@ -392,7 +394,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingTransactions: transactionsHook.loadingTransactions,
     loadingAccounts: accountsHook.loading,
     loadingProcessing: accountsHook.loadingProcessing,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, checkAndHandleOverspend, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
+    isCopyingBudget: categoriesHook.isCopyingBudget,
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
 
   return (
     <ThemeProvider>

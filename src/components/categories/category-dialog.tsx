@@ -113,15 +113,14 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
   }, [category, isEditing, open, form]);
 
   const onSubmit = (data: CategoryFormValues) => {
-    const categoryData = {
+    if (isEditing && category) {
+      editCategory(category.id, data);
+    } else {
+      addCategory({
         name: data.name,
         icon: data.icon,
         budget: data.budget,
-    };
-    if (isEditing && category) {
-      editCategory(category.id, categoryData);
-    } else {
-      addCategory(categoryData);
+      });
     }
     setOpen(false);
   };
@@ -133,6 +132,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
           <DialogTitle>{isEditing ? 'Edit Category' : 'Add a New Category'}</DialogTitle>
           <DialogDescription>
             {isEditing ? `You are editing "${category?.name}".` : 'Enter the details for your new category.'}
+            {` Budget set here will apply to ${selectedMonthName}.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -185,7 +185,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
               name="budget"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Budget</FormLabel>
+                  <FormLabel>Budget for {selectedMonthName}</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
                   </FormControl>

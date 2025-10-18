@@ -1,3 +1,4 @@
+
 'use client';
 import type { ElementType } from 'react';
 export type Microcategory = {
@@ -19,7 +20,7 @@ export type Category = {
   tenantId: string;
   userId?: string;
   isDefault?: boolean;
-  budget?: number;
+  budget: number; // This now represents the budget for the currently selected month
 };
 
 export type Transaction = {
@@ -141,4 +142,8 @@ export type MonthEndProcessResult = {
   totalSurplus: number;
   transactionsCreated: number;
   accountsCreated: number;
+};
+
+export type CategoryBudget = {
+  budgets: { [monthKey: string]: { [categoryId: string]: number } };
 };

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Category, Subcategory, Microcategory } from '@/lib/types';
+import type { Category, Subcategory, Microcategory, CategoryBudget } from '@/lib/types';
 import { categories as defaultCategories } from '@/lib/data';
 import {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
@@ -10,7 +10,8 @@ import {
   Apple, Building, User, Calendar
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
-import { collection, doc, writeBatch, updateDoc, deleteDoc, setDoc, getDocs, query, where } from 'firebase/firestore';
+import { collection, doc, writeBatch, updateDoc, deleteDoc, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
@@ -33,29 +34,45 @@ type EditCategoryData = {
     budget?: number;
 };
 
-export function useCategories(tenantId: string | null) {
+export function useCategories(tenantId: string | null, selectedYear: number, selectedMonth: number) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [isCopyingBudget, setIsCopyingBudget] = useState(false);
+
+  const getMonthKey = useCallback((year: number, month: number) => {
+    return format(new Date(year, month), 'yyyy-MM');
+  }, []);
 
   const seedDefaultCategories = useCallback(async (tenantIdToSeed: string) => {
     const batch = writeBatch(db);
+    const monthKey = getMonthKey(new Date().getFullYear(), new Date().getMonth());
+    const budgetDocRef = doc(db, 'budgets', tenantIdToSeed);
+    const initialBudgets: CategoryBudget['budgets'] = { [monthKey]: {} };
+
     defaultCategories.forEach((category) => {
         const categoryIdName = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-        const docRef = doc(db, 'categories', `${tenantIdToSeed}_${categoryIdName}`);
+        const docId = `${tenantIdToSeed}_${categoryIdName}`;
+        const docRef = doc(db, 'categories', docId);
         const categoryForDb = {
-            ...category,
-            tenantId: tenantIdToSeed,
+            name: category.name,
             icon: getIconName(category.icon),
             subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-            budget: category.budget || 0,
+            tenantId: tenantIdToSeed,
         };
         batch.set(docRef, categoryForDb);
-    });
-    await batch.commit();
-  }, []);
 
-  const fetchCategories = useCallback(async (tenantIdToFetch: string) => {
+        if (category.budget) {
+          initialBudgets[monthKey][docId] = category.budget;
+        }
+    });
+
+    batch.set(budgetDocRef, { budgets: initialBudgets }, { merge: true });
+    await batch.commit();
+  }, [getMonthKey]);
+  
+  const fetchCategories = useCallback(async (tenantIdToFetch: string, year: number, month: number) => {
     setLoadingCategories(true);
+    setIsCopyingBudget(false);
     try {
       const q = query(collection(db, 'categories'), where("tenantId", "==", tenantIdToFetch));
       let querySnapshot = await getDocs(q);
@@ -76,25 +93,58 @@ export function useCategories(tenantId: string | null) {
               microcategories: sub.microcategories || []
             })),
             tenantId: data.tenantId,
-            budget: data.budget || 0,
+            budget: 0, // Default budget, will be filled next
           } as Category;
         });
-      setCategories(fetchedCategories);
+
+      // Fetch budget data
+      const budgetDocRef = doc(db, 'budgets', tenantIdToFetch);
+      const budgetDocSnap = await getDoc(budgetDocRef);
+      let allBudgets: CategoryBudget['budgets'] = {};
+
+      if (budgetDocSnap.exists()) {
+        allBudgets = (budgetDocSnap.data() as CategoryBudget).budgets || {};
+      }
+
+      const currentMonthKey = getMonthKey(year, month);
+      
+      if (!allBudgets[currentMonthKey]) {
+        setIsCopyingBudget(true);
+        // Find the most recent previous month with budgets
+        const previousMonthKeys = Object.keys(allBudgets).sort().reverse();
+        const mostRecentMonthKey = previousMonthKeys.find(key => key < currentMonthKey);
+        
+        if (mostRecentMonthKey) {
+            allBudgets[currentMonthKey] = allBudgets[mostRecentMonthKey];
+            await setDoc(budgetDocRef, { budgets: allBudgets }, { merge: true });
+        } else {
+            allBudgets[currentMonthKey] = {}; // No previous budget, start fresh
+        }
+      }
+
+      const finalCategories = fetchedCategories.map(cat => ({
+        ...cat,
+        budget: allBudgets[currentMonthKey]?.[cat.id] || 0,
+      }));
+      
+      setCategories(finalCategories);
+
     } catch (error) {
       console.error("Error fetching categories: ", error);
     } finally {
       setLoadingCategories(false);
+      setIsCopyingBudget(false);
     }
-  }, [seedDefaultCategories]);
+  }, [seedDefaultCategories, getMonthKey]);
 
   useEffect(() => {
     if (tenantId) {
-      fetchCategories(tenantId);
+      fetchCategories(tenantId, selectedYear, selectedMonth);
     } else {
       setCategories([]);
       setLoadingCategories(false);
     }
-  }, [tenantId, fetchCategories]);
+  }, [tenantId, selectedYear, selectedMonth, fetchCategories]);
 
   const findCategory = (categoryId: string) => {
     const category = categories.find(c => c.id === categoryId);
@@ -102,7 +152,7 @@ export function useCategories(tenantId: string | null) {
     return category;
   }
 
-  const updateCategoryInDb = async (categoryId: string, updatedCategory: Category) => {
+  const updateCategoryInDb = async (categoryId: string, updatedCategory: Omit<Category, 'budget'>) => {
     const categoryRef = doc(db, 'categories', categoryId);
     const categoryForDb = {
         ...updatedCategory,
@@ -113,7 +163,7 @@ export function useCategories(tenantId: string | null) {
     await updateDoc(categoryRef, categoryForDb);
   }
 
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId'> & { icon: string }) => {
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
     if (!tenantId) return;
     const id = `${tenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     
@@ -125,17 +175,29 @@ export function useCategories(tenantId: string | null) {
       tenantId: tenantId,
       budget: categoryData.budget || 0,
     };
+    
+    const { budget, ...categoryToSave } = newCategory;
 
     const docRef = doc(db, 'categories', id);
     await setDoc(docRef, {
-      ...newCategory,
+      ...categoryToSave,
       icon: categoryData.icon
     });
+    
+    if (categoryData.budget && categoryData.budget > 0) {
+      const monthKey = getMonthKey(selectedYear, selectedMonth);
+      const budgetDocRef = doc(db, 'budgets', tenantId);
+      await setDoc(budgetDocRef, {
+        budgets: { [monthKey]: { [id]: categoryData.budget } }
+      }, { merge: true });
+    }
+
     setCategories(prev => [...prev, newCategory]);
   };
   
   const editCategory = async (categoryId: string, categoryUpdate: EditCategoryData) => {
-    const categoryRef = doc(db, 'categories', categoryId);
+    if (!tenantId) return;
+    
     const dbUpdate: { [key: string]: any } = {};
 
     if (categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
@@ -145,12 +207,17 @@ export function useCategories(tenantId: string | null) {
         dbUpdate.icon = getIconName(categoryUpdate.icon);
     }
     
-    if (categoryUpdate.budget !== undefined) {
-        dbUpdate.budget = categoryUpdate.budget;
+    if (Object.keys(dbUpdate).length > 0) {
+        const categoryRef = doc(db, 'categories', categoryId);
+        await updateDoc(categoryRef, dbUpdate);
     }
     
-    if (Object.keys(dbUpdate).length > 0) {
-        await updateDoc(categoryRef, dbUpdate);
+    if (categoryUpdate.budget !== undefined) {
+        const monthKey = getMonthKey(selectedYear, selectedMonth);
+        const budgetDocRef = doc(db, 'budgets', tenantId);
+        await setDoc(budgetDocRef, {
+          budgets: { [monthKey]: { [categoryId]: categoryUpdate.budget } }
+        }, { merge: true });
     }
     
     setCategories(prev => prev.map(c => {
@@ -172,8 +239,20 @@ export function useCategories(tenantId: string | null) {
   };
   
   const deleteCategory = async (categoryId: string) => {
+    if (!tenantId) return;
     const categoryRef = doc(db, 'categories', categoryId);
     await deleteDoc(categoryRef);
+    
+    const budgetDocRef = doc(db, 'budgets', tenantId);
+    const budgetDocSnap = await getDoc(budgetDocRef);
+    if(budgetDocSnap.exists()) {
+        const allBudgets = (budgetDocSnap.data() as CategoryBudget).budgets || {};
+        for (const monthKey in allBudgets) {
+            delete allBudgets[monthKey][categoryId];
+        }
+        await setDoc(budgetDocRef, { budgets: allBudgets }, { merge: true });
+    }
+
     setCategories(prev => prev.filter(cat => cat.id !== categoryId));
   };
 
@@ -183,21 +262,24 @@ export function useCategories(tenantId: string | null) {
     const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
 
     const updatedCategory = { ...category, subcategories: [...category.subcategories, newSubcategory] };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
   const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
     const category = findCategory(categoryId);
     const updatedCategory = { ...category, subcategories: category.subcategories.map(sub => sub.id === subcategoryId ? { ...sub, ...subcategoryUpdate } : sub) };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
   const deleteSubcategory = async (categoryId: string, subcategoryId: string) => {
     const category = findCategory(categoryId);
     const updatedCategory = { ...category, subcategories: category.subcategories.filter(sub => sub.id !== subcategoryId) };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
@@ -215,7 +297,8 @@ export function useCategories(tenantId: string | null) {
             return sub;
         })
     };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
@@ -230,7 +313,8 @@ export function useCategories(tenantId: string | null) {
             return sub;
         })
     };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
@@ -245,7 +329,8 @@ export function useCategories(tenantId: string | null) {
             return sub;
         })
     };
-    await updateCategoryInDb(categoryId, updatedCategory);
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
   };
 
@@ -256,5 +341,6 @@ export function useCategories(tenantId: string | null) {
     addSubcategory, editSubcategory, deleteSubcategory,
     addMicrocategory, editMicrocategory, deleteMicrocategory,
     seedDefaultCategories,
+    isCopyingBudget,
   };
 }
