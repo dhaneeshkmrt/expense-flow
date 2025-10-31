@@ -4,8 +4,9 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { Transaction } from '@/lib/types';
 import { ArrowUpDown, Edit, MoreHorizontal, Trash2, Lock } from 'lucide-react';
-import { format, getYear, getMonth, parseISO } from 'date-fns';
+import { format, getYear, getMonth, parseISO, isWithinInterval } from 'date-fns';
 import { useState } from 'react';
+import type { DateRange } from 'react-day-picker';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -43,12 +44,19 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
       
       return (
         <div className="flex items-center gap-2 w-28">
-          <span>{format(utcDate, 'MMM dd')}</span>
+          <span>{format(utcDate, 'MMM dd, yyyy')}</span>
           {isLocked && (
             <Lock className="h-3 w-3 text-orange-500" title="Month is locked after processing" />
           )}
         </div>
       );
+    },
+    filterFn: (row, id, value: DateRange) => {
+        const date = parseISO(row.getValue(id));
+        if (!value?.from) return true;
+        const from = value.from;
+        const to = value.to || from; // If no 'to' date, use 'from' for a single day range
+        return isWithinInterval(date, { start: from, end: to });
     },
   },
   {
@@ -120,6 +128,9 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
   {
     accessorKey: 'paidBy',
     header: 'Paid By',
+    filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+    },
   },
   {
     id: 'actions',
@@ -186,3 +197,5 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
 
 // Fallback for backward compatibility
 export const columns = createColumns(() => false);
+
+    

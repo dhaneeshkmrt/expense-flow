@@ -35,12 +35,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon } from 'lucide-react';
+import { addDays, format } from 'date-fns';
 
 import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
 import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 import { useContainerWidth } from '@/hooks/useContainerWidth';
+import { Badge } from '../ui/badge';
+import { cn } from '@/lib/utils';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -67,7 +81,7 @@ interface DataTableProps<TData, TValue> {
 const MOBILE_TABLE_BREAKPOINT = 640; // pixels
 
 export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
-  const { categories } = useApp();
+  const { categories, tenants, selectedTenantId } = useApp();
   const [ref, width] = useContainerWidth<HTMLDivElement>();
   const isMobile = width < MOBILE_TABLE_BREAKPOINT;
   
@@ -86,9 +100,20 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [categoryFilter, setCategoryFilter] = React.useState<string>('');
   const [subcategoryFilter, setSubcategoryFilter] = React.useState<string>('');
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
+  const [paidByFilter, setPaidByFilter] = React.useState<string[]>([]);
+  const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   
   const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
   const { formattedValue: maxAmount, handleInputChange: handleMaxAmountChange, numericValue: maxAmountNumeric } = useCurrencyInput({});
+  
+  const selectedTenant = React.useMemo(() => {
+    return tenants.find(t => t.id === selectedTenantId);
+  }, [tenants, selectedTenantId]);
+
+  const paidByOptions = React.useMemo(() => {
+    return selectedTenant?.paidByOptions || [];
+  }, [selectedTenant]);
+
 
   React.useEffect(() => {
     if (isMobile) {
@@ -145,10 +170,16 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   }, [microcategoryFilter, table]);
 
   React.useEffect(() => {
-    const min = minAmountNumeric !== null && minAmountNumeric > 0 ? minAmountNumeric : undefined;
-    const max = maxAmountNumeric !== null && maxAmountNumeric > 0 ? maxAmountNumeric : undefined;
-    table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+    table.getColumn('amount')?.setFilterValue((minAmountNumeric || maxAmountNumeric) ? [minAmountNumeric, maxAmountNumeric] : undefined);
   }, [minAmountNumeric, maxAmountNumeric, table]);
+  
+  React.useEffect(() => {
+      table.getColumn('paidBy')?.setFilterValue(paidByFilter.length > 0 ? paidByFilter : undefined);
+  }, [paidByFilter, table]);
+
+  React.useEffect(() => {
+      table.getColumn('date')?.setFilterValue(dateRange ? dateRange : undefined);
+  }, [dateRange, table]);
 
   const subcategories = React.useMemo(() => {
     if (!categoryFilter) return [];
@@ -172,6 +203,42 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
             onChange={(event) => setGlobalFilter(String(event.target.value))}
             className="max-w-xs"
             />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  id="date"
+                  variant={"outline"}
+                  className={cn(
+                    "w-[240px] justify-start text-left font-normal",
+                    !dateRange && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange?.from}
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
             <Select value={categoryFilter} onValueChange={(value) => {
             setCategoryFilter(value === 'all' ? '' : value);
             setSubcategoryFilter('');
@@ -212,6 +279,32 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                 ))}
             </SelectContent>
             </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto">
+                      Paid By
+                      {paidByFilter.length > 0 && <Badge variant="secondary" className="ml-2">{paidByFilter.length}</Badge>}
+                  </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                  <DropdownMenuLabel>Filter by Payer</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {paidByOptions.map(p => (
+                      <DropdownMenuCheckboxItem
+                          key={p}
+                          checked={paidByFilter.includes(p)}
+                          onSelect={(e) => e.preventDefault()}
+                          onCheckedChange={(checked) => {
+                            return checked
+                              ? setPaidByFilter((prev) => [...prev, p])
+                              : setPaidByFilter((prev) => prev.filter((value) => value !== p))
+                          }}
+                      >
+                          {p.toUpperCase()}
+                      </DropdownMenuCheckboxItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
              <div className="flex items-center gap-2">
                 <Input
                     type="text"
@@ -343,5 +436,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     </div>
   );
 }
+
+    
 
     
