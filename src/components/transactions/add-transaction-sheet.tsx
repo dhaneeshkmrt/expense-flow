@@ -231,10 +231,6 @@ export default function AddTransactionSheet({
       }
   }, [selectedSubcategoryName, form, selectedCategoryName, categories]);
 
-  const recentDays = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
-  }, []);
-
   const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
     setIsSubmitting(true);
     const submissionData = {
@@ -392,20 +388,6 @@ export default function AddTransactionSheet({
                             className="rounded-md border"
                           />
                         )}
-                        <div className="flex flex-wrap gap-1 pt-1">
-                            {recentDays.map(day => (
-                                <Button 
-                                    key={day.toISOString()}
-                                    type="button" 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="h-7 px-2 text-xs"
-                                    onClick={() => form.setValue('date', day, { shouldValidate: true, shouldDirty: true })}
-                                >
-                                    {format(day, 'dd')}
-                                </Button>
-                            ))}
-                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
