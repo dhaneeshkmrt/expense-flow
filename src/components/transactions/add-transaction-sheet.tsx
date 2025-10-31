@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
@@ -24,10 +23,10 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, Lock } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock, Plus } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
-import { format, parseISO, getYear, getMonth } from 'date-fns';
+import { format, parseISO, getYear, getMonth, subDays } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -84,6 +83,10 @@ export default function AddTransactionSheet({
   const paidByOptions = useMemo(() => {
     return selectedTenant?.paidByOptions || [];
   }, [selectedTenant]);
+  
+  const onValueChange = useCallback((value: number) => {
+    form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
+  }, []);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
@@ -105,10 +108,6 @@ export default function AddTransactionSheet({
         notes: '',
     },
   });
-
-  const onValueChange = useCallback((value: number) => {
-    form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
-  }, [form]);
 
   const {
     inputRef,
@@ -232,7 +231,11 @@ export default function AddTransactionSheet({
       }
   }, [selectedSubcategoryName, form, selectedCategoryName, categories]);
 
-  const onSubmit = async (data: TransactionFormValues) => {
+  const recentDays = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i + 1)).reverse();
+  }, []);
+
+  const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
     setIsSubmitting(true);
     const submissionData = {
         ...data,
@@ -240,23 +243,50 @@ export default function AddTransactionSheet({
         microcategory: data.microcategory || '',
     };
     
-    if (isEditing && transaction) {
-        await editTransaction(transaction.id, submissionData);
-        toast({
-            title: 'Transaction Updated',
-            description: `Successfully updated "${data.description}".`,
-        });
-    } else {
-        await addTransaction(submissionData);
-        toast({
-            title: 'Transaction Added',
-            description: `Successfully added "${data.description}".`,
-        });
-    }
+    try {
+      if (isEditing && transaction) {
+          await editTransaction(transaction.id, submissionData);
+          toast({
+              title: 'Transaction Updated',
+              description: `Successfully updated "${data.description}".`,
+          });
+      } else {
+          await addTransaction(submissionData);
+          toast({
+              title: 'Transaction Added',
+              description: `Successfully added "${data.description}".`,
+          });
+      }
 
-    form.reset();
-    setIsSubmitting(false);
-    setOpen(false);
+      if (shouldClose) {
+        form.reset();
+        setOpen(false);
+      } else {
+        // Reset form but keep date and time
+        const { date, time, paidBy } = form.getValues();
+        form.reset({
+          date,
+          time,
+          paidBy,
+          description: '',
+          amount: undefined,
+          category: '',
+          subcategory: '',
+          microcategory: '',
+          notes: '',
+        });
+        setValue('');
+        inputRef.current?.focus();
+      }
+    } catch(error: any) {
+        toast({
+          title: 'Save Failed',
+          description: error.message || "There was an error saving the transaction.",
+          variant: 'destructive',
+        });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const sheetTitle = isEditing ? 'Edit Transaction' : 'Add a New Transaction';
@@ -281,7 +311,7 @@ export default function AddTransactionSheet({
         )}
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-1 flex-col overflow-hidden">
+          <form className="flex flex-1 flex-col overflow-hidden">
               <div className="flex-1 overflow-y-auto pr-6 -mr-6 space-y-6 py-4">
                 
                 <FormField
@@ -336,7 +366,7 @@ export default function AddTransactionSheet({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Date</FormLabel>
-                        <Popover>
+                         <Popover>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
@@ -352,6 +382,20 @@ export default function AddTransactionSheet({
                             <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
                           </PopoverContent>
                         </Popover>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                            {recentDays.map(day => (
+                                <Button 
+                                    key={day.toISOString()}
+                                    type="button" 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="h-7 px-2 text-xs"
+                                    onClick={() => form.setValue('date', day, { shouldValidate: true, shouldDirty: true })}
+                                >
+                                    {format(day, 'dd')}
+                                </Button>
+                            ))}
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -506,20 +550,35 @@ export default function AddTransactionSheet({
                     </FormItem>
                   )}
                 />
+                
+                <SheetFooter className="pt-4">
+                  <Button 
+                    type="button" 
+                    onClick={form.handleSubmit((data) => handleSave(data, true))}
+                    disabled={isSubmitting || isSelectedMonthLocked} 
+                    className="w-full"
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isEditing ? 'Save Changes' : 'Save Transaction'}
+                  </Button>
+                  {!isEditing && (
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={form.handleSubmit((data) => handleSave(data, false))}
+                      disabled={isSubmitting || isSelectedMonthLocked} 
+                      className="w-full"
+                    >
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                       <Plus className="mr-2 h-4 w-4" />
+                       Save &amp; New
+                    </Button>
+                  )}
+                </SheetFooter>
               </div>
-               <SheetFooter className="mt-auto bg-background pt-4 sticky bottom-0">
-                <Button type="submit" disabled={isSubmitting || isSelectedMonthLocked} className="w-full">
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditing ? 'Save Changes' : 'Save Transaction'}
-                </Button>
-              </SheetFooter>
           </form>
         </Form>
       </SheetContent>
     </Sheet>
   );
 }
-
-    
-
-    
