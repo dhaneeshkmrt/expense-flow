@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -10,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,11 +36,26 @@ const countryLocales = [
   { value: 'ja-JP', label: 'Japan (JPY)' },
 ];
 
+const generateSecretToken = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+  let token = '';
+  for (let i = 0; i < 16; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+};
+
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   paidByOptions: z.array(z.object({
     name: z.string().min(1, 'Paid by option cannot be empty.'),
   })).min(1, 'At least one "Paid by" option is required.'),
+  members: z.array(z.object({
+    name: z.string().min(2, 'Member name must be at least 2 characters.'),
+    email: z.string().email('Please enter a valid email for the member.'),
+    mobileNo: z.string().optional(),
+    secretToken: z.string().min(1, 'Secret Token is required.'),
+  })).optional(),
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
@@ -63,6 +79,7 @@ export default function SettingsPage() {
     defaultValues: {
         name: '',
         paidByOptions: [],
+        members: [],
     }
   });
 
@@ -71,6 +88,11 @@ export default function SettingsPage() {
       name: "paidByOptions",
   });
   
+  const { fields: memberFields, append: appendMember, remove: removeMember } = useFieldArray({
+    control: tenantForm.control,
+    name: "members",
+  });
+
   const watchedName = tenantForm.watch('name');
 
   useEffect(() => {
@@ -86,6 +108,7 @@ export default function SettingsPage() {
       tenantForm.reset({ 
         name: currentTenant.name,
         paidByOptions: currentTenant.paidByOptions?.map(name => ({name})) || [{ name: currentTenant.name }],
+        members: currentTenant.members || [],
        });
     }
   }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
@@ -119,6 +142,7 @@ export default function SettingsPage() {
     const tenantData = {
         name: data.name,
         paidByOptions: data.paidByOptions.map(opt => opt.name).filter(Boolean),
+        members: data.members || [],
     };
 
     try {
@@ -135,6 +159,11 @@ export default function SettingsPage() {
         setIsTenantSubmitting(false);
     }
   };
+
+  const handleCopyToClipboard = (token: string) => {
+    navigator.clipboard.writeText(token);
+    toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
+  }
 
 
   if (loadingSettings) {
@@ -155,11 +184,11 @@ export default function SettingsPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Tenant Information</CardTitle>
-                <CardDescription>Manage your tenant name and payment methods.</CardDescription>
+                <CardDescription>Manage your tenant name, payment methods, and family members.</CardDescription>
             </CardHeader>
             <CardContent>
             <Form {...tenantForm}>
-                <form onSubmit={tenantForm.handleSubmit(onTenantSubmit)} className="space-y-6">
+                <form onSubmit={tenantForm.handleSubmit(onTenantSubmit)} className="space-y-6 max-h-[70vh] overflow-y-auto pr-4">
                     <FormField
                       control={tenantForm.control}
                       name="name"
@@ -214,6 +243,81 @@ export default function SettingsPage() {
                             Add Option
                         </Button>
                         </div>
+                    </div>
+
+                    <div>
+                      <FormLabel>Family Members</FormLabel>
+                      <div className="space-y-4 mt-2">
+                        {memberFields.map((field, index) => (
+                          <div key={field.id} className="p-4 border rounded-md relative space-y-2">
+                             <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute top-2 right-2 h-6 w-6 text-destructive"
+                              onClick={() => removeMember(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <FormField
+                              control={tenantForm.control}
+                              name={`members.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Member Name</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="e.g., Jane Doe"/>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={tenantForm.control}
+                              name={`members.${index}.email`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Member Email</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="e.g., member@example.com"/>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={tenantForm.control}
+                              name={`members.${index}.secretToken`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Member Secret Token</FormLabel>
+                                  <div className="flex items-center gap-2">
+                                    <FormControl>
+                                      <Input readOnly {...field} />
+                                    </FormControl>
+                                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(field.value)}>
+                                        <Copy className="h-4 w-4"/>
+                                    </Button>
+                                    <Button type="button" variant="outline" size="icon" onClick={() => tenantForm.setValue(`members.${index}.secretToken`, generateSecretToken())}>
+                                        <RefreshCw className="h-4 w-4"/>
+                                    </Button>
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        ))}
+                         <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => appendMember({ name: '', email: '', mobileNo: '', secretToken: generateSecretToken() })}
+                        >
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Member
+                        </Button>
+                      </div>
                     </div>
                     
                     <Button type="submit" disabled={isTenantSubmitting || !tenantForm.formState.isDirty}>
@@ -276,3 +380,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+    
