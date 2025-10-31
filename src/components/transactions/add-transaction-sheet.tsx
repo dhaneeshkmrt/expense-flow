@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
@@ -67,7 +68,7 @@ export default function AddTransactionSheet({
   transaction,
 }: AddTransactionSheetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked } = useApp();
+  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked, settings } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,10 +85,6 @@ export default function AddTransactionSheet({
     return selectedTenant?.paidByOptions || [];
   }, [selectedTenant]);
   
-  const onValueChange = useCallback((value: number) => {
-    form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
-  }, []);
-
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: isEditing ? {
@@ -108,6 +105,10 @@ export default function AddTransactionSheet({
         notes: '',
     },
   });
+  
+  const onValueChange = useCallback((value: number) => {
+    form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
+  }, [form]);
 
   const {
     inputRef,
@@ -134,7 +135,6 @@ export default function AddTransactionSheet({
     if (!isSelectedMonthLocked || !selectedDate) return null;
     return `This month (${format(selectedDate, 'MMMM yyyy')}) is locked after month-end processing. Please select a different date.`;
   }, [isSelectedMonthLocked, selectedDate]);
-
 
   useEffect(() => {
     if (open) {
@@ -232,7 +232,7 @@ export default function AddTransactionSheet({
   }, [selectedSubcategoryName, form, selectedCategoryName, categories]);
 
   const recentDays = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i + 1)).reverse();
+    return Array.from({ length: 7 }).map((_, i) => subDays(new Date(), i)).reverse();
   }, []);
 
   const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
@@ -364,24 +364,34 @@ export default function AddTransactionSheet({
                     control={form.control}
                     name="date"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="col-span-2">
                         <FormLabel>Date</FormLabel>
-                         <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                              >
-                                {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
-                          </PopoverContent>
-                        </Popover>
+                        {settings.dateInputStyle === 'inline' ? (
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                            className="rounded-md border"
+                          />
+                        ) : (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant={'outline'}
+                                  className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                                >
+                                  {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
+                            </PopoverContent>
+                          </Popover>
+                        )}
                         <div className="flex flex-wrap gap-1 pt-1">
                             {recentDays.map(day => (
                                 <Button 
@@ -550,32 +560,31 @@ export default function AddTransactionSheet({
                     </FormItem>
                   )}
                 />
-                
-                <SheetFooter className="pt-4">
+              </div>
+              <SheetFooter className="pt-4">
+                <Button 
+                  type="button" 
+                  onClick={form.handleSubmit((data) => handleSave(data, true))}
+                  disabled={isSubmitting || isSelectedMonthLocked} 
+                  className="w-full"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isEditing ? 'Save Changes' : 'Save Transaction'}
+                </Button>
+                {!isEditing && (
                   <Button 
-                    type="button" 
-                    onClick={form.handleSubmit((data) => handleSave(data, true))}
+                    type="button"
+                    variant="outline"
+                    onClick={form.handleSubmit((data) => handleSave(data, false))}
                     disabled={isSubmitting || isSelectedMonthLocked} 
                     className="w-full"
                   >
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isEditing ? 'Save Changes' : 'Save Transaction'}
+                     <Plus className="mr-2 h-4 w-4" />
+                     Save & New
                   </Button>
-                  {!isEditing && (
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={form.handleSubmit((data) => handleSave(data, false))}
-                      disabled={isSubmitting || isSelectedMonthLocked} 
-                      className="w-full"
-                    >
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                       <Plus className="mr-2 h-4 w-4" />
-                       Save &amp; New
-                    </Button>
-                  )}
-                </SheetFooter>
-              </div>
+                )}
+              </SheetFooter>
           </form>
         </Form>
       </SheetContent>

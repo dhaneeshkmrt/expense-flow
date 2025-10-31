@@ -42,6 +42,7 @@ export type Settings = {
   currency: string;
   locale: string;
   tenantId: string;
+  dateInputStyle?: 'popup' | 'inline';
 };
 
 export type TenantMember = {

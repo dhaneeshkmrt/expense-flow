@@ -23,6 +23,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,12 @@ const generateSecretToken = () => {
   return token;
 };
 
+const settingsSchema = z.object({
+  currency: z.string().min(1, 'Currency symbol is required.'),
+  locale: z.string().min(1, 'Country selection is required.'),
+  dateInputStyle: z.enum(['popup', 'inline']),
+});
+
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   paidByOptions: z.array(z.object({
@@ -58,21 +65,17 @@ const tenantSchema = z.object({
   })).optional(),
 });
 
+type SettingsFormValues = z.infer<typeof settingsSchema>;
 type TenantFormValues = z.infer<typeof tenantSchema>;
-
 
 export default function SettingsPage() {
   const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser } = useApp();
   
   const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { isSubmitting: isSubmittingSettings, isDirty: isDirtySettings },
-  } = useForm<Omit<Settings, 'tenantId'>>();
+  const settingsForm = useForm<SettingsFormValues>({
+    resolver: zodResolver(settingsSchema),
+  });
 
   const tenantForm = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -96,11 +99,14 @@ export default function SettingsPage() {
   const watchedName = tenantForm.watch('name');
 
   useEffect(() => {
-    // Only reset the form if it's not dirty and settings are available.
-    if (settings && !isDirtySettings) {
-      reset(settings);
+    if (settings && !settingsForm.formState.isDirty) {
+      settingsForm.reset({
+        currency: settings.currency,
+        locale: settings.locale,
+        dateInputStyle: settings.dateInputStyle || 'popup'
+      });
     }
-  }, [settings, isDirtySettings, reset]);
+  }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
 
   useEffect(() => {
     const currentTenant = tenants.find(t => t.id === selectedTenantId);
@@ -119,7 +125,7 @@ export default function SettingsPage() {
     }
   }, [watchedName, tenantForm.formState.isDirty, paidByFields, updatePaidBy]);
 
-  const onSettingsSubmit = async (data: Omit<Settings, 'tenantId'>) => {
+  const onSettingsSubmit = async (data: SettingsFormValues) => {
     if (!selectedTenantId) {
         toast({
  title: 'No Tenant Selected',
@@ -133,7 +139,7 @@ export default function SettingsPage() {
  title: 'Settings Saved',
  description: 'Your new settings have been saved successfully.',
     });
-    reset(data); // Resets the form's dirty state
+    settingsForm.reset(data); // Resets the form's dirty state
   };
   
   const onTenantSubmit = async (data: TenantFormValues) => {
@@ -164,7 +170,6 @@ export default function SettingsPage() {
     navigator.clipboard.writeText(token);
     toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
   }
-
 
   if (loadingSettings) {
     return (
@@ -333,52 +338,72 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>General Settings</CardTitle>
-           <CardDescription>Configure currency and number formatting for your tenant.</CardDescription>
+           <CardDescription>Configure currency, number formatting, and UI preferences for your tenant.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSettingsSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Currency Symbol</Label>
-                  <Input
-                    id="currency"
-                    {...register('currency')}
-                    className="w-full md:w-2/3"
-                    disabled={!selectedTenantId}
-                    placeholder="e.g. ₹, $, €"
-                  />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="locale">Country for Formatting</Label>
-                    <Controller
-                        name="locale"
-                        control={control}
-                        render={({ field }) => (
-                             <Select onValueChange={field.onChange} value={field.value} disabled={!selectedTenantId}>
-                                <SelectTrigger className="w-full md:w-2/3">
-                                    <SelectValue placeholder="Select a country" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {countryLocales.map(cl => (
-                                        <SelectItem key={cl.value} value={cl.value}>
-                                            {cl.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
+          <Form {...settingsForm}>
+            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency Symbol</Label>
+                    <Input
+                      id="currency"
+                      {...settingsForm.register('currency')}
+                      className="w-full md:w-2/3"
+                      disabled={!selectedTenantId}
+                      placeholder="e.g. ₹, $, €"
                     />
-                </div>
-            </div>
-            <Button type="submit" disabled={isSubmittingSettings || !isDirtySettings || !selectedTenantId}>
-              {isSubmittingSettings && <Loader2 className="mr-2 animate-spin" />}
-              Save Settings
-            </Button>
-          </form>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="locale">Country for Formatting</Label>
+                      <Controller
+                          name="locale"
+                          control={settingsForm.control}
+                          render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value} disabled={!selectedTenantId}>
+                                  <SelectTrigger className="w-full md:w-2/3">
+                                      <SelectValue placeholder="Select a country" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                      {countryLocales.map(cl => (
+                                          <SelectItem key={cl.value} value={cl.value}>
+                                              {cl.label}
+                                          </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                              </Select>
+                          )}
+                      />
+                  </div>
+                  <FormField
+                    control={settingsForm.control}
+                    name="dateInputStyle"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm col-span-1 md:col-span-2">
+                        <div className="space-y-0.5">
+                          <FormLabel>Date Input Style</FormLabel>
+                          <FormDescription>
+                            Show a full calendar instead of a popup in the transaction form.
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value === 'inline'}
+                            onCheckedChange={(checked) => field.onChange(checked ? 'inline' : 'popup')}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+              </div>
+              <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty || !selectedTenantId}>
+                {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                Save Settings
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    
