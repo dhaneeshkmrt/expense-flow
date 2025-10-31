@@ -102,10 +102,11 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
   const watchedName = form.watch('name');
 
   useEffect(() => {
-    if (!isEditing && watchedName && (paidByFields.length === 0 || (paidByFields.length === 1 && paidByFields[0].name === ''))) {
+    // When creating a new tenant, automatically set the first 'paidBy' option to the tenant's name
+    if (!isEditing && form.formState.isDirty && watchedName && paidByFields.length > 0) {
         updatePaidBy(0, { name: watchedName });
     }
-  }, [watchedName, isEditing, paidByFields, updatePaidBy]);
+  }, [watchedName, isEditing, paidByFields, updatePaidBy, form.formState.isDirty]);
   
   const handleGenerateToken = () => {
     form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
@@ -279,7 +280,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                       render={({ field }) => (
                         <FormItem className="flex-grow">
                           <FormControl>
-                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0 && !isEditing} />
+                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

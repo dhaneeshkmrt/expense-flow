@@ -1,17 +1,26 @@
-
 'use client';
 
-import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2 } from 'lucide-react';
-import type { Settings } from '@/lib/types';
+import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
+import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +35,21 @@ const countryLocales = [
   { value: 'ja-JP', label: 'Japan (JPY)' },
 ];
 
+const tenantSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters.'),
+  paidByOptions: z.array(z.object({
+    name: z.string().min(1, 'Paid by option cannot be empty.'),
+  })).min(1, 'At least one "Paid by" option is required.'),
+});
+
+type TenantFormValues = z.infer<typeof tenantSchema>;
+
+
 export default function SettingsPage() {
-  const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant } = useApp();
+  const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser } = useApp();
+  
+  const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -36,15 +58,45 @@ export default function SettingsPage() {
     formState: { isSubmitting: isSubmittingSettings, isDirty: isDirtySettings },
   } = useForm<Omit<Settings, 'tenantId'>>();
 
+  const tenantForm = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: {
+        name: '',
+        paidByOptions: [],
+    }
+  });
+
+  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy, update: updatePaidBy } = useFieldArray({
+      control: tenantForm.control,
+      name: "paidByOptions",
+  });
+  
+  const watchedName = tenantForm.watch('name');
+
   useEffect(() => {
     // Only reset the form if it's not dirty and settings are available.
-    // This prevents overwriting user input when the component re-renders.
     if (settings && !isDirtySettings) {
       reset(settings);
     }
   }, [settings, isDirtySettings, reset]);
 
-  const onSubmit = async (data: Omit<Settings, 'tenantId'>) => {
+  useEffect(() => {
+    const currentTenant = tenants.find(t => t.id === selectedTenantId);
+    if (currentTenant && !tenantForm.formState.isDirty) {
+      tenantForm.reset({ 
+        name: currentTenant.name,
+        paidByOptions: currentTenant.paidByOptions?.map(name => ({name})) || [{ name: currentTenant.name }],
+       });
+    }
+  }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
+
+  useEffect(() => {
+    if (tenantForm.formState.isDirty && watchedName && paidByFields.length > 0) {
+        updatePaidBy(0, { name: watchedName });
+    }
+  }, [watchedName, tenantForm.formState.isDirty, paidByFields, updatePaidBy]);
+
+  const onSettingsSubmit = async (data: Omit<Settings, 'tenantId'>) => {
     if (!selectedTenantId) {
         toast({
  title: 'No Tenant Selected',
@@ -60,47 +112,37 @@ export default function SettingsPage() {
     });
     reset(data); // Resets the form's dirty state
   };
-
-  const {
-    register: registerTenant,
-    handleSubmit: handleSubmitTenant,
-    reset: resetTenant,
-    formState: { isSubmitting: isSubmittingTenant, isDirty: isDirtyTenant },
-  } = useForm<{ name: string }>();
-
-  useEffect(() => {
-    const currentTenant = tenants.find(t => t.id === selectedTenantId);
-    if (currentTenant) {
-      resetTenant({ name: currentTenant.name });
-    }
-  }, [selectedTenantId, tenants, resetTenant]);
-
-  const onTenantNameSubmit = async (data: { name: string }) => {
+  
+  const onTenantSubmit = async (data: TenantFormValues) => {
     if (!selectedTenantId) return;
-    await editTenant(selectedTenantId, data);
-    toast({
-      title: 'Tenant Name Updated',
-      description: 'The tenant name has been updated successfully.',
-    });
-    resetTenant(data); // Resets the form's dirty state
+    setIsTenantSubmitting(true);
+    const tenantData = {
+        name: data.name,
+        paidByOptions: data.paidByOptions.map(opt => opt.name).filter(Boolean),
+    };
+
+    try {
+        await editTenant(selectedTenantId, tenantData);
+        toast({
+          title: 'Tenant Details Updated',
+          description: 'Your tenant information has been updated successfully.',
+        });
+        tenantForm.reset(data); // Resets dirty state
+    } catch(e) {
+        console.error(e);
+        toast({ title: "Update Failed", description: "Could not update tenant details.", variant: "destructive" });
+    } finally {
+        setIsTenantSubmitting(false);
+    }
   };
+
 
   if (loadingSettings) {
     return (
       <div className="flex flex-col gap-6">
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <Card>
-          <CardHeader>
-            <CardTitle>General Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Skeleton className="h-5 w-20" />
-              <Skeleton className="h-10 w-full md:w-1/3" />
-            </div>
-            <Skeleton className="h-10 w-28" />
-          </CardContent>
-        </Card>
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
@@ -108,34 +150,89 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-      <Card>
-        <CardHeader>
-          <CardTitle>Tenant Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmitTenant(onTenantNameSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tenantName">Tenant Name</Label>
-              <Input
-                id="tenantName"
-                {...registerTenant('name')}
-                className="w-full md:w-1/3"
-                disabled={!selectedTenantId || isSubmittingTenant}
-              />
-            </div>
-            <Button type="submit" disabled={isSubmittingTenant || !isDirtyTenant || !selectedTenantId}>
-              {isSubmittingTenant && <Loader2 className="mr-2 animate-spin" />}
-              Save Tenant Name
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      
+      {isMainTenantUser && (
+        <Card>
+            <CardHeader>
+                <CardTitle>Tenant Information</CardTitle>
+                <CardDescription>Manage your tenant name and payment methods.</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <Form {...tenantForm}>
+                <form onSubmit={tenantForm.handleSubmit(onTenantSubmit)} className="space-y-6">
+                    <FormField
+                      control={tenantForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tenant Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} className="w-full md:w-1/3" disabled={isTenantSubmitting} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div>
+                        <FormLabel>Paid By Options</FormLabel>
+                        <div className="space-y-2 mt-2">
+                        {paidByFields.map((field, index) => (
+                            <div key={field.id} className="flex items-center gap-2">
+                            <FormField
+                                control={tenantForm.control}
+                                name={`paidByOptions.${index}.name`}
+                                render={({ field }) => (
+                                <FormItem className="flex-grow">
+                                    <FormControl>
+                                    <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} className="w-full md:w-1/3" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            {index > 0 && (
+                                <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 text-destructive"
+                                onClick={() => removePaidBy(index)}
+                                >
+                                <Trash2 className="h-4 w-4" />
+                                </Button>
+                            )}
+                            </div>
+                        ))}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => appendPaidBy({ name: '' })}
+                        >
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Option
+                        </Button>
+                        </div>
+                    </div>
+                    
+                    <Button type="submit" disabled={isTenantSubmitting || !tenantForm.formState.isDirty}>
+                    {isTenantSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                    Save Tenant Details
+                    </Button>
+                </form>
+            </Form>
+            </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>General Settings</CardTitle>
+           <CardDescription>Configure currency and number formatting for your tenant.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSettingsSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="currency">Currency Symbol</Label>
