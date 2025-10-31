@@ -54,7 +54,7 @@ const tenantSchema = z.object({
   })).optional(),
   paidByOptions: z.array(z.object({
     name: z.string().min(1, 'Paid by option cannot be empty.'),
-  })).optional(),
+  })).min(1, 'At least one "Paid by" option is required.'),
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
