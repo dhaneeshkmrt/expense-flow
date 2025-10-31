@@ -366,16 +366,8 @@ export default function AddTransactionSheet({
                     render={({ field }) => (
                       <FormItem className="col-span-2">
                         <FormLabel>Date</FormLabel>
-                        {settings.dateInputStyle === 'inline' ? (
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                            className="rounded-md border"
-                          />
-                        ) : (
-                          <Popover>
+                        {settings.dateInputStyle === 'popup' ? (
+                           <Popover>
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
@@ -391,6 +383,14 @@ export default function AddTransactionSheet({
                               <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
                             </PopoverContent>
                           </Popover>
+                        ) : (
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                            className="rounded-md border"
+                          />
                         )}
                         <div className="flex flex-wrap gap-1 pt-1">
                             {recentDays.map(day => (
