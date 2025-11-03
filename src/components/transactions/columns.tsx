@@ -35,16 +35,18 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
       );
     },
     cell: ({ row }) => {
-      const date = new Date(row.getValue('date'));
-      const utcDate = new Date(date.valueOf() + date.getTimezoneOffset() * 60 * 1000);
-      const transactionDate = parseISO(row.getValue('date'));
+      const transaction = row.original;
+      const transactionDate = parseISO(transaction.date);
       const year = getYear(transactionDate);
       const month = getMonth(transactionDate);
       const isLocked = isMonthLocked(year, month);
       
       return (
-        <div className="flex items-center gap-2 w-28">
-          <span>{format(utcDate, 'MMM dd, yyyy')}</span>
+        <div className="flex items-center gap-2">
+            <div>
+                <div className="font-medium">{format(transactionDate, 'MMM dd (EEE)')}</div>
+                <div className="text-xs text-muted-foreground">{transaction.time}</div>
+            </div>
           {isLocked && (
             <Lock className="h-3 w-3 text-orange-500" title="Month is locked after processing" />
           )}
