@@ -78,7 +78,7 @@ interface DataTableProps<TData, TValue> {
   showFilters?: boolean;
 }
 
-const MOBILE_TABLE_BREAKPOINT = 640; // pixels
+const MOBILE_TABLE_BREAKPOINT = 768; // pixels
 
 export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories, tenants, selectedTenantId } = useApp();
@@ -89,7 +89,10 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     showFilters ? [{ id: 'date', desc: true }] : []
   );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    subcategory: false,
+    microcategory: false,
+  });
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState('')
   const [pagination, setPagination] = React.useState({
@@ -121,9 +124,13 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
         subcategory: false,
         microcategory: false,
         paidBy: false,
+        categorization: true, // Keep this visible
       });
     } else {
-      setColumnVisibility({});
+      setColumnVisibility({
+        subcategory: false, // hidden column
+        microcategory: false, // hidden column
+      });
     }
   }, [isMobile]);
 
@@ -158,7 +165,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
 
 
   React.useEffect(() => {
-    table.getColumn('category')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
+    table.getColumn('categorization')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
   }, [categoryFilter, table]);
 
   React.useEffect(() => {
@@ -436,7 +443,3 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     </div>
   );
 }
-
-    
-
-    

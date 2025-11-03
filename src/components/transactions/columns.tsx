@@ -99,28 +99,36 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
     },
   },
   {
-    accessorKey: 'category',
-    header: 'Category',
-    cell: ({ row }) => <Badge variant="secondary">{row.getValue('category')}</Badge>,
+    id: 'categorization',
+    accessorKey: 'category', // Keep for filtering
+    header: 'Categorization',
+    cell: ({ row }) => {
+      const category = row.original.category;
+      const subcategory = row.original.subcategory;
+      const microcategory = row.original.microcategory;
+
+      let display = category;
+      if (subcategory) display += ` / ${subcategory}`;
+      if (microcategory) display += ` / ${microcategory}`;
+
+      return <Badge variant="secondary">{display}</Badge>;
+    },
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
   },
   {
     accessorKey: 'subcategory',
-    header: 'Subcategory',
-    cell: ({ row }) => <Badge variant="outline">{row.getValue('subcategory')}</Badge>,
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
   },
-    {
+  {
     accessorKey: 'microcategory',
-    header: 'Micro-Subcategory',
-    cell: ({ row }) => {
-        const microcategory = row.getValue('microcategory') as string;
-        return microcategory ? <Badge variant="outline">{microcategory}</Badge> : null;
-    },
+    header: () => null,
+    cell: () => null,
     filterFn: (row, id, value) => {
       return value.includes(row.getValue(id));
     },
@@ -197,5 +205,3 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
 
 // Fallback for backward compatibility
 export const columns = createColumns(() => false);
-
-    
