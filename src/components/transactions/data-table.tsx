@@ -51,7 +51,6 @@ import { addDays, format } from 'date-fns';
 import { useApp } from '@/lib/provider';
 import type { DateRange } from 'react-day-picker';
 import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
-import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 import { useContainerWidth } from '@/hooks/useContainerWidth';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
@@ -106,9 +105,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [microcategoryFilter, setMicrocategoryFilter] = React.useState<string>('');
   const [paidByFilter, setPaidByFilter] = React.useState<string[]>([]);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
-  
-  const { formattedValue: minAmount, handleInputChange: handleMinAmountChange, numericValue: minAmountNumeric } = useCurrencyInput({});
-  const { formattedValue: maxAmount, handleInputChange: handleMaxAmountChange, numericValue: maxAmountNumeric } = useCurrencyInput({});
+  const [amountFilter, setAmountFilter] = React.useState('');
   
   const selectedTenant = React.useMemo(() => {
     return tenants.find(t => t.id === selectedTenantId);
@@ -179,8 +176,20 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   }, [microcategoryFilter, table]);
 
   React.useEffect(() => {
-    table.getColumn('amount')?.setFilterValue((minAmountNumeric || maxAmountNumeric) ? [minAmountNumeric, maxAmountNumeric] : undefined);
-  }, [minAmountNumeric, maxAmountNumeric, table]);
+    const parts = amountFilter.split('-').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
+    let min: number | undefined;
+    let max: number | undefined;
+
+    if (parts.length === 1) {
+        min = parts[0];
+        max = parts[0];
+    } else if (parts.length === 2) {
+        min = Math.min(parts[0], parts[1]);
+        max = Math.max(parts[0], parts[1]);
+    }
+    
+    table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
+  }, [amountFilter, table]);
   
   React.useEffect(() => {
       table.getColumn('paidBy')?.setFilterValue(paidByFilter.length > 0 ? paidByFilter : undefined);
@@ -314,22 +323,12 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                   ))}
               </DropdownMenuContent>
             </DropdownMenu>
-             <div className="flex items-center gap-2">
-                <Input
-                    type="text"
-                    placeholder="Min amount"
-                    value={minAmount}
-                    onChange={(e) => handleMinAmountChange(e.target.value)}
-                    className="w-28"
-                />
-                <Input
-                    type="text"
-                    placeholder="Max amount"
-                    value={maxAmount}
-                    onChange={(e) => handleMaxAmountChange(e.target.value)}
-                    className="w-28"
-                />
-            </div>
+            <Input
+                placeholder="Amount or Range (e.g. 50-100)"
+                value={amountFilter}
+                onChange={(event) => setAmountFilter(event.target.value)}
+                className="w-48"
+            />
         </div>
        )}
       <div className="rounded-md border">

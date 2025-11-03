@@ -95,6 +95,7 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
       const [min, max] = value as [number | undefined, number | undefined];
       
       if (min !== undefined && max !== undefined) {
+        if (min === max) return amount === min;
         return amount >= min && amount <= max;
       }
       if (min !== undefined) {
