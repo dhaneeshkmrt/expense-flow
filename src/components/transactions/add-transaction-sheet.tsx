@@ -361,7 +361,7 @@ export default function AddTransactionSheet({
                     name="date"
                     render={({ field }) => (
                       <FormItem className="col-span-2">
-                        <FormLabel>Date</FormLabel>
+                        <FormLabel className="block">Date</FormLabel>
                         {settings.dateInputStyle === 'popup' ? (
                            <Popover>
                             <PopoverTrigger asChild>
