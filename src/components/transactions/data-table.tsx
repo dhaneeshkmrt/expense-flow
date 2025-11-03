@@ -324,7 +324,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
               </DropdownMenuContent>
             </DropdownMenu>
             <Input
-                placeholder="Amount or Range (e.g. 50-100)"
+                placeholder="e.g. 50 or 50-100"
                 value={amountFilter}
                 onChange={(event) => setAmountFilter(event.target.value)}
                 className="w-48"
