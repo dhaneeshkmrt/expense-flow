@@ -92,6 +92,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
     subcategory: false,
     microcategory: false,
+    paidBy: false,
   });
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState('')
@@ -130,6 +131,7 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
       setColumnVisibility({
         subcategory: false, // hidden column
         microcategory: false, // hidden column
+        paidBy: false, // hidden column, as it's now in the amount column
       });
     }
   }, [isMobile]);

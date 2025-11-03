@@ -79,8 +79,14 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
     cell: function AmountCell({ row }) {
       const formatCurrency = useCurrencyFormatter();
       const amount = parseFloat(row.getValue('amount'));
+      const paidBy = row.original.paidBy;
       
-      return <div className="text-right font-medium">{formatCurrency(amount)}</div>;
+      return (
+          <div className="text-right font-medium flex items-center justify-end gap-2">
+            <span>{formatCurrency(amount)}</span>
+            <Badge variant="outline" className="font-mono">{paidBy.toUpperCase()}</Badge>
+          </div>
+      );
     },
     filterFn: (row, id, value) => {
       const amount = row.getValue(id) as number;
@@ -136,6 +142,7 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
   {
     accessorKey: 'paidBy',
     header: 'Paid By',
+    cell: () => null,
     filterFn: (row, id, value) => {
         return value.includes(row.getValue(id));
     },
