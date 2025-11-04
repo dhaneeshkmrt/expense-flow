@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -203,8 +204,8 @@ export default function InvestmentCalculator() {
                                         <Input 
                                             type="number" 
                                             className="w-32"
-                                            value={formField.value} 
-                                            onChange={e => formField.onChange(parseFloat(e.target.value))}
+                                            value={formField.value || ''} 
+                                            onChange={e => formField.onChange(parseFloat(e.target.value) || 0)}
                                         />
                                     </FormControl>
                                     <Slider
@@ -327,3 +328,5 @@ export default function InvestmentCalculator() {
         </Tabs>
     );
 }
+
+    

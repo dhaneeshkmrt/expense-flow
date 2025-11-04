@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -96,7 +97,7 @@ export default function LoanCalculator() {
                                     <FormLabel>Loan Amount</FormLabel>
                                     <div className="flex items-center gap-4">
                                         <FormControl>
-                                            <Input type="number" className="w-32" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                                            <Input type="number" className="w-32" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/>
                                         </FormControl>
                                         <Slider
                                             value={[field.value]}
@@ -118,7 +119,7 @@ export default function LoanCalculator() {
                                     <FormLabel>Interest Rate (p.a. %)</FormLabel>
                                     <div className="flex items-center gap-4">
                                         <FormControl>
-                                            <Input type="number" className="w-32" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/>
+                                            <Input type="number" className="w-32" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/>
                                         </FormControl>
                                         <Slider
                                             value={[field.value]}
@@ -140,7 +141,7 @@ export default function LoanCalculator() {
                                     <FormLabel>Loan Tenure (Years)</FormLabel>
                                     <div className="flex items-center gap-4">
                                         <FormControl>
-                                            <Input type="number" className="w-32" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))}/>
+                                            <Input type="number" className="w-32" {...field} value={field.value || ''} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}/>
                                         </FormControl>
                                         <Slider
                                             value={[field.value]}
@@ -215,3 +216,5 @@ export default function LoanCalculator() {
         </Card>
     );
 }
+
+    

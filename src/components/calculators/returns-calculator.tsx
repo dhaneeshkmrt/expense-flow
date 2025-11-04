@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -146,13 +147,13 @@ export default function ReturnsCalculator() {
                         <Form {...cagrForm}>
                             <form onSubmit={cagrForm.handleSubmit(onCagrSubmit)} className="space-y-4">
                                 <FormField name="initialValue" control={cagrForm.control} render={({field}) => (
-                                    <FormItem><FormLabel>Initial Value</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Initial Value</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField name="finalValue" control={cagrForm.control} render={({field}) => (
-                                    <FormItem><FormLabel>Final Value</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Final Value</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField name="years" control={cagrForm.control} render={({field}) => (
-                                    <FormItem><FormLabel>Number of Years</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))}/></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Number of Years</FormLabel><FormControl><Input type="number" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)}/></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <Button type="submit">Calculate CAGR</Button>
                             </form>
@@ -192,7 +193,7 @@ export default function ReturnsCalculator() {
                                     {fields.map((item, index) => (
                                         <div key={item.id} className="flex gap-2 items-start">
                                             <FormField name={`cashflows.${index}.amount`} control={xirrForm.control} render={({field}) => (
-                                                <FormItem className="flex-1"><FormControl><Input type="number" placeholder="Amount" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>
+                                                <FormItem className="flex-1"><FormControl><Input type="number" placeholder="Amount" {...field} value={field.value || ''} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>
                                             )} />
                                             <FormField name={`cashflows.${index}.date`} control={xirrForm.control} render={({field}) => (
                                                 <FormItem className="flex-1">
@@ -259,3 +260,5 @@ export default function ReturnsCalculator() {
         </Tabs>
     );
 }
+
+    
