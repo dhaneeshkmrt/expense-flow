@@ -18,6 +18,7 @@ import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
+import { Label } from '@/components/ui/label';
 
 // Schemas
 const cagrSchema = z.object({
@@ -260,5 +261,3 @@ export default function ReturnsCalculator() {
         </Tabs>
     );
 }
-
-    
