@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2 } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -45,6 +45,18 @@ const baseNavItemsTemplate = [
   { href: '/ai-image-studio', label: 'AI Image Studio', icon: Wand2 },
 ];
 
+const calculatorNavItems = [
+    {
+        label: 'Calculators',
+        icon: Calculator,
+        subItems: [
+            { href: '/calculators/investment', label: 'Investment', icon: Building2 },
+            { href: '/calculators/loan', label: 'Loan EMI', icon: DatabaseBackup },
+            { href: '/calculators/returns', label: 'Returns', icon: DatabaseBackup },
+        ]
+    }
+];
+
 const settingsNavItem = { href: '/admin/settings', label: 'Settings', icon: Settings };
 
 const adminNavItems = [
@@ -63,6 +75,7 @@ export function AppShellNav() {
   const { isRootUser, isMainTenantUser, selectedTenantId, tenants } = useApp();
   const [openSections, setOpenSections] = useState({
       admin: false,
+      calculators: false,
   });
   const [isMounted, setIsMounted] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
@@ -71,6 +84,7 @@ export function AppShellNav() {
     setIsMounted(true);
     setOpenSections({
         admin: pathname.startsWith('/admin'),
+        calculators: pathname.startsWith('/calculators'),
     });
     // Reset navigation state when path changes
     setNavigatingTo(null);
@@ -79,7 +93,7 @@ export function AppShellNav() {
   const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   const navItems = useMemo(() => {
-    let currentNavItems = [...baseNavItemsTemplate];
+    let currentNavItems = [...baseNavItemsTemplate, ...calculatorNavItems];
     
     if (isMainTenantUser) {
         currentNavItems.push(settingsNavItem);
@@ -92,7 +106,7 @@ export function AppShellNav() {
     return currentNavItems;
   }, [isRootUser, isMainTenantUser]);
   
-  const toggleSection = (section: 'admin') => {
+  const toggleSection = (section: keyof typeof openSections) => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
   }
   
@@ -109,8 +123,8 @@ export function AppShellNav() {
   return (
     <SidebarMenu>
       {navItems.map((item) => {
-        const sectionKey = item.label.toLowerCase() as 'admin';
-        const isNavigating = navigatingTo === item.href;
+        const sectionKey = item.label.toLowerCase() as keyof typeof openSections;
+        const isNavigating = navigatingTo === (hasHref(item) ? item.href : undefined);
 
         return hasSubItems(item) ? (
           <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
