@@ -46,7 +46,7 @@ import {
     Calendar,
     Apple
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { getIconName } from '@/hooks/useCategories';
 
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
@@ -81,11 +81,14 @@ type CategoryFormValues = z.infer<typeof categorySchema>;
 interface CategoryDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-  category?: Category | null;
+  category?: Category | null | Omit<Category, 'budget'> & { budget?: number };
+  onAdd?: (data: any) => Promise<void>;
+  onEdit?: (id: string, data: any) => Promise<void>;
+  isDefaultCategory?: boolean;
 }
 
-export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps) {
-  const { addCategory, editCategory, selectedMonthName } = useApp();
+export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefaultCategory = false }: CategoryDialogProps) {
+  const { addCategory: appAddCategory, editCategory: appEditCategory, selectedMonthName } = useApp();
   const isEditing = !!category;
 
   const form = useForm<CategoryFormValues>({
@@ -100,7 +103,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
   useEffect(() => {
     if (open) {
       if (isEditing && category) {
-        const iconName = iconList.find(icon => icon.component === category.icon)?.name;
+        const iconName = typeof category.icon === 'string' ? category.icon : getIconName(category.icon);
         form.reset({
           name: category.name,
           icon: iconName || '',
@@ -113,10 +116,13 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
   }, [category, isEditing, open, form]);
 
   const onSubmit = (data: CategoryFormValues) => {
+    const finalOnAdd = onAdd || appAddCategory;
+    const finalOnEdit = onEdit || appEditCategory;
+    
     if (isEditing && category) {
-      editCategory(category.id, data);
+      finalOnEdit(category.id, data);
     } else {
-      addCategory({
+      finalOnAdd({
         name: data.name,
         icon: data.icon,
         budget: data.budget,
@@ -132,7 +138,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
           <DialogTitle>{isEditing ? 'Edit Category' : 'Add a New Category'}</DialogTitle>
           <DialogDescription>
             {isEditing ? `You are editing "${category?.name}".` : 'Enter the details for your new category.'}
-            {` Budget set here will apply to ${selectedMonthName}.`}
+            {!isDefaultCategory && ` Budget set here will apply to ${selectedMonthName}.`}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -185,7 +191,7 @@ export function CategoryDialog({ open, setOpen, category }: CategoryDialogProps)
               name="budget"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Budget for {selectedMonthName}</FormLabel>
+                  <FormLabel>Default Budget</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
                   </FormControl>

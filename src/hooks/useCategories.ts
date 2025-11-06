@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { Category, Subcategory, Microcategory, CategoryBudget } from '@/lib/types';
-import { categories as defaultCategories } from '@/lib/data';
 import {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
   GraduationCap, Sparkles, ShoppingBag, CircleDollarSign, Factory, HelpCircle,
@@ -19,12 +18,12 @@ const iconMap: { [key: string]: React.ElementType } = {
   Apple, Building, User, Calendar,
 };
 
-const getIconName = (iconComponent: React.ElementType) => {
+export const getIconName = (iconComponent: React.ElementType) => {
   const iconEntry = Object.entries(iconMap).find(([, val]) => val === iconComponent);
   return iconEntry ? iconEntry[0] : 'HelpCircle';
 }
 
-const getIconComponent = (iconName: string): React.ElementType => {
+export const getIconComponent = (iconName: string): React.ElementType => {
   return iconMap[iconName] || HelpCircle;
 };
 
@@ -44,30 +43,44 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
   }, []);
 
   const seedDefaultCategories = useCallback(async (tenantIdToSeed: string) => {
-    const batch = writeBatch(db);
-    const monthKey = getMonthKey(new Date().getFullYear(), new Date().getMonth());
-    const budgetDocRef = doc(db, 'budgets', tenantIdToSeed);
-    const initialBudgets: CategoryBudget['budgets'] = { [monthKey]: {} };
+      const defaultCategoriesQuery = query(collection(db, 'defaultCategories'));
+      const defaultCategoriesSnapshot = await getDocs(defaultCategoriesQuery);
+      
+      if (defaultCategoriesSnapshot.empty) {
+          console.warn("`defaultCategories` collection is empty. Cannot seed tenant categories.");
+          return;
+      }
 
-    defaultCategories.forEach((category) => {
-        const categoryIdName = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
-        const docId = `${tenantIdToSeed}_${categoryIdName}`;
-        const docRef = doc(db, 'categories', docId);
-        const categoryForDb = {
-            name: category.name,
-            icon: getIconName(category.icon),
-            subcategories: category.subcategories.map(sub => ({...sub, microcategories: sub.microcategories || []})),
-            tenantId: tenantIdToSeed,
-        };
-        batch.set(docRef, categoryForDb);
+      const batch = writeBatch(db);
+      const monthKey = getMonthKey(new Date().getFullYear(), new Date().getMonth());
+      const budgetDocRef = doc(db, 'budgets', tenantIdToSeed);
+      const initialBudgets: CategoryBudget['budgets'] = { [monthKey]: {} };
+      
+      defaultCategoriesSnapshot.forEach((docSnap) => {
+          const category = docSnap.data();
+          const categoryIdName = category.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          const docId = `${tenantIdToSeed}_${categoryIdName}`;
+          const docRef = doc(db, 'categories', docId);
 
-        if (category.budget) {
-          initialBudgets[monthKey][docId] = category.budget;
-        }
-    });
+          const categoryForDb = {
+              name: category.name,
+              icon: category.icon,
+              subcategories: category.subcategories.map((sub: any) => ({
+                  ...sub, 
+                  microcategories: sub.microcategories || []
+              })),
+              tenantId: tenantIdToSeed,
+          };
+          batch.set(docRef, categoryForDb);
 
-    batch.set(budgetDocRef, { budgets: initialBudgets }, { merge: true });
-    await batch.commit();
+          if (category.budget) {
+              initialBudgets[monthKey][docId] = category.budget;
+          }
+      });
+      
+      batch.set(budgetDocRef, { budgets: initialBudgets }, { merge: true });
+      await batch.commit();
+
   }, [getMonthKey]);
   
   const fetchCategories = useCallback(async (tenantIdToFetch: string, year: number, month: number) => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -34,12 +35,15 @@ type SubcategoryFormValues = z.infer<typeof subcategorySchema>;
 interface SubcategoryDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-  category: Category | null;
+  category: Category | null | Omit<Category, 'budget'> & { budget?: number };
   subcategory?: Subcategory | null;
+  onAdd?: (categoryId: string, data: any) => Promise<void>;
+  onEdit?: (categoryId: string, subcategoryId: string, data: any) => Promise<void>;
+  isDefaultCategory?: boolean;
 }
 
-export function SubcategoryDialog({ open, setOpen, category, subcategory }: SubcategoryDialogProps) {
-  const { addSubcategory, editSubcategory } = useApp();
+export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd, onEdit, isDefaultCategory = false }: SubcategoryDialogProps) {
+  const { addSubcategory: appAddSubcategory, editSubcategory: appEditSubcategory } = useApp();
   const isEditing = !!subcategory;
 
   const form = useForm<SubcategoryFormValues>({
@@ -60,10 +64,13 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory }: Subc
   const onSubmit = (data: SubcategoryFormValues) => {
     if (!category) return;
 
+    const finalOnAdd = onAdd || appAddSubcategory;
+    const finalOnEdit = onEdit || appEditSubcategory;
+
     if (isEditing && subcategory) {
-      editSubcategory(category.id, subcategory.id, data);
+      finalOnEdit(category.id, subcategory.id, data);
     } else {
-      addSubcategory(category.id, data);
+      finalOnAdd(category.id, data);
     }
     setOpen(false);
   };

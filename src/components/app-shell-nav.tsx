@@ -65,6 +65,7 @@ const adminNavItems = [
     icon: Shield,
     subItems: [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
+        { href: '/admin/default-categories', label: 'Default Categories', icon: Shapes },
         { href: '/admin/backup', label: 'Backup / Restore', icon: DatabaseBackup },
     ]
   },

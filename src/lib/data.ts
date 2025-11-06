@@ -1,4 +1,5 @@
 
+'use client';
 import type { Category, Settings } from '@/lib/types';
 import {
   CircleDollarSign,
@@ -111,4 +112,4 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
 ];
 
 
-export const defaultSettings: Omit<Settings, 'tenantId'> = { currency: '₹', locale: 'en-IN' };
+export const defaultSettings: Omit<Settings, 'tenantId' | 'dateInputStyle'> = { currency: '₹', locale: 'en-IN' };

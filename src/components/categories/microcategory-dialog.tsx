@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -34,13 +35,16 @@ type MicrocategoryFormValues = z.infer<typeof microcategorySchema>;
 interface MicrocategoryDialogProps {
   open: boolean;
   setOpen: (open: boolean) => void;
-  category: Category | null;
+  category: Category | null | Omit<Category, 'budget'> & { budget?: number };
   subcategory: Subcategory | null;
   microcategory?: Microcategory | null;
+  onAdd?: (categoryId: string, subcategoryId: string, data: any) => Promise<void>;
+  onEdit?: (categoryId: string, subcategoryId: string, microcategoryId: string, data: any) => Promise<void>;
+  isDefaultCategory?: boolean;
 }
 
-export function MicrocategoryDialog({ open, setOpen, category, subcategory, microcategory }: MicrocategoryDialogProps) {
-  const { addMicrocategory, editMicrocategory } = useApp();
+export function MicrocategoryDialog({ open, setOpen, category, subcategory, microcategory, onAdd, onEdit, isDefaultCategory = false }: MicrocategoryDialogProps) {
+  const { addMicrocategory: appAddMicrocategory, editMicrocategory: appEditMicrocategory } = useApp();
   const isEditing = !!microcategory;
 
   const form = useForm<MicrocategoryFormValues>({
@@ -61,10 +65,13 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
   const onSubmit = (data: MicrocategoryFormValues) => {
     if (!category || !subcategory) return;
 
+    const finalOnAdd = onAdd || appAddMicrocategory;
+    const finalOnEdit = onEdit || appEditMicrocategory;
+
     if (isEditing && microcategory) {
-      editMicrocategory(category.id, subcategory.id, microcategory.id, data);
+      finalOnEdit(category.id, subcategory.id, microcategory.id, data);
     } else {
-      addMicrocategory(category.id, subcategory.id, data);
+      finalOnAdd(category.id, subcategory.id, data);
     }
     setOpen(false);
   };
