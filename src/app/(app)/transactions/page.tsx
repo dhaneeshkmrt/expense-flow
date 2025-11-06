@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Import, PlusCircle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
+import type { Transaction } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,7 +70,7 @@ export default function TransactionsPage() {
           </AddTransactionSheet>
         </div>
       </div>
-      <DataTable columns={columns} data={transactions} showFilters={true} />
+      <DataTable columns={columns} data={transactions as (Transaction & {id: string, date: string, amount: number})[]} showFilters={true} />
     </div>
   );
 }

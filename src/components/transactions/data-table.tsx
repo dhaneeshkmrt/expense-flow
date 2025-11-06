@@ -54,6 +54,8 @@ import { RankingInfo, rankItem } from '@tanstack/match-sorter-utils';
 import { useContainerWidth } from '@/hooks/useContainerWidth';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -79,7 +81,7 @@ interface DataTableProps<TData, TValue> {
 
 const MOBILE_TABLE_BREAKPOINT = 768; // pixels
 
-export function DataTable<TData, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
+export function DataTable<TData extends { id: string, date: string, amount: number }, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories, tenants, selectedTenantId } = useApp();
   const [ref, width] = useContainerWidth<HTMLDivElement>();
   const isMobile = width < MOBILE_TABLE_BREAKPOINT;
@@ -106,6 +108,8 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
   const [paidByFilter, setPaidByFilter] = React.useState<string[]>([]);
   const [dateRange, setDateRange] = React.useState<DateRange | undefined>(undefined);
   const [amountFilter, setAmountFilter] = React.useState('');
+  const [showDuplicates, setShowDuplicates] = React.useState(false);
+  const [duplicateIds, setDuplicateIds] = React.useState<Set<string>>(new Set());
   
   const selectedTenant = React.useMemo(() => {
     return tenants.find(t => t.id === selectedTenantId);
@@ -132,6 +136,29 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
       });
     }
   }, [isMobile]);
+
+  React.useEffect(() => {
+    if (showDuplicates) {
+      const potentialDuplicates = new Map<string, TData[]>();
+      table.getRowModel().rows.forEach(row => {
+        const key = `${row.original.date}_${row.original.amount.toFixed(2)}`;
+        if (!potentialDuplicates.has(key)) {
+          potentialDuplicates.set(key, []);
+        }
+        potentialDuplicates.get(key)!.push(row.original);
+      });
+
+      const newDuplicateIds = new Set<string>();
+      potentialDuplicates.forEach(group => {
+        if (group.length > 1) {
+          group.forEach(item => newDuplicateIds.add(item.id));
+        }
+      });
+      setDuplicateIds(newDuplicateIds);
+    } else {
+      setDuplicateIds(new Set());
+    }
+  }, [showDuplicates, table.getRowModel().rows]);
 
   const table = useReactTable({
     data,
@@ -329,6 +356,10 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
                 onChange={(event) => setAmountFilter(event.target.value)}
                 className="w-48"
             />
+            <div className="flex items-center space-x-2">
+              <Switch id="duplicates-mode" checked={showDuplicates} onCheckedChange={setShowDuplicates}/>
+              <Label htmlFor="duplicates-mode">Find Duplicates</Label>
+            </div>
         </div>
        )}
       <div className="rounded-md border">
@@ -351,7 +382,12 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
           <TableBody>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                <TableRow 
+                  key={row.id} 
+                  data-state={row.getIsSelected() && 'selected'}
+                  data-duplicate={showDuplicates && duplicateIds.has(row.original.id)}
+                  className="data-[duplicate=true]:bg-destructive/10"
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -444,3 +480,5 @@ export function DataTable<TData, TValue>({ columns, data, showFilters = false }:
     </div>
   );
 }
+
+    
