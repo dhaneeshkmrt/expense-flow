@@ -15,7 +15,7 @@ import type { Transaction } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export default function TransactionsPage() {
-  const { user, tenants, transactions, loading, loadingCategories, selectedTenantId, isMonthLocked } = useApp();
+  const { user, tenants, transactions, loading, loadingCategories, selectedTenantId, isMonthLocked, filteredTransactions } = useApp();
 
   const isMainTenantUser = useMemo(() => {
     if (!user || !tenants.length) return false;
@@ -70,7 +70,7 @@ export default function TransactionsPage() {
           </AddTransactionSheet>
         </div>
       </div>
-      <DataTable columns={columns} data={transactions as (Transaction & {id: string, date: string, amount: number})[]} showFilters={true} />
+      <DataTable columns={columns} data={filteredTransactions as (Transaction & {id: string, date: string, amount: number})[]} showFilters={true} />
     </div>
   );
 }
