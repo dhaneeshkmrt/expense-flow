@@ -137,8 +137,15 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     }
   }, [isMobile]);
 
+  const filteredData = React.useMemo(() => {
+    if (showDuplicates) {
+      return data.filter(row => duplicateIds.has(row.id));
+    }
+    return data;
+  }, [data, showDuplicates, duplicateIds]);
+
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -165,29 +172,27 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
       pagination,
     },
   });
-
+  
   React.useEffect(() => {
-    if (showDuplicates) {
-      const potentialDuplicates = new Map<string, TData[]>();
-      table.getRowModel().rows.forEach(row => {
-        const key = `${row.original.date}_${row.original.amount.toFixed(2)}`;
-        if (!potentialDuplicates.has(key)) {
-          potentialDuplicates.set(key, []);
-        }
-        potentialDuplicates.get(key)!.push(row.original);
-      });
-
-      const newDuplicateIds = new Set<string>();
-      potentialDuplicates.forEach(group => {
-        if (group.length > 1) {
-          group.forEach(item => newDuplicateIds.add(item.id));
-        }
-      });
-      setDuplicateIds(newDuplicateIds);
-    } else {
-      setDuplicateIds(new Set());
-    }
-  }, [showDuplicates, table.getRowModel().rows]);
+    const potentialDuplicates = new Map<string, TData[]>();
+    // Important: use the original `data` array here to find all duplicates, not the `filteredData`
+    data.forEach(row => {
+      const key = `${row.amount.toFixed(2)}`;
+      if (!potentialDuplicates.has(key)) {
+        potentialDuplicates.set(key, []);
+      }
+      potentialDuplicates.get(key)!.push(row);
+    });
+  
+    const newDuplicateIds = new Set<string>();
+    potentialDuplicates.forEach(group => {
+      if (group.length > 1) {
+        group.forEach(item => newDuplicateIds.add(item.id));
+      }
+    });
+    setDuplicateIds(newDuplicateIds);
+  
+  }, [data]); // Rerun only when the full dataset changes
 
 
   React.useEffect(() => {
@@ -480,5 +485,3 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     </div>
   );
 }
-
-    
