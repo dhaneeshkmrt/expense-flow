@@ -175,7 +175,9 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
   
   React.useEffect(() => {
     const potentialDuplicates = new Map<string, TData[]>();
-    // Important: use the original `data` array here to find all duplicates, not the `filteredData`
+    
+    // The `data` prop already contains only the transactions for the selected month.
+    // So we use it directly for duplicate detection within the current month.
     data.forEach(row => {
       const key = `${row.amount.toFixed(2)}`;
       if (!potentialDuplicates.has(key)) {
@@ -192,7 +194,7 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     });
     setDuplicateIds(newDuplicateIds);
   
-  }, [data]); // Rerun only when the full dataset changes
+  }, [data]); // Rerun only when the monthly data changes
 
 
   React.useEffect(() => {
@@ -390,7 +392,7 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
                 <TableRow 
                   key={row.id} 
                   data-state={row.getIsSelected() && 'selected'}
-                  data-duplicate={showDuplicates && duplicateIds.has(row.original.id)}
+                  data-duplicate={duplicateIds.has(row.original.id)}
                   className="data-[duplicate=true]:bg-destructive/10"
                 >
                   {row.getVisibleCells().map((cell) => (
@@ -485,3 +487,5 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     </div>
   );
 }
+
+    
