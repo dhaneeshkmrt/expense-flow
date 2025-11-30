@@ -6,7 +6,7 @@ import { useApp } from '@/lib/provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2, PiggyBank } from 'lucide-react';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { SubcategoryDialog } from '@/components/categories/subcategory-dialog';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
@@ -30,6 +30,10 @@ export default function CategoriesPage() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const [selectedMicrocategory, setSelectedMicrocategory] = useState<Microcategory | null>(null);
   const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
+
+  const totalBudget = useMemo(() => {
+    return categories.reduce((sum, cat) => sum + (cat.budget || 0), 0);
+  }, [categories]);
 
   const toggleCollapsible = (id: string) => {
     setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));
@@ -116,7 +120,14 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
           <p className="text-muted-foreground">Manage your expense categories and their budgets for {selectedMonthName}.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 rounded-md border p-2">
+                <PiggyBank className="h-6 w-6 text-muted-foreground" />
+                <div>
+                    <div className="text-xs text-muted-foreground">Total Budget</div>
+                    <div className="text-base font-bold">{formatCurrency(totalBudget)}</div>
+                </div>
+            </div>
             <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
                 <PlusCircle className="mr-2" />
                 Add Category
@@ -274,3 +285,5 @@ export default function CategoriesPage() {
     </div>
   );
 }
+
+    
