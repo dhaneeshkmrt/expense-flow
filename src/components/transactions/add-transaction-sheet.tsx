@@ -297,12 +297,10 @@ export default function AddTransactionSheet({
     toast({ title: "Subcategory Added", description: `"${data.name}" was added to ${selectedCategory.name}.` });
   };
 
-  const handleAddMicrocategory = async (data: { name: string }) => {
-    const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
-    if (!selectedCategory || !subcategory) return;
-    await addMicrocategory(selectedCategory.id, subcategory.id, data);
+  const handleAddMicrocategory = async (categoryId: string, subcategoryId: string, data: { name: string }) => {
+    await addMicrocategory(categoryId, subcategoryId, data);
     form.setValue('microcategory', data.name, { shouldValidate: true, shouldDirty: true });
-    toast({ title: "Micro-category Added", description: `"${data.name}" was added to ${subcategory.name}.` });
+    toast({ title: "Micro-category Added", description: `"${data.name}" was added.` });
   };
 
   const sheetTitle = isEditing ? 'Edit Transaction' : 'Add a New Transaction';
@@ -619,7 +617,7 @@ export default function AddTransactionSheet({
         setOpen={setMicrocategoryDialogOpen}
         category={selectedCategory}
         subcategory={subcategories.find(s => s.name === selectedSubcategoryName) || null}
-        onAdd={handleAddMicrocategory}
+        onAdd={(categoryId, subcategoryId, data) => handleAddMicrocategory(categoryId, subcategoryId, data)}
       />
     </>
   );
