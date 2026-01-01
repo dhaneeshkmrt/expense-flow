@@ -4,73 +4,108 @@
 import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, getYear, getMonth } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Progress } from '@/components/ui/progress';
+import { getYear, parseISO } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Wallet } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
+
+interface ReportData {
+  id: string;
+  name: string;
+  icon: React.ElementType;
+  total: number;
+  subcategories: {
+    id: string;
+    name: string;
+    total: number;
+    microcategories: {
+      id: string;
+      name: string;
+      total: number;
+    }[];
+  }[];
+}
 
 export default function YearlyReportPage() {
   const { categories, transactions, loading, loadingCategories, selectedYear } = useApp();
   const formatCurrency = useCurrencyFormatter();
-  
-  const monthHeaders = Array.from({ length: 12 }, (_, i) => format(new Date(selectedYear, i), 'MMM'));
 
   const reportData = useMemo(() => {
     if (loading || loadingCategories) return [];
 
-    const yearTransactions = transactions.filter(t => getYear(parseISO(t.date)) === selectedYear);
+    const yearTransactions = transactions.filter(t => {
+      if (t.subcategory === 'Category Transfer') return false;
+      const transactionYear = getYear(parseISO(t.date));
+      return transactionYear === selectedYear;
+    });
+
+    const categoryTotals = new Map<string, number>();
+    const subcategoryTotals = new Map<string, number>();
+    const microcategoryTotals = new Map<string, number>();
+
+    yearTransactions.forEach(t => {
+      const category = categories.find(c => c.name === t.category);
+      if (!category) return;
+      
+      categoryTotals.set(category.id, (categoryTotals.get(category.id) || 0) + t.amount);
+
+      const subcategory = category.subcategories.find(s => s.name === t.subcategory);
+      if (subcategory) {
+        subcategoryTotals.set(subcategory.id, (subcategoryTotals.get(subcategory.id) || 0) + t.amount);
+
+        if (t.microcategory) {
+          const microcategory = subcategory.microcategories.find(m => m.name === t.microcategory);
+          if (microcategory) {
+            microcategoryTotals.set(microcategory.id, (microcategoryTotals.get(microcategory.id) || 0) + t.amount);
+          }
+        }
+      }
+    });
 
     return categories.map(category => {
-      const monthlyData = Array(12).fill(null).map((_, monthIndex) => {
-        const budget = category.budget || 0;
-
-        const spent = yearTransactions
-          .filter(t => t.category === category.name && getMonth(parseISO(t.date)) === monthIndex)
-          .reduce((sum, t) => sum + t.amount, 0);
-
-        const balance = budget - spent;
-        return { budget, spent, balance };
-      });
-
-      const totalBudget = monthlyData.reduce((sum, data) => sum + data.budget, 0);
-      const totalSpent = monthlyData.reduce((sum, data) => sum + data.spent, 0);
-      const totalBalance = totalBudget - totalSpent;
+      const categoryTotal = categoryTotals.get(category.id) || 0;
+      if (categoryTotal === 0) return null;
 
       return {
-        categoryId: category.id,
-        categoryName: category.name,
-        categoryIcon: typeof category.icon === 'string' ? () => null : category.icon,
-        monthlyData,
-        totalBudget,
-        totalSpent,
-        totalBalance,
+        id: category.id,
+        name: category.name,
+        icon: typeof category.icon === 'string' ? () => null : category.icon,
+        total: categoryTotal,
+        subcategories: category.subcategories.map(sub => {
+          const subTotal = subcategoryTotals.get(sub.id) || 0;
+          if (subTotal === 0) return null;
+          
+          return {
+            id: sub.id,
+            name: sub.name,
+            total: subTotal,
+            microcategories: (sub.microcategories || []).map(micro => {
+              const microTotal = microcategoryTotals.get(micro.id) || 0;
+              if (microTotal === 0) return null;
+              
+              return {
+                id: micro.id,
+                name: micro.name,
+                total: microTotal,
+              };
+            }).filter((m): m is Exclude<typeof m, null> => m !== null)
+              .sort((a,b) => b.total - a.total),
+          };
+        }).filter((s): s is Exclude<typeof s, null> => s !== null)
+          .sort((a,b) => b.total - a.total),
       };
-    }).filter(row => row.totalBudget > 0 || row.totalSpent > 0);
+    }).filter((c): c is Exclude<typeof c, null> => c !== null)
+      .sort((a,b) => b.total - a.total);
+
   }, [categories, transactions, selectedYear, loading, loadingCategories]);
-  
-  const grandTotals = useMemo(() => {
-      const totals = {
-          monthly: Array(12).fill(null).map(() => ({ budget: 0, spent: 0, balance: 0 })),
-          totalBudget: 0,
-          totalSpent: 0,
-          totalBalance: 0,
-      };
 
-      reportData.forEach(row => {
-          row.monthlyData.forEach((monthData, index) => {
-              totals.monthly[index].budget += monthData.budget;
-              totals.monthly[index].spent += monthData.spent;
-              totals.monthly[index].balance += monthData.balance;
-          });
-          totals.totalBudget += row.totalBudget;
-          totals.totalSpent += row.totalSpent;
-          totals.totalBalance += row.totalBalance;
-      });
-
-      return totals;
+  const grandTotal = useMemo(() => {
+      return reportData.reduce((sum, category) => sum + category.total, 0);
   }, [reportData]);
 
   if (loading || loadingCategories) {
@@ -83,96 +118,97 @@ export default function YearlyReportPage() {
           </div>
         </div>
         <Card>
-            <CardContent className="pt-6">
-                <Skeleton className="h-96 w-full" />
-            </CardContent>
+          <CardContent className="pt-6 space-y-4">
+            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
         </Card>
       </div>
     );
   }
+  
+  const getPercentage = (amount: number, total: number) => {
+    if (total === 0) return 0;
+    return (amount / total) * 100;
+  };
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Yearly Report</h1>
-        <p className="text-muted-foreground">Category snapshot for {selectedYear}.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Yearly Spending Report</h1>
+        <p className="text-muted-foreground">Hierarchical spending breakdown for {selectedYear}.</p>
       </div>
+
+       <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">
+            Total Spending for {selectedYear}
+          </CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(grandTotal)}</div>
+        </CardContent>
+      </Card>
+
       <Card>
-        <CardContent className="pt-6">
-            <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[200px] sticky left-0 bg-card z-10">Category</TableHead>
-                {monthHeaders.map(month => (
-                  <TableHead key={month} className="text-center">{month}</TableHead>
-                ))}
-                <TableHead className="text-right">Total</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reportData.map(row => {
-                const Icon = row.categoryIcon;
+        <CardContent className="p-4 md:p-6">
+          {reportData.length > 0 ? (
+             <Accordion type="multiple" className="w-full space-y-2">
+              {reportData.map((category) => {
+                const Icon = category.icon;
+                const categoryPercentage = getPercentage(category.total, grandTotal);
+
                 return (
-                  <TableRow key={row.categoryId}>
-                    <TableCell className="font-medium sticky left-0 bg-card z-10">
-                        <div className="flex items-center gap-2">
-                           <Icon className="w-4 h-4 text-primary" />
-                           <span>{row.categoryName}</span>
+                  <AccordionItem value={category.id} key={category.id} className="border-b-0 rounded-lg bg-muted/50 px-4">
+                    <AccordionTrigger className="py-4 text-lg hover:no-underline">
+                      <div className="flex items-center gap-4 w-full">
+                        <Icon className="w-6 h-6 text-primary" />
+                        <span className="font-semibold flex-1 text-left">{category.name}</span>
+                        <div className="flex items-center gap-4 w-1/3">
+                          <Progress value={categoryPercentage} className="h-2 w-full" />
+                          <span className="font-bold text-right w-32">{formatCurrency(category.total)}</span>
                         </div>
-                    </TableCell>
-                    {row.monthlyData.map((data, index) => (
-                      <TableCell key={index} className="text-center">
-                        <div className={cn('text-xs', data.balance < 0 ? 'text-red-600' : 'text-green-600')}>
-                          {formatCurrency(data.balance, { maximumFractionDigits: 0 })}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatCurrency(data.spent, { maximumFractionDigits: 0 })} / {formatCurrency(data.budget, { maximumFractionDigits: 0 })}
-                        </div>
-                      </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                       <div className={cn('text-sm font-bold', row.totalBalance < 0 ? 'text-red-600' : 'text-green-600')}>
-                          {formatCurrency(row.totalBalance)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatCurrency(row.totalSpent)} / {formatCurrency(row.totalBudget)}
-                        </div>
-                    </TableCell>
-                  </TableRow>
-                )
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 pl-10 pr-4 space-y-2">
+                        {category.subcategories.map(sub => {
+                            const subPercentage = getPercentage(sub.total, category.total);
+                            return (
+                                <Accordion type="single" collapsible key={sub.id} className="w-full bg-background/50 rounded-md px-3">
+                                  <AccordionItem value={sub.id} className="border-b-0">
+                                    <AccordionTrigger className="py-3 text-base hover:no-underline [&[data-state=open]>svg]:text-primary">
+                                       <div className="flex items-center gap-4 w-full">
+                                            <span className="font-medium flex-1 text-left">{sub.name}</span>
+                                            <div className="flex items-center gap-4 w-1/2">
+                                                <Progress value={subPercentage} className="h-1.5 w-full"/>
+                                                <span className="font-semibold text-right w-28">{formatCurrency(sub.total)}</span>
+                                            </div>
+                                       </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pb-3 pl-8 pr-2 space-y-2">
+                                        {sub.microcategories.map(micro => (
+                                             <div key={micro.id} className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">{micro.name}</span>
+                                                <span className="font-medium">{formatCurrency(micro.total)}</span>
+                                             </div>
+                                        ))}
+                                    </AccordionContent>
+                                  </AccordionItem>
+                                </Accordion>
+                            )
+                        })}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
               })}
-            </TableBody>
-            <TableFooter>
-                <TableRow className="bg-muted/50 font-bold">
-                    <TableCell className="sticky left-0 bg-muted/50 z-10">Grand Total</TableCell>
-                    {grandTotals.monthly.map((total, index) => (
-                        <TableCell key={index} className="text-center">
-                            <div className={cn('text-sm', total.balance < 0 ? 'text-red-600' : 'text-green-600')}>
-                                {formatCurrency(total.balance)}
-                            </div>
-                            <div className="text-xs text-muted-foreground font-normal">
-                                {formatCurrency(total.spent)} / {formatCurrency(total.budget)}
-                            </div>
-                        </TableCell>
-                    ))}
-                    <TableCell className="text-right">
-                        <div className={cn('text-lg', grandTotals.totalBalance < 0 ? 'text-red-600' : 'text-green-600')}>
-                            {formatCurrency(grandTotals.totalBalance)}
-                        </div>
-                        <div className="text-sm text-muted-foreground font-normal">
-                            {formatCurrency(grandTotals.totalSpent)} / {formatCurrency(grandTotals.totalBudget)}
-                        </div>
-                    </TableCell>
-                </TableRow>
-            </TableFooter>
-          </Table>
-          </div>
-           {reportData.length === 0 && (
-                <div className="text-center text-muted-foreground py-16">
-                    <p>No budget or spending activity for categories in {selectedYear}.</p>
-                </div>
-            )}
+             </Accordion>
+          ) : (
+            <div className="text-center text-muted-foreground py-16">
+              <p>No spending activity for {selectedYear}.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
