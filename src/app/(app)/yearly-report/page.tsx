@@ -110,28 +110,29 @@ export default function YearlyReportPage() {
     const report: Record<string, { total: number; subcategories: Record<string, { total: number; transactions: Transaction[]; microcategories: Record<string, { total: number; transactions: Transaction[] }> }> }> = {};
 
     yearTransactions.forEach(t => {
-        // Init Category
-        if (!report[t.category]) {
-            report[t.category] = { total: 0, subcategories: {} };
+      // Ensure category exists
+      if (!report[t.category]) {
+        report[t.category] = { total: 0, subcategories: {} };
+      }
+      
+      // Ensure subcategory exists
+      if (!report[t.category].subcategories[t.subcategory]) {
+        report[t.category].subcategories[t.subcategory] = { total: 0, transactions: [], microcategories: {} };
+      }
+      
+      // Ensure microcategory exists if applicable
+      if (t.microcategory) {
+        if (!report[t.category].subcategories[t.subcategory].microcategories[t.microcategory]) {
+          report[t.category].subcategories[t.subcategory].microcategories[t.microcategory] = { total: 0, transactions: [] };
         }
-        // Init Subcategory
-        if (!report[t.category].subcategories[t.subcategory]) {
-            report[t.category].subcategories[t.subcategory] = { total: 0, transactions: [], microcategories: {} };
-        }
-        // Init Microcategory
-        if (t.microcategory && !report[t.category].subcategories[t.subcategory].microcategories[t.microcategory]) {
-            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory] = { total: 0, transactions: [] };
-        }
-        
-        // Add amounts
-        report[t.category].total += t.amount;
-        report[t.category].subcategories[t.subcategory].total += t.amount;
-        report[t.category].subcategories[t.subcategory].transactions.push(t);
-
-        if (t.microcategory) {
-            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].total += t.amount;
-            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].transactions.push(t);
-        }
+        report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].total += t.amount;
+        report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].transactions.push(t);
+      }
+      
+      // Add amounts
+      report[t.category].total += t.amount;
+      report[t.category].subcategories[t.subcategory].total += t.amount;
+      report[t.category].subcategories[t.subcategory].transactions.push(t);
     });
 
     const categoryIconMap = new Map<string, React.ElementType>();
