@@ -613,7 +613,7 @@ export default function AddTransactionSheet({
         open={subcategoryDialogOpen}
         setOpen={setSubcategoryDialogOpen}
         category={selectedCategory}
-        onAdd={handleAddSubcategory}
+        onAdd={(categoryId, data) => handleAddSubcategory(data)}
       />
       
       <MicrocategoryDialog
@@ -621,7 +621,7 @@ export default function AddTransactionSheet({
         setOpen={setMicrocategoryDialogOpen}
         category={selectedCategory}
         subcategory={subcategories.find(s => s.name === selectedSubcategoryName) || null}
-        onAdd={handleAddMicrocategory}
+        onAdd={(categoryId, subcategoryId, data) => handleAddMicrocategory(data)}
       />
     </>
   );
