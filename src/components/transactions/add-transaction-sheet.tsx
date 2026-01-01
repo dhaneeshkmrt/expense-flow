@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye, AlertTriangle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO, getYear, getMonth, subDays } from 'date-fns';
@@ -71,10 +71,11 @@ export default function AddTransactionSheet({
   transaction,
 }: AddTransactionSheetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked, settings, addSubcategory, addMicrocategory, transactions } = useApp();
+  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked, settings, addSubcategory, addMicrocategory, transactions, filteredTransactions } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [duplicateAmount, setDuplicateAmount] = useState<Transaction[]>([]);
 
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
@@ -115,19 +116,32 @@ export default function AddTransactionSheet({
   
   const onValueChange = useCallback((value: number) => {
     form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
+    setDuplicateAmount([]); // Clear duplicates when amount changes
   }, [form]);
 
   const {
     inputRef,
     formattedValue,
     handleInputChange,
-    handleBlur,
+    handleBlur: handleCurrencyBlur,
     calculationResult,
     setValue,
     amountInWords,
   } = useCurrencyInput({
     onValueChange,
   });
+
+  const handleAmountBlur = () => {
+    handleCurrencyBlur();
+    const amountValue = form.getValues('amount');
+    if (amountValue > 0) {
+        const duplicates = filteredTransactions.filter(t => t.amount === amountValue);
+        setDuplicateAmount(duplicates);
+    } else {
+        setDuplicateAmount([]);
+    }
+  };
+
 
   // Check if the selected date is in a locked month
   const selectedDate = form.watch('date');
@@ -169,6 +183,7 @@ export default function AddTransactionSheet({
         setValue(''); // Reset currency input
         inputRef.current?.focus();
       }
+      setDuplicateAmount([]);
     }
   }, [open, isEditing, transaction, paidByOptions, form, setValue, inputRef]);
 
@@ -286,6 +301,7 @@ export default function AddTransactionSheet({
         });
         setValue('');
         inputRef.current?.focus();
+        setDuplicateAmount([]);
       }
     } catch(error: any) {
         toast({
@@ -354,7 +370,7 @@ export default function AddTransactionSheet({
                             placeholder="0.00 or 50+25" 
                             value={formattedValue}
                             onChange={handleInputChange}
-                            onBlur={handleBlur}
+                            onBlur={handleAmountBlur}
                           />
                         </FormControl>
                         {calculationResult && (
@@ -366,6 +382,19 @@ export default function AddTransactionSheet({
                           <div className="text-xs text-muted-foreground pt-1 font-medium italic">
                             {amountInWords}
                           </div>
+                        )}
+                        {duplicateAmount.length > 0 && (
+                            <div className="text-xs text-orange-600 pt-1 flex items-start">
+                                <AlertTriangle className="h-4 w-4 mr-1 flex-shrink-0" />
+                                <div>
+                                    <span>Possible duplicate transaction found:</span>
+                                    <ul className="list-disc pl-4">
+                                        {duplicateAmount.map(tx => (
+                                            <li key={tx.id}>{tx.description} on {format(parseISO(tx.date), 'MMM d')}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
                         )}
                         <FormMessage />
                       </FormItem>
@@ -633,7 +662,7 @@ export default function AddTransactionSheet({
         open={subcategoryDialogOpen}
         setOpen={setSubcategoryDialogOpen}
         category={selectedCategory}
-        onAdd={async (categoryId, data) => await handleAddSubcategory({ name: data.name })}
+        onAdd={async (categoryId, data) => await handleAddSubcategory(data)}
       />
       
       <MicrocategoryDialog
