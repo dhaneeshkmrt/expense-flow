@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "firestore": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-firestore"
+      ],
+      "env": {
+        "FIREBASE_PROJECT_ID": "money-purse-7aee4",
+        "FIREBASE_API_KEY": "AIzaSyCiSGpV5tBNgkQmg0bYXc8XiOslGk2eBEM",
+        "FIREBASE_AUTH_DOMAIN": "money-purse-7aee4.firebaseapp.com",
+        "FIREBASE_STORAGE_BUCKET": "money-purse-7aee4.appspot.com"
+      }
+    }
+  }
+}

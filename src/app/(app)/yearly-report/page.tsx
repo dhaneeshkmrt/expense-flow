@@ -1,27 +1,23 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useApp } from '@/lib/provider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { getYear, parseISO, getMonth, getDate, format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { Wallet, Calendar, Tag, ShoppingBag, Eye, Info, HelpCircle } from 'lucide-react';
-import type { Transaction } from '@/lib/types';
-import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  TableRow
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { useApp } from '@/lib/provider';
+import type { Transaction } from '@/lib/types';
+import { format, getDate, getYear, parseISO } from 'date-fns';
+import { Calendar, HelpCircle, Info, Wallet } from 'lucide-react';
+import { useMemo } from 'react';
 
 
 interface ReportMicrocategory {
@@ -54,28 +50,49 @@ const getWeekOfMonth = (date: Date) => {
 
 const groupAllTransactionsByMonthAndWeek = (transactions: Transaction[]) => {
     const grouped = transactions.reduce((acc, tx) => {
-        const date = parseISO(tx.date);
-        const month = format(date, 'MMMM yyyy');
-        const week = getWeekOfMonth(date);
+        try {
+            const date = parseISO(tx.date);
 
-        if (!acc[month]) {
-            acc[month] = { total: 0, weeks: {} };
-        }
-        if (!acc[month].weeks[week]) {
-            acc[month].weeks[week] = { total: 0, transactions: [] };
-        }
+            // Validate that the date is valid
+            if (isNaN(date.getTime())) {
+                console.warn(`Invalid date for transaction ${tx.id}: ${tx.date}`);
+                return acc;
+            }
 
-        acc[month].total += tx.amount;
-        acc[month].weeks[week].total += tx.amount;
-        acc[month].weeks[week].transactions.push(tx);
+            const month = format(date, 'MMMM yyyy');
+            const week = getWeekOfMonth(date);
+
+            if (!acc[month]) {
+                acc[month] = { total: 0, weeks: {} };
+            }
+            if (!acc[month].weeks[week]) {
+                acc[month].weeks[week] = { total: 0, transactions: [] };
+            }
+
+            acc[month].total += tx.amount;
+            acc[month].weeks[week].total += tx.amount;
+            acc[month].weeks[week].transactions.push(tx);
+        } catch (error) {
+            console.warn(`Error processing transaction ${tx.id}:`, error);
+        }
 
         return acc;
     }, {} as Record<string, { total: number, weeks: Record<string, { total: number, transactions: Transaction[] }> }>);
 
     return Object.entries(grouped).sort(([monthA], [monthB]) => {
+        // Use date-fns parse to properly parse the month strings
         const dateA = new Date(monthA);
         const dateB = new Date(monthB);
-        return dateB.getTime() - dateA.getTime();
+
+        // Handle invalid dates
+        const timeA = dateA.getTime();
+        const timeB = dateB.getTime();
+
+        if (isNaN(timeA) && isNaN(timeB)) return 0;
+        if (isNaN(timeA)) return 1;
+        if (isNaN(timeB)) return -1;
+
+        return timeB - timeA;
     }).map(([month, data]) => ({
         month,
         total: data.total,
@@ -98,56 +115,79 @@ export default function YearlyReportPage() {
   
   const yearTransactions = useMemo(() => {
     return transactions.filter(t => {
+      // Exclude Category Transfer transactions
       if (t.subcategory === 'Category Transfer') return false;
-      const transactionYear = getYear(parseISO(t.date));
-      return transactionYear === selectedYear;
+
+      try {
+        const date = parseISO(t.date);
+
+        // Validate date
+        if (isNaN(date.getTime())) {
+          console.warn(`Invalid date in transaction ${t.id}: ${t.date}`);
+          return false;
+        }
+
+        const transactionYear = getYear(date);
+        return transactionYear === selectedYear;
+      } catch (error) {
+        console.warn(`Error parsing date for transaction ${t.id}:`, error);
+        return false;
+      }
     });
   }, [transactions, selectedYear]);
 
   const reportData = useMemo(() => {
     if (loading || loadingCategories) return null;
 
-    const report: Record<string, { total: number; subcategories: Record<string, { total: number; transactions: Transaction[]; microcategories: Record<string, { total: number; transactions: Transaction[] }> }> }> = {};
+    const report: Record<string, { total: number; displayName: string; subcategories: Record<string, { total: number; displayName: string; transactions: Transaction[]; microcategories: Record<string, { total: number; displayName: string; transactions: Transaction[] }> }> }> = {};
+
+    // Helper function to normalize names (trim spaces and lowercase for grouping)
+    const normalizeKey = (name: string) => name.trim().toLowerCase();
 
     yearTransactions.forEach(t => {
+      // Normalize keys for grouping (case-insensitive, trimmed)
+      const categoryKey = normalizeKey(t.category);
+      const subcategoryKey = normalizeKey(t.subcategory);
+      const microcategoryKey = t.microcategory ? normalizeKey(t.microcategory) : '';
+
       // Ensure category exists
-      if (!report[t.category]) {
-        report[t.category] = { total: 0, subcategories: {} };
+      if (!report[categoryKey]) {
+        report[categoryKey] = { total: 0, displayName: t.category.trim(), subcategories: {} };
       }
-      
+
       // Ensure subcategory exists
-      if (!report[t.category].subcategories[t.subcategory]) {
-        report[t.category].subcategories[t.subcategory] = { total: 0, transactions: [], microcategories: {} };
+      if (!report[categoryKey].subcategories[subcategoryKey]) {
+        report[categoryKey].subcategories[subcategoryKey] = { total: 0, displayName: t.subcategory.trim(), transactions: [], microcategories: {} };
       }
-      
+
       // Ensure microcategory exists if applicable
-      if (t.microcategory) {
-        if (!report[t.category].subcategories[t.subcategory].microcategories[t.microcategory]) {
-          report[t.category].subcategories[t.subcategory].microcategories[t.microcategory] = { total: 0, transactions: [] };
+      if (t.microcategory && microcategoryKey) {
+        if (!report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey]) {
+          report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey] = { total: 0, displayName: t.microcategory.trim(), transactions: [] };
         }
-        report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].total += t.amount;
-        report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].transactions.push(t);
+        report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey].total += t.amount;
+        report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey].transactions.push(t);
       }
-      
+
       // Add amounts
-      report[t.category].total += t.amount;
-      report[t.category].subcategories[t.subcategory].total += t.amount;
-      report[t.category].subcategories[t.subcategory].transactions.push(t);
+      report[categoryKey].total += t.amount;
+      report[categoryKey].subcategories[subcategoryKey].total += t.amount;
+      report[categoryKey].subcategories[subcategoryKey].transactions.push(t);
     });
 
     const categoryIconMap = new Map<string, React.ElementType>();
-    categories.forEach(c => categoryIconMap.set(c.name, typeof c.icon === 'string' ? HelpCircle : c.icon));
+    categories.forEach(c => categoryIconMap.set(normalizeKey(c.name), typeof c.icon === 'string' ? HelpCircle : c.icon));
 
-    return Object.entries(report).map(([categoryName, categoryData]) => ({
-        name: categoryName,
+    return Object.entries(report).map(([categoryKey, categoryData]) => ({
+        name: categoryData.displayName,
         total: categoryData.total,
-        icon: categoryIconMap.get(categoryName) || HelpCircle,
-        subcategories: Object.entries(categoryData.subcategories).map(([subName, subData]) => ({
-            name: subName,
+        icon: categoryIconMap.get(categoryKey) || HelpCircle,
+        subcategories: Object.entries(categoryData.subcategories).map(([subKey, subData]) => ({
+            name: subData.displayName,
             total: subData.total,
             transactions: subData.transactions,
-            microcategories: Object.entries(subData.microcategories).map(([microName, microData]) => ({
-                name: microName,
+            microcategories: Object.entries(subData.microcategories).map(([microKey, microData]) => ({
+                name: microData.displayName,
                 total: microData.total,
                 transactions: microData.transactions,
             })).sort((a,b) => b.total - a.total),
@@ -159,6 +199,7 @@ export default function YearlyReportPage() {
   const monthWeekData = useMemo(() => {
     return groupAllTransactionsByMonthAndWeek(yearTransactions);
   }, [yearTransactions]);
+
 
   const grandTotal = useMemo(() => {
       if (!reportData) return 0;
@@ -307,6 +348,7 @@ export default function YearlyReportPage() {
                                     </AccordionTrigger>
                                     <AccordionContent className="p-4 space-y-3">
                                     {sub.microcategories.length > 0 ? (
+                                        <>
                                         <Accordion type="multiple" className="w-full space-y-2">
                                         {sub.microcategories.map((micro, microIndex) => (
                                             <AccordionItem value={`micro-${catIndex}-${subIndex}-${microIndex}`} key={microIndex} className="border-b-0 bg-muted/30 rounded-md">
@@ -325,6 +367,26 @@ export default function YearlyReportPage() {
                                             </AccordionItem>
                                         ))}
                                         </Accordion>
+                                        {/* Show transactions without microcategory */}
+                                        {(() => {
+                                            const transactionsWithoutMicro = sub.transactions.filter(t => !t.microcategory);
+                                            if (transactionsWithoutMicro.length > 0) {
+                                                return (
+                                                    <div className="mt-4">
+                                                        <div className="text-sm font-medium text-muted-foreground mb-2 px-3">
+                                                            Other Transactions (No Microcategory)
+                                                        </div>
+                                                        <div className="bg-muted/30 rounded-md">
+                                                            <div className="px-3 py-2">
+                                                                <TransactionTable transactions={transactionsWithoutMicro} />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                        </>
                                     ) : (
                                         <TransactionTable transactions={sub.transactions} />
                                     )}

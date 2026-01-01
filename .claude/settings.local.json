@@ -10,7 +10,13 @@
       "Bash(taskkill:*)",
       "Bash(cmd /C taskkill:*)",
       "Bash(npx kill-port:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(where:*)",
+      "Bash(node debug-transactions.js:*)",
+      "Bash(cat:*)",
+      "mcp__plugin_firebase_firebase__firebase_update_environment",
+      "mcp__plugin_firebase_firebase__firestore_list_collections",
+      "mcp__plugin_firebase_firebase__firestore_query_collection"
     ],
     "deny": [],
     "ask": []
