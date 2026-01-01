@@ -54,10 +54,12 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
   });
 
   useEffect(() => {
-    if (isEditing && subcategory) {
-      form.reset({ name: subcategory.name });
-    } else {
-      form.reset({ name: '' });
+    if (open) {
+      if (isEditing && subcategory) {
+        form.reset({ name: subcategory.name });
+      } else {
+        form.reset({ name: '' });
+      }
     }
   }, [subcategory, isEditing, open, form]);
 

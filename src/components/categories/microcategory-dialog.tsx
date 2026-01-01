@@ -55,10 +55,12 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
   });
 
   useEffect(() => {
-    if (isEditing && microcategory) {
-      form.reset({ name: microcategory.name });
-    } else {
-      form.reset({ name: '' });
+    if (open) {
+      if (isEditing && microcategory) {
+        form.reset({ name: microcategory.name });
+      } else {
+        form.reset({ name: '' });
+      }
     }
   }, [microcategory, isEditing, open, form]);
 
