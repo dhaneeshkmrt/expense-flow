@@ -113,10 +113,21 @@ export default function AddTransactionSheet({
         notes: '',
     },
   });
+
+  const amountValue = form.watch('amount');
+  const debouncedAmount = useDebounce(amountValue, 500);
+
+  useEffect(() => {
+    if (debouncedAmount > 0) {
+      const duplicates = filteredTransactions.filter(t => t.amount === debouncedAmount);
+      setDuplicateAmount(duplicates);
+    } else {
+      setDuplicateAmount([]);
+    }
+  }, [debouncedAmount, filteredTransactions]);
   
   const onValueChange = useCallback((value: number) => {
     form.setValue('amount', value, { shouldValidate: true, shouldDirty: true });
-    setDuplicateAmount([]); // Clear duplicates when amount changes
   }, [form]);
 
   const {
@@ -130,18 +141,6 @@ export default function AddTransactionSheet({
   } = useCurrencyInput({
     onValueChange,
   });
-
-  const handleAmountBlur = () => {
-    handleCurrencyBlur();
-    const amountValue = form.getValues('amount');
-    if (amountValue > 0) {
-        const duplicates = filteredTransactions.filter(t => t.amount === amountValue);
-        setDuplicateAmount(duplicates);
-    } else {
-        setDuplicateAmount([]);
-    }
-  };
-
 
   // Check if the selected date is in a locked month
   const selectedDate = form.watch('date');
@@ -314,21 +313,21 @@ export default function AddTransactionSheet({
     }
   };
 
-  const handleAddSubcategory = async (data: { name: string }) => {
+  const handleAddSubcategory = async (subcategoryData: { name: string }) => {
     if (!selectedCategory) return;
-    await addSubcategory(selectedCategory.id, data);
-    form.setValue('subcategory', data.name, { shouldValidate: true, shouldDirty: true });
-    toast({ title: "Subcategory Added", description: `"${data.name}" was added to ${selectedCategory.name}.` });
+    await addSubcategory(selectedCategory.id, subcategoryData);
+    form.setValue('subcategory', subcategoryData.name, { shouldValidate: true, shouldDirty: true });
+    toast({ title: "Subcategory Added", description: `"${subcategoryData.name}" was added to ${selectedCategory.name}.` });
   };
 
-  const handleAddMicrocategory = async (data: { name: string }) => {
+  const handleAddMicrocategory = async (microcategoryData: { name: string }) => {
     if (!selectedCategory || !selectedSubcategoryName) return;
     const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
     if (!subcategory) return;
 
-    await addMicrocategory(selectedCategory.id, subcategory.id, data);
-    form.setValue('microcategory', data.name, { shouldValidate: true, shouldDirty: true });
-    toast({ title: "Micro-category Added", description: `"${data.name}" was added.` });
+    await addMicrocategory(selectedCategory.id, subcategory.id, microcategoryData);
+    form.setValue('microcategory', microcategoryData.name, { shouldValidate: true, shouldDirty: true });
+    toast({ title: "Micro-category Added", description: `"${microcategoryData.name}" was added.` });
   };
 
   const sheetTitle = isEditing ? 'Edit Transaction' : 'Add a New Transaction';
@@ -370,7 +369,7 @@ export default function AddTransactionSheet({
                             placeholder="0.00 or 50+25" 
                             value={formattedValue}
                             onChange={handleInputChange}
-                            onBlur={handleAmountBlur}
+                            onBlur={handleCurrencyBlur}
                           />
                         </FormControl>
                         {calculationResult && (
@@ -662,7 +661,7 @@ export default function AddTransactionSheet({
         open={subcategoryDialogOpen}
         setOpen={setSubcategoryDialogOpen}
         category={selectedCategory}
-        onAdd={async (categoryId, data) => await handleAddSubcategory(data)}
+        onAdd={handleAddSubcategory}
       />
       
       <MicrocategoryDialog
@@ -670,7 +669,7 @@ export default function AddTransactionSheet({
         setOpen={setMicrocategoryDialogOpen}
         category={selectedCategory}
         subcategory={subcategories.find(s => s.name === selectedSubcategoryName) || null}
-        onAdd={async (categoryId, subcategoryId, data) => await handleAddMicrocategory(data)}
+        onAdd={handleAddMicrocategory}
       />
 
       <DayTransactionsDialog 
@@ -682,5 +681,7 @@ export default function AddTransactionSheet({
     </>
   );
 }
+
+    
 
     
