@@ -16,8 +16,9 @@ import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { useApp } from '@/lib/provider';
 import type { Transaction } from '@/lib/types';
 import { format, getDate, getYear, parseISO } from 'date-fns';
-import { Calendar, HelpCircle, Info, Wallet } from 'lucide-react';
-import { useMemo } from 'react';
+import { Calendar, HelpCircle, Info, Wallet, PieChart as PieChartIcon, TrendingUp } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { PieChart, Pie, Cell, BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 
 interface ReportMicrocategory {
@@ -46,6 +47,253 @@ const getWeekOfMonth = (date: Date) => {
     if (day <= 14) return '2nd Week (8-14)';
     if (day <= 21) return '3rd Week (15-21)';
     return '4th Week (22-End)';
+};
+
+// Color palette for charts
+const COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  '#8b5cf6',
+  '#ec4899',
+  '#f59e0b',
+  '#10b981',
+  '#06b6d4',
+  '#6366f1',
+  '#f43f5e',
+];
+
+interface ChartViewProps {
+  reportData: ReportCategory[];
+  monthWeekData: any[];
+  yearTransactions: Transaction[];
+  formatCurrency: (amount: number) => string;
+  grandTotal: number;
+  selectedYear: number;
+}
+
+const ChartView = ({ reportData, monthWeekData, yearTransactions, formatCurrency, grandTotal, selectedYear }: ChartViewProps) => {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Prepare data for pie chart
+  const pieChartData = reportData.map((cat, index) => ({
+    name: cat.name,
+    value: cat.total,
+    percentage: ((cat.total / grandTotal) * 100).toFixed(1),
+    color: COLORS[index % COLORS.length],
+  }));
+
+  // Prepare data for monthly trend
+  const monthlyTrendData = monthWeekData.map(item => ({
+    month: item.month.split(' ')[0], // Get month name only
+    total: item.total,
+  }));
+
+  // Prepare data for top categories bar chart
+  const topCategoriesData = [...reportData]
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10)
+    .map((cat, index) => ({
+      name: cat.name,
+      amount: cat.total,
+      color: COLORS[index % COLORS.length],
+    }));
+
+  // Prepare subcategory data when a category is selected
+  const subcategoryData = selectedCategory
+    ? reportData
+        .find(cat => cat.name === selectedCategory)
+        ?.subcategories.slice(0, 10)
+        .map((sub, index) => ({
+          name: sub.name,
+          amount: sub.total,
+          color: COLORS[index % COLORS.length],
+        })) || []
+    : [];
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border rounded-lg p-3 shadow-lg">
+          <p className="font-semibold">{payload[0].name}</p>
+          <p className="text-primary font-bold">{formatCurrency(payload[0].value)}</p>
+          {payload[0].payload.percentage && (
+            <p className="text-sm text-muted-foreground">{payload[0].payload.percentage}%</p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Stats */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Categories</CardTitle>
+            <PieChartIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{reportData.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{yearTransactions.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Average per Month</CardTitle>
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatCurrency(grandTotal / Math.max(monthWeekData.length, 1))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Category Distribution Pie Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Category Distribution</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={400}>
+            <PieChart>
+              <Pie
+                data={pieChartData}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percentage }) => `${name}: ${percentage}%`}
+                outerRadius={120}
+                fill="#8884d8"
+                dataKey="value"
+                onClick={(data) => setSelectedCategory(data.name)}
+                style={{ cursor: 'pointer' }}
+              >
+                {pieChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            Click on a slice to see subcategory breakdown
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Subcategory breakdown when category is selected */}
+      {selectedCategory && subcategoryData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{selectedCategory} - Subcategory Breakdown</CardTitle>
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className="text-sm text-primary hover:underline"
+            >
+              ← Back to all categories
+            </button>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={subcategoryData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis
+                  dataKey="name"
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                  interval={0}
+                />
+                <YAxis />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="amount" radius={[8, 8, 0, 0]}>
+                  {subcategoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Monthly Spending Trend */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Spending Trend - {selectedYear}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={monthlyTrendData}>
+              <defs>
+                <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="total"
+                stroke="hsl(var(--primary))"
+                fillOpacity={1}
+                fill="url(#colorTotal)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Top 10 Categories Bar Chart */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Top 10 Categories by Spending</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={topCategoriesData} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" />
+              <YAxis dataKey="name" type="category" width={120} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="amount" radius={[0, 8, 8, 0]}>
+                {topCategoriesData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={entry.color}
+                    onClick={() => setSelectedCategory(entry.name)}
+                    style={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-sm text-muted-foreground text-center mt-2">
+            Click on a bar to see subcategory breakdown
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
 };
 
 const groupAllTransactionsByMonthAndWeek = (transactions: Transaction[]) => {
@@ -308,9 +556,10 @@ export default function YearlyReportPage() {
       </Card>
 
       <Tabs defaultValue="category" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="category">By Category</TabsTrigger>
             <TabsTrigger value="month">By Month</TabsTrigger>
+            <TabsTrigger value="chart">By Chart</TabsTrigger>
         </TabsList>
         <TabsContent value="category">
             <Card>
@@ -414,6 +663,16 @@ export default function YearlyReportPage() {
                     <TransactionTable transactions={yearTransactions} />
                 </CardContent>
             </Card>
+        </TabsContent>
+        <TabsContent value="chart">
+          <ChartView
+            reportData={reportData}
+            monthWeekData={monthWeekData}
+            yearTransactions={yearTransactions}
+            formatCurrency={formatCurrency}
+            grandTotal={grandTotal}
+            selectedYear={selectedYear}
+          />
         </TabsContent>
       </Tabs>
     </div>
