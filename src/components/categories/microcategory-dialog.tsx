@@ -38,8 +38,8 @@ interface MicrocategoryDialogProps {
   category: Category | null | Omit<Category, 'budget'> & { budget?: number };
   subcategory: Subcategory | null;
   microcategory?: Microcategory | null;
-  onAdd?: (categoryId: string, subcategoryId: string, data: any) => Promise<void>;
-  onEdit?: (categoryId: string, subcategoryId: string, microcategoryId: string, data: any) => Promise<void>;
+  onAdd?: (categoryId: string, subcategoryId: string, data: { name: string }) => Promise<void>;
+  onEdit?: (categoryId: string, subcategoryId: string, microcategoryId: string, data: { name: string }) => Promise<void>;
   isDefaultCategory?: boolean;
 }
 
