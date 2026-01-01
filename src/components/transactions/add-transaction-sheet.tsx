@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, Lock, Plus, PlusCircle } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO, getYear, getMonth, subDays } from 'date-fns';
@@ -39,6 +39,7 @@ import type { Transaction } from '@/lib/types';
 import { useCurrencyInput } from '@/hooks/useCurrencyInput';
 import { SubcategoryDialog } from '../categories/subcategory-dialog';
 import { MicrocategoryDialog } from '../categories/microcategory-dialog';
+import DayTransactionsDialog from '../dashboard/day-transactions-dialog';
 
 const transactionSchema = z.object({
   date: z.date({
@@ -70,13 +71,14 @@ export default function AddTransactionSheet({
   transaction,
 }: AddTransactionSheetProps) {
   const [internalOpen, setInternalOpen] = useState(false);
-  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked, settings, addSubcategory, addMicrocategory } = useApp();
+  const { categories, addTransaction, editTransaction, tenants, selectedTenantId, isMonthLocked, settings, addSubcategory, addMicrocategory, transactions } = useApp();
   const { toast } = useToast();
   const [isAiPending, startAiTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
   const [microcategoryDialogOpen, setMicrocategoryDialogOpen] = useState(false);
+  const [dayTransactionsDialogOpen, setDayTransactionsDialogOpen] = useState(false);
 
   const isEditing = !!transaction;
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
@@ -187,6 +189,12 @@ export default function AddTransactionSheet({
       const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
       return subcategory ? (subcategory.microcategories || []) : [];
   }, [selectedSubcategoryName, subcategories]);
+
+  const transactionsForSelectedDate = useMemo(() => {
+    if (!selectedDate) return [];
+    const dateString = format(selectedDate, 'yyyy-MM-dd');
+    return transactions.filter(t => t.date === dateString);
+  }, [selectedDate, transactions]);
 
   useEffect(() => {
     if (!isEditing && debouncedDescription.length > 5) {
@@ -385,32 +393,44 @@ export default function AddTransactionSheet({
                       render={({ field }) => (
                         <FormItem className="col-span-2">
                           <FormLabel className="block">Date</FormLabel>
-                          {settings.dateInputStyle === 'popup' ? (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant={'outline'}
-                                    className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                                  >
-                                    {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
-                              </PopoverContent>
-                            </Popover>
-                          ) : (
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
-                              className="rounded-md border inline-block"
-                            />
-                          )}
+                          <div className="flex items-center gap-2">
+                            {settings.dateInputStyle === 'popup' ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <FormControl>
+                                    <Button
+                                      variant={'outline'}
+                                      className={cn('w-full pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
+                                    >
+                                      {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar mode="single" selected={field.value} onSelect={field.onChange} disabled={(date) => date > new Date() || date < new Date('1900-01-01')} initialFocus />
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date() || date < new Date('1900-01-01')}
+                                className="rounded-md border inline-block"
+                              />
+                            )}
+                             <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setDayTransactionsDialogOpen(true)}
+                                disabled={!selectedDate}
+                                title="View transactions for this date"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -613,7 +633,7 @@ export default function AddTransactionSheet({
         open={subcategoryDialogOpen}
         setOpen={setSubcategoryDialogOpen}
         category={selectedCategory}
-        onAdd={(categoryId, data) => handleAddSubcategory(data)}
+        onAdd={async (categoryId, data) => await handleAddSubcategory({ name: data.name })}
       />
       
       <MicrocategoryDialog
@@ -621,8 +641,17 @@ export default function AddTransactionSheet({
         setOpen={setMicrocategoryDialogOpen}
         category={selectedCategory}
         subcategory={subcategories.find(s => s.name === selectedSubcategoryName) || null}
-        onAdd={(categoryId, subcategoryId, data) => handleAddMicrocategory(data)}
+        onAdd={async (categoryId, subcategoryId, data) => await handleAddMicrocategory(data)}
+      />
+
+      <DayTransactionsDialog 
+        open={dayTransactionsDialogOpen}
+        onOpenChange={setDayTransactionsDialogOpen}
+        date={selectedDate}
+        transactions={transactionsForSelectedDate}
       />
     </>
   );
 }
+
+    
