@@ -1,42 +1,86 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/lib/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Progress } from '@/components/ui/progress';
-import { getYear, parseISO } from 'date-fns';
+import { getYear, parseISO, getMonth, getDate, format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { Wallet } from 'lucide-react';
+import { Wallet, Calendar, Tag, ShoppingBag, Eye, Info } from 'lucide-react';
+import type { Transaction } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
-export const dynamic = 'force-dynamic';
 
-interface ReportData {
-  id: string;
+interface ReportMicrocategory {
   name: string;
-  icon: React.ElementType;
   total: number;
-  subcategories: {
-    id: string;
-    name: string;
-    total: number;
-    microcategories: {
-      id: string;
-      name: string;
-      total: number;
-    }[];
-  }[];
+  transactions: Transaction[];
 }
+
+interface ReportSubcategory {
+  name: string;
+  total: number;
+  transactions: Transaction[];
+  microcategories: ReportMicrocategory[];
+}
+
+interface ReportCategory {
+  name: string;
+  total: number;
+  icon: React.ElementType;
+  subcategories: ReportSubcategory[];
+}
+
+const getWeekOfMonth = (date: Date) => {
+    const day = getDate(date);
+    if (day <= 7) return 'Week 1 (1-7)';
+    if (day <= 14) return 'Week 2 (8-14)';
+    if (day <= 21) return 'Week 3 (15-21)';
+    return 'Week 4 (22-End)';
+};
+
+const groupTransactionsByWeek = (transactions: Transaction[]) => {
+    const grouped = transactions.reduce((acc, tx) => {
+        const date = parseISO(tx.date);
+        const month = format(date, 'MMMM yyyy');
+        const week = getWeekOfMonth(date);
+        if (!acc[month]) {
+            acc[month] = {};
+        }
+        if (!acc[month][week]) {
+            acc[month][week] = [];
+        }
+        acc[month][week].push(tx);
+        return acc;
+    }, {} as Record<string, Record<string, Transaction[]>>);
+    
+    return Object.entries(grouped).sort(([monthA], [monthB]) => {
+        return parseISO(`01-${monthA.replace(' ', '-')}`).getTime() - parseISO(`01-${monthB.replace(' ', '-')}`).getTime()
+    }).map(([month, weeks]) => ({
+        month,
+        weeks: Object.entries(weeks).sort(([weekA], [weekB]) => weekA.localeCompare(weekB))
+    }));
+};
+
 
 export default function YearlyReportPage() {
   const { categories, transactions, loading, loadingCategories, selectedYear } = useApp();
   const formatCurrency = useCurrencyFormatter();
 
   const reportData = useMemo(() => {
-    if (loading || loadingCategories) return [];
+    if (loading || loadingCategories) return null;
 
     const yearTransactions = transactions.filter(t => {
       if (t.subcategory === 'Category Transfer') return false;
@@ -44,71 +88,60 @@ export default function YearlyReportPage() {
       return transactionYear === selectedYear;
     });
 
-    const categoryTotals = new Map<string, number>();
-    const subcategoryTotals = new Map<string, number>();
-    const microcategoryTotals = new Map<string, number>();
+    const report: Record<string, { total: number; subcategories: Record<string, { total: number; transactions: Transaction[]; microcategories: Record<string, { total: number; transactions: Transaction[] }> }> }> = {};
 
     yearTransactions.forEach(t => {
-      const category = categories.find(c => c.name === t.category);
-      if (!category) return;
-      
-      categoryTotals.set(category.id, (categoryTotals.get(category.id) || 0) + t.amount);
-
-      const subcategory = category.subcategories.find(s => s.name === t.subcategory);
-      if (subcategory) {
-        subcategoryTotals.set(subcategory.id, (subcategoryTotals.get(subcategory.id) || 0) + t.amount);
+        // Init Category
+        if (!report[t.category]) {
+            report[t.category] = { total: 0, subcategories: {} };
+        }
+        // Init Subcategory
+        if (!report[t.category].subcategories[t.subcategory]) {
+            report[t.category].subcategories[t.subcategory] = { total: 0, transactions: [], microcategories: {} };
+        }
+        // Init Microcategory
+        if (t.microcategory && !report[t.category].subcategories[t.subcategory].microcategories[t.microcategory]) {
+            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory] = { total: 0, transactions: [] };
+        }
+        
+        // Add amounts
+        report[t.category].total += t.amount;
+        report[t.category].subcategories[t.subcategory].total += t.amount;
+        report[t.category].subcategories[t.subcategory].transactions.push(t);
 
         if (t.microcategory) {
-          const microcategory = subcategory.microcategories.find(m => m.name === t.microcategory);
-          if (microcategory) {
-            microcategoryTotals.set(microcategory.id, (microcategoryTotals.get(microcategory.id) || 0) + t.amount);
-          }
+            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].total += t.amount;
+            report[t.category].subcategories[t.subcategory].microcategories[t.microcategory].transactions.push(t);
         }
-      }
     });
 
-    return categories.map(category => {
-      const categoryTotal = categoryTotals.get(category.id) || 0;
-      if (categoryTotal === 0) return null;
+    const categoryIconMap = new Map<string, React.ElementType>();
+    categories.forEach(c => categoryIconMap.set(c.name, typeof c.icon === 'string' ? HelpCircle : c.icon));
 
-      return {
-        id: category.id,
-        name: category.name,
-        icon: typeof category.icon === 'string' ? () => null : category.icon,
-        total: categoryTotal,
-        subcategories: category.subcategories.map(sub => {
-          const subTotal = subcategoryTotals.get(sub.id) || 0;
-          if (subTotal === 0) return null;
-          
-          return {
-            id: sub.id,
-            name: sub.name,
-            total: subTotal,
-            microcategories: (sub.microcategories || []).map(micro => {
-              const microTotal = microcategoryTotals.get(micro.id) || 0;
-              if (microTotal === 0) return null;
-              
-              return {
-                id: micro.id,
-                name: micro.name,
-                total: microTotal,
-              };
-            }).filter((m): m is Exclude<typeof m, null> => m !== null)
-              .sort((a,b) => b.total - a.total),
-          };
-        }).filter((s): s is Exclude<typeof s, null> => s !== null)
-          .sort((a,b) => b.total - a.total),
-      };
-    }).filter((c): c is Exclude<typeof c, null> => c !== null)
-      .sort((a,b) => b.total - a.total);
+    return Object.entries(report).map(([categoryName, categoryData]) => ({
+        name: categoryName,
+        total: categoryData.total,
+        icon: categoryIconMap.get(categoryName) || HelpCircle,
+        subcategories: Object.entries(categoryData.subcategories).map(([subName, subData]) => ({
+            name: subName,
+            total: subData.total,
+            transactions: subData.transactions,
+            microcategories: Object.entries(subData.microcategories).map(([microName, microData]) => ({
+                name: microName,
+                total: microData.total,
+                transactions: microData.transactions,
+            })).sort((a,b) => b.total - a.total),
+        })).sort((a,b) => b.total - a.total),
+    })).sort((a,b) => b.total - a.total);
 
   }, [categories, transactions, selectedYear, loading, loadingCategories]);
 
   const grandTotal = useMemo(() => {
+      if (!reportData) return 0;
       return reportData.reduce((sum, category) => sum + category.total, 0);
   }, [reportData]);
-
-  if (loading || loadingCategories) {
+  
+  if (loading || loadingCategories || !reportData) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -132,12 +165,41 @@ export default function YearlyReportPage() {
     if (total === 0) return 0;
     return (amount / total) * 100;
   };
+  
+  const TransactionTable = ({ transactions }: { transactions: Transaction[] }) => {
+    const grouped = groupTransactionsByWeek(transactions);
+    return (
+        <div className="space-y-4">
+            {grouped.map(({ month, weeks }) => (
+                <div key={month}>
+                    <h4 className="font-semibold text-base mb-2">{month}</h4>
+                    {weeks.map(([week, txs]) => (
+                         <div key={week} className="mb-4">
+                            <p className="text-sm font-medium text-muted-foreground mb-1">{week}</p>
+                            <Table>
+                                <TableBody>
+                                    {txs.map(tx => (
+                                        <TableRow key={tx.id}>
+                                            <TableCell className="w-[100px]">{format(parseISO(tx.date), 'dd MMM')}</TableCell>
+                                            <TableCell>{tx.description}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(tx.amount)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                         </div>
+                    ))}
+                </div>
+            ))}
+        </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Yearly Spending Report</h1>
-        <p className="text-muted-foreground">Hierarchical spending breakdown for {selectedYear}.</p>
+        <p className="text-muted-foreground">Hierarchical spending breakdown for {selectedYear}, excluding category transfers.</p>
       </div>
 
        <Card>
@@ -156,12 +218,12 @@ export default function YearlyReportPage() {
         <CardContent className="p-4 md:p-6">
           {reportData.length > 0 ? (
              <Accordion type="multiple" className="w-full space-y-2">
-              {reportData.map((category) => {
+              {reportData.map((category, catIndex) => {
                 const Icon = category.icon;
                 const categoryPercentage = getPercentage(category.total, grandTotal);
 
                 return (
-                  <AccordionItem value={category.id} key={category.id} className="border-b-0 rounded-lg bg-muted/50 px-4">
+                  <AccordionItem value={`cat-${catIndex}`} key={catIndex} className="border-b-0 rounded-lg bg-muted/50 px-4">
                     <AccordionTrigger className="py-4 text-lg hover:no-underline">
                       <div className="flex items-center gap-4 w-full">
                         <Icon className="w-6 h-6 text-primary" />
@@ -173,40 +235,55 @@ export default function YearlyReportPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4 pl-10 pr-4 space-y-2">
-                        {category.subcategories.map(sub => {
-                            const subPercentage = getPercentage(sub.total, category.total);
-                            return (
-                                <Accordion type="single" collapsible key={sub.id} className="w-full bg-background/50 rounded-md px-3">
-                                  <AccordionItem value={sub.id} className="border-b-0">
-                                    <AccordionTrigger className="py-3 text-base hover:no-underline [&[data-state=open]>svg]:text-primary">
-                                       <div className="flex items-center gap-4 w-full">
-                                            <span className="font-medium flex-1 text-left">{sub.name}</span>
-                                            <div className="flex items-center gap-4 w-1/2">
-                                                <Progress value={subPercentage} className="h-1.5 w-full"/>
-                                                <span className="font-semibold text-right w-28">{formatCurrency(sub.total)}</span>
-                                            </div>
-                                       </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pb-3 pl-8 pr-2 space-y-2">
-                                        {sub.microcategories.map(micro => (
-                                             <div key={micro.id} className="flex items-center justify-between text-sm">
-                                                <span className="text-muted-foreground">{micro.name}</span>
-                                                <span className="font-medium">{formatCurrency(micro.total)}</span>
-                                             </div>
-                                        ))}
-                                    </AccordionContent>
-                                  </AccordionItem>
+                      <Accordion type="multiple" className="w-full space-y-2">
+                        {category.subcategories.map((sub, subIndex) => (
+                          <AccordionItem value={`sub-${catIndex}-${subIndex}`} key={subIndex} className="border-b-0 bg-background rounded-md">
+                            <AccordionTrigger className="py-3 px-3 text-base hover:no-underline [&[data-state=open]>svg]:text-primary">
+                               <div className="flex items-center gap-4 w-full">
+                                    <span className="font-medium flex-1 text-left">{sub.name}</span>
+                                    <div className="flex items-center gap-4 w-1/2">
+                                        <Progress value={getPercentage(sub.total, category.total)} className="h-1.5 w-full"/>
+                                        <span className="font-semibold text-right w-28">{formatCurrency(sub.total)}</span>
+                                    </div>
+                               </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="p-4 space-y-3">
+                              {sub.microcategories.length > 0 && (
+                                <Accordion type="multiple" className="w-full space-y-2">
+                                {sub.microcategories.map((micro, microIndex) => (
+                                    <AccordionItem value={`micro-${catIndex}-${subIndex}-${microIndex}`} key={microIndex} className="border-b-0 bg-muted/30 rounded-md">
+                                        <AccordionTrigger className="py-2.5 px-3 text-sm hover:no-underline [&[data-state=open]>svg]:text-primary">
+                                           <div className="flex items-center gap-4 w-full">
+                                                <span className="font-normal flex-1 text-left">{micro.name}</span>
+                                                <div className="flex items-center gap-4 w-2/3">
+                                                    <Progress value={getPercentage(micro.total, sub.total)} className="h-1 w-full"/>
+                                                    <span className="font-medium text-right w-24">{formatCurrency(micro.total)}</span>
+                                                </div>
+                                           </div>
+                                        </AccordionTrigger>
+                                        <AccordionContent className="px-4 pt-2 pb-4">
+                                            <TransactionTable transactions={micro.transactions} />
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                ))}
                                 </Accordion>
-                            )
-                        })}
+                              )}
+                              {sub.microcategories.length === 0 && (
+                                <TransactionTable transactions={sub.transactions} />
+                              )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
                     </AccordionContent>
                   </AccordionItem>
                 );
               })}
              </Accordion>
           ) : (
-            <div className="text-center text-muted-foreground py-16">
-              <p>No spending activity for {selectedYear}.</p>
+            <div className="text-center text-muted-foreground py-16 flex flex-col items-center gap-4">
+                <Info className="w-12 h-12" />
+              <p className="text-lg">No spending activity recorded for {selectedYear}.</p>
             </div>
           )}
         </CardContent>
