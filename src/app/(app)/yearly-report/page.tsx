@@ -52,36 +52,6 @@ const getWeekOfMonth = (date: Date) => {
     return '4th Week (22-End)';
 };
 
-const groupTransactionsByWeek = (transactions: Transaction[]) => {
-    const grouped = transactions.reduce((acc, tx) => {
-        const date = parseISO(tx.date);
-        const month = format(date, 'MMMM yyyy');
-        const week = getWeekOfMonth(date);
-        if (!acc[month]) {
-            acc[month] = {};
-        }
-        if (!acc[month][week]) {
-            acc[month][week] = [];
-        }
-        acc[month][week].push(tx);
-        return acc;
-    }, {} as Record<string, Record<string, Transaction[]>>);
-    
-    return Object.entries(grouped).sort(([monthA], [monthB]) => {
-        // A bit complex due to "MMMM yyyy" format, need to parse to compare
-        const dateA = new Date(monthA);
-        const dateB = new Date(monthB);
-        return dateA.getTime() - dateB.getTime();
-    }).map(([month, weeks]) => ({
-        month,
-        weeks: Object.entries(weeks).sort(([weekA], [weekB]) => {
-            const weekNumA = parseInt(weekA.match(/^(\d+)/)?.[1] || '0');
-            const weekNumB = parseInt(weekB.match(/^(\d+)/)?.[1] || '0');
-            return weekNumA - weekNumB;
-        })
-    }));
-};
-
 const groupAllTransactionsByMonthAndWeek = (transactions: Transaction[]) => {
     const grouped = transactions.reduce((acc, tx) => {
         const date = parseISO(tx.date);
@@ -234,37 +204,45 @@ export default function YearlyReportPage() {
         </TableRow>
     )
   };
-  
-  const TransactionTable = ({ transactions, minimal = false }: { transactions: Transaction[], minimal?: boolean }) => {
-    if (minimal) {
-        return (
-            <Table>
-                <TableBody>
-                    {transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
-                </TableBody>
-            </Table>
-        )
-    }
-    
-    const grouped = groupTransactionsByWeek(transactions);
+
+  const TransactionTable = ({ transactions }: { transactions: Transaction[] }) => {
+    const groupedByMonth = useMemo(() => groupAllTransactionsByMonthAndWeek(transactions), [transactions]);
+
     return (
-        <div className="space-y-4">
-            {grouped.map(({ month, weeks }) => (
-                <div key={month}>
-                    <h4 className="font-semibold text-base mb-2">{month}</h4>
-                    {weeks.map(([week, txs]) => (
-                         <div key={week} className="mb-4">
-                            <p className="text-sm font-medium text-muted-foreground mb-1">{week}</p>
-                            <Table>
-                                <TableBody>
-                                    {txs.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
-                                </TableBody>
-                            </Table>
-                         </div>
-                    ))}
-                </div>
+        <Accordion type="multiple" className="w-full space-y-2">
+            {groupedByMonth.map((monthData, monthIndex) => (
+                <AccordionItem value={`month-${monthIndex}`} key={monthIndex} className="border-b-0 rounded-lg bg-background/50 px-3">
+                    <AccordionTrigger className="py-3 text-base hover:no-underline [&[data-state=open]>svg]:text-primary">
+                        <div className="flex items-center gap-4 w-full">
+                            <Calendar className="w-5 h-5 text-primary" />
+                            <span className="font-semibold flex-1 text-left">{monthData.month}</span>
+                            <span className="font-bold text-right w-28">{formatCurrency(monthData.total)}</span>
+                        </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-4 pl-8 pr-2 space-y-2">
+                        <Accordion type="multiple" className="w-full space-y-2">
+                            {monthData.weeks.map((weekData, weekIndex) => (
+                                <AccordionItem value={`week-${monthIndex}-${weekIndex}`} key={weekIndex} className="border-b-0 bg-background rounded-md">
+                                    <AccordionTrigger className="py-2.5 px-3 text-sm hover:no-underline [&[data-state=open]>svg]:text-primary">
+                                        <div className="flex items-center gap-4 w-full">
+                                            <span className="font-medium flex-1 text-left">{weekData.week}</span>
+                                            <span className="font-semibold text-right w-24">{formatCurrency(weekData.total)}</span>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="px-4 pt-2 pb-4">
+                                        <Table>
+                                            <TableBody>
+                                                {weekData.transactions.map(tx => <TransactionRow key={tx.id} tx={tx} />)}
+                                            </TableBody>
+                                        </Table>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            ))}
+                        </Accordion>
+                    </AccordionContent>
+                </AccordionItem>
             ))}
-        </div>
+        </Accordion>
     )
   }
 
@@ -341,13 +319,13 @@ export default function YearlyReportPage() {
                                                 </div>
                                                 </AccordionTrigger>
                                                 <AccordionContent className="px-4 pt-2 pb-4">
-                                                    <TransactionTable transactions={micro.transactions} minimal />
+                                                    <TransactionTable transactions={micro.transactions} />
                                                 </AccordionContent>
                                             </AccordionItem>
                                         ))}
                                         </Accordion>
                                     ) : (
-                                        <TransactionTable transactions={sub.transactions} minimal />
+                                        <TransactionTable transactions={sub.transactions} />
                                     )}
                                     </AccordionContent>
                                 </AccordionItem>
@@ -370,43 +348,7 @@ export default function YearlyReportPage() {
         <TabsContent value="month">
             <Card>
                 <CardContent className="p-4 md:p-6">
-                {monthWeekData.length > 0 ? (
-                    <Accordion type="multiple" className="w-full space-y-2">
-                    {monthWeekData.map((monthData, monthIndex) => (
-                        <AccordionItem value={`month-${monthIndex}`} key={monthIndex} className="border-b-0 rounded-lg bg-muted/50 px-4">
-                            <AccordionTrigger className="py-4 text-lg hover:no-underline">
-                                <div className="flex items-center gap-4 w-full">
-                                    <Calendar className="w-6 h-6 text-primary" />
-                                    <span className="font-semibold flex-1 text-left">{monthData.month}</span>
-                                    <span className="font-bold text-right w-32">{formatCurrency(monthData.total)}</span>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pb-4 pl-10 pr-4 space-y-2">
-                                <Accordion type="multiple" className="w-full space-y-2">
-                                    {monthData.weeks.map((weekData, weekIndex) => (
-                                        <AccordionItem value={`week-${monthIndex}-${weekIndex}`} key={weekIndex} className="border-b-0 bg-background rounded-md">
-                                            <AccordionTrigger className="py-3 px-3 text-base hover:no-underline [&[data-state=open]>svg]:text-primary">
-                                                <div className="flex items-center gap-4 w-full">
-                                                    <span className="font-medium flex-1 text-left">{weekData.week}</span>
-                                                    <span className="font-semibold text-right w-28">{formatCurrency(weekData.total)}</span>
-                                                </div>
-                                            </AccordionTrigger>
-                                            <AccordionContent className="p-4">
-                                                <TransactionTable transactions={weekData.transactions} minimal />
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                    ))}
-                                </Accordion>
-                            </AccordionContent>
-                        </AccordionItem>
-                    ))}
-                    </Accordion>
-                ) : (
-                    <div className="text-center text-muted-foreground py-16 flex flex-col items-center gap-4">
-                        <Info className="w-12 h-12" />
-                        <p className="text-lg">No spending activity recorded for {selectedYear}.</p>
-                    </div>
-                )}
+                    <TransactionTable transactions={yearTransactions} />
                 </CardContent>
             </Card>
         </TabsContent>
