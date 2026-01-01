@@ -297,8 +297,12 @@ export default function AddTransactionSheet({
     toast({ title: "Subcategory Added", description: `"${data.name}" was added to ${selectedCategory.name}.` });
   };
 
-  const handleAddMicrocategory = async (categoryId: string, subcategoryId: string, data: { name: string }) => {
-    await addMicrocategory(categoryId, subcategoryId, data);
+  const handleAddMicrocategory = async (data: { name: string }) => {
+    if (!selectedCategory || !selectedSubcategoryName) return;
+    const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
+    if (!subcategory) return;
+
+    await addMicrocategory(selectedCategory.id, subcategory.id, data);
     form.setValue('microcategory', data.name, { shouldValidate: true, shouldDirty: true });
     toast({ title: "Micro-category Added", description: `"${data.name}" was added.` });
   };
@@ -617,7 +621,7 @@ export default function AddTransactionSheet({
         setOpen={setMicrocategoryDialogOpen}
         category={selectedCategory}
         subcategory={subcategories.find(s => s.name === selectedSubcategoryName) || null}
-        onAdd={(categoryId, subcategoryId, data) => handleAddMicrocategory(categoryId, subcategoryId, data)}
+        onAdd={handleAddMicrocategory}
       />
     </>
   );
