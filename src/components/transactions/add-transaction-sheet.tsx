@@ -389,7 +389,9 @@ export default function AddTransactionSheet({
                                     <span>Possible duplicate transaction found:</span>
                                     <ul className="list-disc pl-4">
                                         {duplicateAmount.map(tx => (
-                                            <li key={tx.id}>{tx.description} on {format(parseISO(tx.date), 'MMM d')}</li>
+                                            <li key={tx.id}>
+                                              {tx.description} on <span className="text-foreground/80">{format(parseISO(tx.date), 'MMM d')}</span> paid by <span className="font-semibold text-foreground/80">{tx.paidBy}</span>
+                                            </li>
                                         ))}
                                     </ul>
                                 </div>
