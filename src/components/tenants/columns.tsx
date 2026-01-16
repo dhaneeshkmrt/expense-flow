@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
@@ -75,7 +76,7 @@ export const columns = (
       const members: Tenant['members'] = row.getValue('members');
       return (
         <div className="flex flex-wrap gap-1">
-          {members.map((member, index) => (
+          {(members || []).map((member, index) => (
             <Badge key={index} variant="secondary">{member.name}</Badge>
           ))}
         </div>
