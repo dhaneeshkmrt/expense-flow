@@ -179,11 +179,13 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     // The `data` prop already contains only the transactions for the selected month.
     // So we use it directly for duplicate detection within the current month.
     data.forEach(row => {
-      const key = `${row.amount.toFixed(2)}`;
-      if (!potentialDuplicates.has(key)) {
-        potentialDuplicates.set(key, []);
+      if (typeof row.amount === 'number') {
+        const key = `${row.amount.toFixed(2)}`;
+        if (!potentialDuplicates.has(key)) {
+          potentialDuplicates.set(key, []);
+        }
+        potentialDuplicates.get(key)!.push(row);
       }
-      potentialDuplicates.get(key)!.push(row);
     });
   
     const newDuplicateIds = new Set<string>();
