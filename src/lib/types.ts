@@ -72,6 +72,7 @@ export type Tenant = {
   members?: TenantMember[];
   paidByOptions?: string[];
   featureAccess?: FeatureAccess;
+  isRootUser?: boolean;
 };
 
 export type User = {
