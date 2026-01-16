@@ -25,8 +25,16 @@ export const dynamic = 'force-dynamic';
 
 type CategoryWithOptionalBudget = Omit<Category, 'budget'> & { budget?: number };
 
+const AccessDenied = () => (
+    <div className="flex flex-col gap-6 items-center justify-center h-full">
+        <AlertTriangle className="w-16 h-16 text-destructive"/>
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p className="text-muted-foreground">You do not have permission to access this page. Please contact your administrator.</p>
+    </div>
+);
+
 export default function DefaultCategoriesPage() {
-    const { isRootUser } = useApp();
+    const { isAdminUser } = useApp();
     const { toast } = useToast();
     const [categories, setCategories] = useState<CategoryWithOptionalBudget[]>([]);
     const [loading, setLoading] = useState(true);
@@ -41,7 +49,7 @@ export default function DefaultCategoriesPage() {
     const [openCollapsibles, setOpenCollapsibles] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
-        if (!isRootUser) {
+        if (!isAdminUser) {
             setLoading(false);
             return;
         }
@@ -71,7 +79,7 @@ export default function DefaultCategoriesPage() {
         });
 
         return () => unsubscribe();
-    }, [isRootUser]);
+    }, [isAdminUser]);
 
     const seedStaticCategories = async () => {
         try {
@@ -219,14 +227,8 @@ export default function DefaultCategoriesPage() {
         await updateCategoryInDb(categoryId, { subcategories: updatedSubcategories });
     };
 
-    if (!isRootUser) {
-        return (
-            <div className="flex flex-col gap-6 items-center justify-center h-full">
-                <AlertTriangle className="w-16 h-16 text-destructive"/>
-                <h1 className="text-2xl font-bold">Access Denied</h1>
-                <p className="text-muted-foreground">You do not have permission to access this page.</p>
-            </div>
-        );
+    if (!isAdminUser && !loading) {
+        return <AccessDenied />;
     }
     
     if (loading) {

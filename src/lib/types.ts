@@ -1,6 +1,16 @@
 
 'use client';
 import type { ElementType } from 'react';
+
+export type FeatureAccess = {
+  balanceSheet?: boolean;
+  virtualAccounts?: boolean;
+  yearlyReport?: boolean;
+  aiImageStudio?: boolean;
+  calculators?: boolean;
+  admin?: boolean;
+};
+
 export type Microcategory = {
   id: string;
   name: string;
@@ -60,8 +70,8 @@ export type Tenant = {
   address?: string;
   secretToken: string;
   members?: TenantMember[];
-  isRootUser?: boolean;
   paidByOptions?: string[];
+  featureAccess?: FeatureAccess;
 };
 
 export type User = {

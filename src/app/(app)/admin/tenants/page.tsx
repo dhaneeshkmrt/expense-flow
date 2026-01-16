@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, AlertTriangle } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { columns as createTenantColumns } from '@/components/tenants/columns';
 import { DataTable } from '@/components/transactions/data-table';
@@ -13,8 +13,16 @@ import type { Tenant } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
+const AccessDenied = () => (
+    <div className="flex flex-col gap-6 items-center justify-center h-full">
+        <AlertTriangle className="w-16 h-16 text-destructive"/>
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p className="text-muted-foreground">You do not have permission to access this page. Please contact your administrator.</p>
+    </div>
+);
+
 export default function TenantsPage() {
-  const { tenants, loadingTenants, isRootUser } = useApp();
+  const { tenants, loadingTenants, isAdminUser } = useApp();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
 
@@ -25,10 +33,9 @@ export default function TenantsPage() {
 
   const tenantColumns = useMemo(
     () => createTenantColumns(setSelectedTenant, setDialogOpen),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
-
+  
   if (loadingTenants) {
     return (
       <div className="flex flex-col gap-6">
@@ -47,6 +54,11 @@ export default function TenantsPage() {
     );
   }
 
+  if (!isAdminUser) {
+    return <AccessDenied />;
+  }
+
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -56,7 +68,7 @@ export default function TenantsPage() {
             Manage your tenants and their members.
           </p>
         </div>
-        {isRootUser && (
+        {isAdminUser && (
           <Button onClick={handleAddTenant}>
             <PlusCircle className="mr-2" />
             Add Tenant

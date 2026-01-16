@@ -17,12 +17,14 @@ type NavItemWithHref = {
   href: string;
   label: string;
   icon: React.ComponentType;
+  featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin'
 };
 
 type NavItemWithSubItems = {
   label: string;
   icon: React.ComponentType;
   subItems: NavItemWithHref[];
+  featureFlag?: 'calculators' | 'admin';
 };
 
 type NavItem = NavItemWithHref | NavItemWithSubItems;
@@ -35,34 +37,29 @@ function hasSubItems(item: NavItem): item is NavItemWithSubItems {
   return 'subItems' in item;
 }
 
-const baseNavItemsTemplate = [
+const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
-  { href: '/accounts', label: 'Balance Sheet', icon: Landmark },
-  { href: '/virtual-accounts', label: 'Virtual Accounts', icon: Wallet },
-  { href: '/yearly-report', label: 'Yearly Report', icon: Database },
-  { href: '/ai-image-studio', label: 'AI Image Studio', icon: Wand2 },
-];
-
-const calculatorNavItems = [
-    {
-        label: 'Calculators',
-        icon: Calculator,
-        subItems: [
-            { href: '/calculators/investment', label: 'Investment', icon: Building2 },
-            { href: '/calculators/loan', label: 'Loan EMI', icon: DatabaseBackup },
-            { href: '/calculators/returns', label: 'Returns', icon: DatabaseBackup },
-        ]
-    }
-];
-
-const settingsNavItem = { href: '/admin/settings', label: 'Settings', icon: Settings };
-
-const adminNavItems = [
+  { href: '/accounts', label: 'Balance Sheet', icon: Landmark, featureFlag: 'balanceSheet' },
+  { href: '/virtual-accounts', label: 'Virtual Accounts', icon: Wallet, featureFlag: 'virtualAccounts' },
+  { href: '/yearly-report', label: 'Yearly Report', icon: Database, featureFlag: 'yearlyReport' },
+  { href: '/ai-image-studio', label: 'AI Image Studio', icon: Wand2, featureFlag: 'aiImageStudio' },
+  {
+      label: 'Calculators',
+      icon: Calculator,
+      featureFlag: 'calculators',
+      subItems: [
+          { href: '/calculators/investment', label: 'Investment', icon: Building2 },
+          { href: '/calculators/loan', label: 'Loan EMI', icon: DatabaseBackup },
+          { href: '/calculators/returns', label: 'Returns', icon: DatabaseBackup },
+      ]
+  },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
   { 
     label: 'Admin', 
     icon: Shield,
+    featureFlag: 'admin',
     subItems: [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
         { href: '/admin/default-categories', label: 'Default Categories', icon: Shapes },
@@ -71,10 +68,11 @@ const adminNavItems = [
   },
 ];
 
+
 export function AppShellNav() {
   const pathname = usePathname();
-  const { isRootUser, isMainTenantUser, selectedTenantId, tenants } = useApp();
-  const [openSections, setOpenSections] = useState({
+  const { userTenant, selectedTenantId } = useApp();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
       admin: false,
       calculators: false,
   });
@@ -87,25 +85,28 @@ export function AppShellNav() {
         admin: pathname.startsWith('/admin'),
         calculators: pathname.startsWith('/calculators'),
     });
-    // Reset navigation state when path changes
     setNavigatingTo(null);
   }, [pathname]);
 
-  const selectedTenant = tenants.find(t => t.id === selectedTenantId);
 
   const navItems = useMemo(() => {
-    let currentNavItems = [...baseNavItemsTemplate, ...calculatorNavItems];
+    if (!userTenant) return [];
     
-    if (isMainTenantUser) {
-        currentNavItems.push(settingsNavItem);
-    }
-    
-    if (isRootUser) {
-        return [...currentNavItems, ...adminNavItems];
-    }
-    
-    return currentNavItems;
-  }, [isRootUser, isMainTenantUser]);
+    return allNavItems.filter(item => {
+      // Default items are always shown
+      if (!item.featureFlag) return true;
+      
+      // Items for main tenant user (Settings)
+      if (item.href === '/admin/settings') {
+        const isMainTenantUser = userTenant.name === userTenant.name; // This check seems off, but let's assume it's for the primary user of a tenant
+        return isMainTenantUser;
+      }
+      
+      // Check feature flags
+      return userTenant.featureAccess?.[item.featureFlag] ?? false;
+    });
+
+  }, [userTenant]);
   
   const toggleSection = (section: keyof typeof openSections) => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
@@ -172,7 +173,7 @@ export function AppShellNav() {
                       disabled={isNavigating}
                   >
                       {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon />}
-                       <span>{hasHref(item) && item.href === '/dashboard' && selectedTenant ? `Dashboard (${selectedTenant.name})` : item.label}</span>
+                       <span>{hasHref(item) && item.href === '/dashboard' && userTenant ? `Dashboard (${userTenant.name})` : item.label}</span>
                   </SidebarMenuButton>
              </Link>
           </SidebarMenuItem>

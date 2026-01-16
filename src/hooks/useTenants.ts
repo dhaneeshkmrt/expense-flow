@@ -30,9 +30,9 @@ export function useTenants(
         return tenants.find(t => t.id === user.tenantId);
     }, [user, tenants]);
     
-    const isRootUser = useMemo(() => {
+    const isAdminUser = useMemo(() => {
         if (!userTenant || !user) return false;
-        return !!userTenant.isRootUser;
+        return !!userTenant.featureAccess?.admin;
     }, [userTenant, user]);
 
     const isMainTenantUser = useMemo(() => {
@@ -57,11 +57,18 @@ export function useTenants(
                         address: '',
                         secretToken: generateSecretToken(),
                         members: [],
-                        isRootUser: true,
                         paidByOptions: ['dhanisha', 'DKD', 'NC', 'DKC'],
+                        featureAccess: {
+                            admin: true,
+                            balanceSheet: true,
+                            virtualAccounts: true,
+                            yearlyReport: true,
+                            aiImageStudio: true,
+                            calculators: true,
+                        },
                     };
                     const docRef = await addDoc(tenantsCollection, defaultTenantData);
-                    const defaultTenant = { id: docRef.id, ...defaultTenantData };
+                    const defaultTenant = { id: docRef.id, ...defaultTenantData } as Tenant;
                     
                     await seedDefaultCategories(defaultTenant.id);
                     await seedDefaultSettings(defaultTenant.id);
@@ -89,10 +96,10 @@ export function useTenants(
     }, [user]);
 
     const handleSetSelectedTenantId = (tenantId: string | null) => {
-        if (isRootUser) {
+        if (isAdminUser) {
             setSelectedTenantId(tenantId);
         } else if (user && tenantId !== user.tenantId) {
-            console.warn("Attempted to switch tenant for non-root user. Denied.");
+            console.warn("Attempted to switch tenant for non-admin user. Denied.");
             return;
         } else {
             setSelectedTenantId(tenantId);
@@ -100,8 +107,8 @@ export function useTenants(
     };
 
     const addTenant = async (tenantData: Partial<Omit<Tenant, 'id'>>) => {
-        if (!isRootUser) {
-            console.error("Access denied: Only root users can add tenants");
+        if (!isAdminUser) {
+            console.error("Access denied: Only admin users can add tenants");
             return;
         }
         
@@ -120,8 +127,8 @@ export function useTenants(
     };
 
     const editTenant = async (tenantId: string, tenantData: Partial<Omit<Tenant, 'id'>>) => {
-        if (!isRootUser) {
-            console.error("Access denied: Only root users can edit tenants");
+        if (!isAdminUser) {
+            console.error("Access denied: Only admin users can edit tenants");
             return;
         }
         
@@ -135,8 +142,8 @@ export function useTenants(
     };
 
     const deleteTenant = async (tenantId: string) => {
-        if (!isRootUser) {
-            console.error("Access denied: Only root users can delete tenants");
+        if (!isAdminUser) {
+            console.error("Access denied: Only admin users can delete tenants");
             return;
         }
         
@@ -257,7 +264,7 @@ export function useTenants(
         editTenant,
         deleteTenant,
         userTenant,
-        isRootUser,
+        isAdminUser,
         isMainTenantUser,
         backupAllData,
         restoreAllData,
