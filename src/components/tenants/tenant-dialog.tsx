@@ -138,18 +138,22 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
   const watchedName = form.watch('name');
   
   useEffect(() => {
-    const isFirstPaidByOptionSameAsName = form.getValues('paidByOptions.0.name') === watchedName;
-  
-    if (watchedName && !isFirstPaidByOptionSameAsName) {
-      const currentPaidBy = form.getValues('paidByOptions');
-      if (currentPaidBy.length > 0) {
-        currentPaidBy[0].name = watchedName;
-        form.setValue('paidByOptions', currentPaidBy, { shouldDirty: true });
-      } else if (!isEditing) { // Only auto-add if it's a new tenant
-        form.setValue('paidByOptions', [{ name: watchedName }], { shouldDirty: true });
-      }
+    const paidByOptions = form.getValues('paidByOptions');
+    // Only update if it's the main tenant name and the first option is empty or different.
+    if (watchedName && (paidByOptions.length === 0 || (paidByOptions.length > 0 && paidByOptions[0].name !== watchedName))) {
+        const newPaidByOptions = [...paidByOptions];
+        if (newPaidByOptions.length > 0) {
+            // Update the first one only if it's the default/main one tied to the tenant name.
+            if(form.formState.dirtyFields.name){
+                newPaidByOptions[0] = { name: watchedName };
+            }
+        } else {
+            // If empty, add it.
+            newPaidByOptions.push({ name: watchedName });
+        }
+        form.setValue('paidByOptions', newPaidByOptions, { shouldDirty: true });
     }
-  }, [watchedName, isEditing, form]);
+  }, [watchedName, form]);
 
   useEffect(() => {
     if (open) {
@@ -168,7 +172,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               yearlyReport: tenant.featureAccess?.yearlyReport ?? false,
               aiImageStudio: tenant.featureAccess?.aiImageStudio ?? false,
               calculators: tenant.featureAccess?.calculators ?? false,
-              admin: tenant.featureAccess?.admin ?? tenant.isRootUser ?? false,
+              admin: tenant.featureAccess?.admin ?? false,
             }
           });
         } else {

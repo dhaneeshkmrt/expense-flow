@@ -32,7 +32,7 @@ export function useTenants(
     
     const isAdminUser = useMemo(() => {
         if (!userTenant || !user) return false;
-        return !!userTenant.featureAccess?.admin || !!userTenant.isRootUser;
+        return !!userTenant.featureAccess?.admin;
     }, [userTenant, user]);
 
     const isMainTenantUser = useMemo(() => {
@@ -58,7 +58,6 @@ export function useTenants(
                         secretToken: generateSecretToken(),
                         members: [],
                         paidByOptions: ['dhanisha', 'DKD', 'NC', 'DKC'],
-                        isRootUser: true,
                         featureAccess: {
                             admin: true,
                             balanceSheet: true,
