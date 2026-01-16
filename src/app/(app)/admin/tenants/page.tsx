@@ -25,7 +25,8 @@ export default function TenantsPage() {
 
   const tenantColumns = useMemo(
     () => createTenantColumns(setSelectedTenant, setDialogOpen),
-    [setSelectedTenant, setDialogOpen]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   if (loadingTenants) {
