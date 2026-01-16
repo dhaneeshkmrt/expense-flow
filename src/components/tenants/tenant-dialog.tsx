@@ -94,7 +94,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     name: 'members',
   });
 
-  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy, update: updatePaidBy } = useFieldArray({
+  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy } = useFieldArray({
       control: form.control,
       name: "paidByOptions",
   });
@@ -103,10 +103,10 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
 
   useEffect(() => {
     // When creating a new tenant, automatically set the first 'paidBy' option to the tenant's name
-    if (!isEditing && form.formState.isDirty && watchedName && paidByFields.length > 0) {
-        updatePaidBy(0, { name: watchedName });
+    if (!isEditing && form.getValues('paidByOptions.0.name') !== watchedName) {
+        form.setValue('paidByOptions.0.name', watchedName, { shouldDirty: true });
     }
-  }, [watchedName, isEditing, paidByFields, updatePaidBy, form.formState.isDirty]);
+  }, [watchedName, isEditing, form]);
   
   const handleGenerateToken = () => {
     form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
@@ -280,7 +280,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                       render={({ field }) => (
                         <FormItem className="flex-grow">
                           <FormControl>
-                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} />
+                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0 && !isEditing} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
