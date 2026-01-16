@@ -135,25 +135,6 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     form.reset();
   }, [form, setOpen, setSelectedTenant]);
   
-  const watchedName = form.watch('name');
-  
-  useEffect(() => {
-    const paidByOptions = form.getValues('paidByOptions');
-    // Only update if it's the main tenant name and the first option is empty or different.
-    if (watchedName && (paidByOptions.length === 0 || (paidByOptions.length > 0 && paidByOptions[0].name !== watchedName))) {
-        const newPaidByOptions = [...paidByOptions];
-        if (newPaidByOptions.length > 0) {
-            // Update the first one only if it's the default/main one tied to the tenant name.
-            if(form.formState.dirtyFields.name){
-                newPaidByOptions[0] = { name: watchedName };
-            }
-        } else {
-            // If empty, add it.
-            newPaidByOptions.push({ name: watchedName });
-        }
-        form.setValue('paidByOptions', newPaidByOptions, { shouldDirty: true });
-    }
-  }, [watchedName, form]);
 
   useEffect(() => {
     if (open) {
@@ -183,7 +164,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             address: '',
             secretToken: generateSecretToken(),
             members: [],
-            paidByOptions: [{ name: '' }],
+            paidByOptions: [{ name: 'Cash' }],
             featureAccess: {
                 balanceSheet: true,
                 virtualAccounts: true,
@@ -344,7 +325,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                       render={({ field }) => (
                         <FormItem className="flex-grow">
                           <FormControl>
-                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} />
+                            <Input {...field} placeholder="e.g., Credit Card" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

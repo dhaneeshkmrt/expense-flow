@@ -116,8 +116,6 @@ export default function SettingsPage() {
     name: "members",
   });
 
-  const watchedName = tenantForm.watch('name');
-
   useEffect(() => {
     if (settings && !settingsForm.formState.isDirty) {
       settingsForm.reset({
@@ -138,24 +136,6 @@ export default function SettingsPage() {
        });
     }
   }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
-
-  useEffect(() => {
-    const paidByOptions = tenantForm.getValues('paidByOptions');
-    // Only update if it's the main tenant name and the first option is empty or different.
-    if (watchedName && (paidByOptions.length === 0 || (paidByOptions.length > 0 && paidByOptions[0].name !== watchedName))) {
-        const newPaidByOptions = [...paidByOptions];
-        if (newPaidByOptions.length > 0) {
-            // Update the first one only if it's the default/main one tied to the tenant name.
-            if(tenantForm.formState.dirtyFields.name){
-                newPaidByOptions[0] = { name: watchedName };
-            }
-        } else {
-            // If empty, add it.
-            newPaidByOptions.push({ name: watchedName });
-        }
-        tenantForm.setValue('paidByOptions', newPaidByOptions, { shouldDirty: true });
-    }
-  }, [watchedName, tenantForm]);
 
   const onSettingsSubmit = async (data: SettingsFormValues) => {
     if (!selectedTenantId) {
@@ -251,7 +231,7 @@ export default function SettingsPage() {
                                 render={({ field }) => (
                                 <FormItem className="flex-grow">
                                     <FormControl>
-                                    <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} className="w-full md:w-1/3" />
+                                    <Input {...field} placeholder="e.g., Credit Card" className="w-full md:w-1/3" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
