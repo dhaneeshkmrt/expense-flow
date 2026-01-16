@@ -71,7 +71,7 @@ const allNavItems: NavItem[] = [
 
 export function AppShellNav() {
   const pathname = usePathname();
-  const { userTenant, selectedTenantId } = useApp();
+  const { userTenant, isAdminUser } = useApp();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
       admin: false,
       calculators: false,
@@ -96,17 +96,21 @@ export function AppShellNav() {
       // Default items are always shown
       if (!item.featureFlag) return true;
       
-      // Items for main tenant user (Settings)
-      if (item.href === '/admin/settings') {
-        const isMainTenantUser = userTenant.name === userTenant.name; // This check seems off, but let's assume it's for the primary user of a tenant
-        return isMainTenantUser;
+      // Use the isAdminUser flag (which checks both new and old properties) for the admin menu
+      if (item.featureFlag === 'admin') {
+        return isAdminUser;
       }
       
-      // Check feature flags
+      // Items for main tenant user (Settings)
+      if (item.href === '/admin/settings') {
+        return true;
+      }
+      
+      // Check feature flags for other items
       return userTenant.featureAccess?.[item.featureFlag] ?? false;
     });
 
-  }, [userTenant]);
+  }, [userTenant, isAdminUser]);
   
   const toggleSection = (section: keyof typeof openSections) => {
       setOpenSections(prev => ({ ...prev, [section]: !prev[section]}));
