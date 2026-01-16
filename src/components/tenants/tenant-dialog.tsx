@@ -146,7 +146,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             address: tenant.address,
             secretToken: tenant.secretToken,
             members: tenant.members || [],
-            paidByOptions: tenant.paidByOptions?.map(name => ({ name })) || [{ name: tenant.name }],
+            paidByOptions: tenant.paidByOptions?.map(name => ({ name })) || [{ name: 'Cash' }],
             featureAccess: {
               balanceSheet: tenant.featureAccess?.balanceSheet ?? false,
               virtualAccounts: tenant.featureAccess?.virtualAccounts ?? false,
@@ -166,11 +166,11 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             members: [],
             paidByOptions: [{ name: 'Cash' }],
             featureAccess: {
-                balanceSheet: true,
-                virtualAccounts: true,
-                yearlyReport: true,
-                aiImageStudio: true,
-                calculators: true,
+                balanceSheet: false,
+                virtualAccounts: false,
+                yearlyReport: false,
+                aiImageStudio: false,
+                calculators: false,
                 admin: false,
             }
           });
