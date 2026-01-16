@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -145,6 +145,12 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     }
   }, [tenant, open, form]);
 
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setSelectedTenant(null);
+    form.reset();
+  }, [form, setOpen, setSelectedTenant]);
+
   const onSubmit = (data: TenantFormValues) => {
     const tenantData = {
         ...data,
@@ -157,12 +163,6 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       addTenant(tenantData);
     }
     handleClose();
-  };
-  
-  const handleClose = () => {
-    setOpen(false);
-    setSelectedTenant(null);
-    form.reset();
   };
 
   return (
