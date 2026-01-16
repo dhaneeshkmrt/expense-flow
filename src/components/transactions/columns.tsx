@@ -108,8 +108,7 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
     },
   },
   {
-    id: 'categorization',
-    accessorKey: 'category', // Keep for filtering
+    accessorKey: 'category',
     header: 'Categorization',
     cell: ({ row }) => {
       const category = row.original.category;
