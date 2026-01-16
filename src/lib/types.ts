@@ -59,7 +59,7 @@ export type Tenant = {
   mobileNo?: string;
   address?: string;
   secretToken: string;
-  members: TenantMember[];
+  members?: TenantMember[];
   isRootUser?: boolean;
   paidByOptions?: string[];
 };
