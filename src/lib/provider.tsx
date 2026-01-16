@@ -31,12 +31,13 @@ interface AppContextType {
   signOut: () => Promise<void>;
   
   tenants: Tenant[];
+  userTenant: Tenant | null;
   selectedTenantId: string | null;
   setSelectedTenantId: (tenantId: string | null) => void;
   addTenant: (tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   editTenant: (tenantId: string, tenant: Partial<Omit<Tenant, 'id'>>) => Promise<void>;
   deleteTenant: (tenantId: string) => Promise<void>;
-  isRootUser: boolean;
+  isAdminUser: boolean;
   isMainTenantUser: boolean;
   backupAllData: () => Promise<void>;
   restoreAllData: (data: any) => Promise<void>;

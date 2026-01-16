@@ -32,14 +32,14 @@ export const columns = (
         return (
             <div className="flex items-center gap-2 font-medium">
                 <span>{tenant.name}</span>
-                {tenant.isRootUser && (
+                {tenant.featureAccess?.admin && (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
                         <CheckCircle2 className="h-4 w-4 text-green-500" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Root User</p>
+                        <p>Admin User</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -74,9 +74,10 @@ export const columns = (
     header: 'Members',
     cell: ({ row }) => {
       const members: Tenant['members'] = row.getValue('members');
+      if (!members || members.length === 0) return null;
       return (
         <div className="flex flex-wrap gap-1">
-          {(members || []).map((member, index) => (
+          {members.map((member, index) => (
             <Badge key={index} variant="secondary">{member.name}</Badge>
           ))}
         </div>
@@ -87,14 +88,14 @@ export const columns = (
     id: 'actions',
     cell: function Actions({ row }) {
       const tenant = row.original;
-      const { deleteTenant, isRootUser } = useApp();
+      const { deleteTenant, isAdminUser } = useApp();
       
       const handleEdit = () => {
         setSelectedTenant(tenant);
         setDialogOpen(true);
       };
 
-      if (!isRootUser) {
+      if (!isAdminUser) {
         return null;
       }
 

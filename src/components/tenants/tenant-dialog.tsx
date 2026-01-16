@@ -25,10 +25,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
-import type { Tenant } from '@/lib/types';
-import { PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
+import type { Tenant, FeatureAccess } from '@/lib/types';
+import { PlusCircle, Trash2, Copy, RefreshCw, Landmark, Wallet, Database, Wand2, Calculator, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
+import { Separator } from '../ui/separator';
 
 const generateSecretToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -45,7 +46,6 @@ const tenantSchema = z.object({
   mobileNo: z.string().optional(),
   address: z.string().optional(),
   secretToken: z.string().min(1, 'Secret Token is required.'),
-  isRootUser: z.boolean().optional(),
   members: z.array(z.object({
     name: z.string().min(2, 'Member name must be at least 2 characters.'),
     email: z.string().email('Please enter a valid email for the member.'),
@@ -55,9 +55,27 @@ const tenantSchema = z.object({
   paidByOptions: z.array(z.object({
     name: z.string().min(1, 'Paid by option cannot be empty.'),
   })).min(1, 'At least one "Paid by" option is required.'),
+  featureAccess: z.object({
+    balanceSheet: z.boolean().optional(),
+    virtualAccounts: z.boolean().optional(),
+    yearlyReport: z.boolean().optional(),
+    aiImageStudio: z.boolean().optional(),
+    calculators: z.boolean().optional(),
+    admin: z.boolean().optional(),
+  }).optional(),
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
+
+const featureList: { id: keyof FeatureAccess, label: string, icon: React.ElementType }[] = [
+    { id: 'balanceSheet', label: 'Balance Sheet', icon: Landmark },
+    { id: 'virtualAccounts', label: 'Virtual Accounts', icon: Wallet },
+    { id: 'yearlyReport', label: 'Yearly Report', icon: Database },
+    { id: 'aiImageStudio', label: 'AI Image Studio', icon: Wand2 },
+    { id: 'calculators', label: 'Calculators', icon: Calculator },
+    { id: 'admin', label: 'Admin', icon: Shield },
+];
+
 
 interface TenantDialogProps {
   open: boolean;
@@ -67,11 +85,11 @@ interface TenantDialogProps {
 }
 
 export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: TenantDialogProps) {
-  const { addTenant, editTenant, isRootUser } = useApp();
+  const { addTenant, editTenant, isAdminUser } = useApp();
   const { toast } = useToast();
   const isEditing = !!tenant;
 
-  if (!isRootUser) {
+  if (!isAdminUser) {
     return null;
   }
 
@@ -83,9 +101,16 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       mobileNo: '',
       address: '',
       secretToken: '',
-      isRootUser: false,
       members: [],
       paidByOptions: [],
+      featureAccess: {
+        balanceSheet: false,
+        virtualAccounts: false,
+        yearlyReport: false,
+        aiImageStudio: false,
+        calculators: false,
+        admin: false,
+      }
     },
   });
 
@@ -99,15 +124,6 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       name: "paidByOptions",
   });
 
-  const watchedName = form.watch('name');
-
-  useEffect(() => {
-    // When creating a new tenant, automatically set the first 'paidBy' option to the tenant's name
-    if (!isEditing && form.getValues('paidByOptions.0.name') !== watchedName) {
-        form.setValue('paidByOptions.0.name', watchedName, { shouldDirty: true });
-    }
-  }, [watchedName, isEditing, form]);
-  
   const handleGenerateToken = () => {
     form.setValue('secretToken', generateSecretToken(), { shouldDirty: true });
   }
@@ -116,6 +132,28 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     navigator.clipboard.writeText(token);
     toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
   }
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setSelectedTenant(null);
+    form.reset();
+  }, [form, setOpen, setSelectedTenant]);
+  
+  const watchedName = form.watch('name');
+  
+  useEffect(() => {
+    const isFirstPaidByOptionSameAsName = form.getValues('paidByOptions.0.name') === watchedName;
+  
+    if (!isEditing && !isFirstPaidByOptionSameAsName) {
+      const currentPaidBy = form.getValues('paidByOptions');
+      if (currentPaidBy.length > 0) {
+        currentPaidBy[0].name = watchedName;
+        form.setValue('paidByOptions', currentPaidBy, { shouldDirty: true });
+      } else {
+        form.setValue('paidByOptions', [{ name: watchedName }], { shouldDirty: true });
+      }
+    }
+  }, [watchedName, isEditing, form]);
 
   useEffect(() => {
     if (open) {
@@ -126,9 +164,16 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             mobileNo: tenant.mobileNo,
             address: tenant.address,
             secretToken: tenant.secretToken,
-            isRootUser: tenant.isRootUser || false,
             members: tenant.members || [],
             paidByOptions: tenant.paidByOptions?.map(name => ({ name })) || [{ name: tenant.name }],
+            featureAccess: {
+              balanceSheet: tenant.featureAccess?.balanceSheet ?? false,
+              virtualAccounts: tenant.featureAccess?.virtualAccounts ?? false,
+              yearlyReport: tenant.featureAccess?.yearlyReport ?? false,
+              aiImageStudio: tenant.featureAccess?.aiImageStudio ?? false,
+              calculators: tenant.featureAccess?.calculators ?? false,
+              admin: tenant.featureAccess?.admin ?? false,
+            }
           });
         } else {
           form.reset({
@@ -137,19 +182,20 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
             mobileNo: '',
             address: '',
             secretToken: generateSecretToken(),
-            isRootUser: false,
             members: [],
             paidByOptions: [{ name: '' }],
+            featureAccess: {
+                balanceSheet: true,
+                virtualAccounts: true,
+                yearlyReport: true,
+                aiImageStudio: true,
+                calculators: true,
+                admin: false,
+            }
           });
         }
     }
   }, [tenant, open, form]);
-
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    setSelectedTenant(null);
-    form.reset();
-  }, [form, setOpen, setSelectedTenant]);
 
   const onSubmit = (data: TenantFormValues) => {
     const tenantData = {
@@ -249,25 +295,39 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="isRootUser"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                        <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                        />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                        <FormLabel>
-                            Root User
-                        </FormLabel>
-                    </div>
-                </FormItem>
-              )}
-            />
+            
+            <Separator />
+            
+            <div>
+                <h3 className="text-base font-medium mb-4">Feature Access</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {featureList.map((feature) => (
+                    <FormField
+                      key={feature.id}
+                      control={form.control}
+                      name={`featureAccess.${feature.id}`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                           <FormControl>
+                              <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                              />
+                           </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel className="flex items-center gap-2">
+                                <feature.icon className="w-4 h-4"/>
+                                {feature.label}
+                              </FormLabel>
+                            </div>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+            </div>
+
+            <Separator />
 
             <div>
               <FormLabel>Paid By Options</FormLabel>
@@ -280,7 +340,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                       render={({ field }) => (
                         <FormItem className="flex-grow">
                           <FormControl>
-                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0 && !isEditing} />
+                            <Input {...field} placeholder="e.g., Credit Card" readOnly={index === 0} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -310,6 +370,8 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 </Button>
               </div>
             </div>
+
+            <Separator />
 
             <div>
               <FormLabel>Family Members</FormLabel>

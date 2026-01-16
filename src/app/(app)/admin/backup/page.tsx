@@ -13,8 +13,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 
 export const dynamic = 'force-dynamic';
 
+const AccessDenied = () => (
+    <div className="flex flex-col gap-6 items-center justify-center h-full">
+        <AlertTriangle className="w-16 h-16 text-destructive"/>
+        <h1 className="text-2xl font-bold">Access Denied</h1>
+        <p className="text-muted-foreground">You do not have permission to access this page. Please contact your administrator.</p>
+    </div>
+);
+
 export default function BackupPage() {
-  const { backupAllData, restoreAllData, isRootUser } = useApp();
+  const { backupAllData, restoreAllData, isAdminUser } = useApp();
   const { toast } = useToast();
   const [isBackingUp, setIsBackingUp] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -81,14 +89,8 @@ export default function BackupPage() {
     }
   };
   
-  if (!isRootUser) {
-    return (
-        <div className="flex flex-col gap-6 items-center justify-center h-full">
-            <AlertTriangle className="w-16 h-16 text-destructive"/>
-            <h1 className="text-2xl font-bold">Access Denied</h1>
-            <p className="text-muted-foreground">You do not have permission to access this page.</p>
-        </div>
-    );
+  if (!isAdminUser) {
+    return <AccessDenied />;
   }
 
   return (
