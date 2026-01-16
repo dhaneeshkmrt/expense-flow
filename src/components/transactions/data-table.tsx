@@ -174,6 +174,7 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
   });
   
   React.useEffect(() => {
+    if (!showFilters) return;
     const potentialDuplicates = new Map<string, TData[]>();
     
     // The `data` prop already contains only the transactions for the selected month.
@@ -196,22 +197,26 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     });
     setDuplicateIds(newDuplicateIds);
   
-  }, [data]); // Rerun only when the monthly data changes
+  }, [data, showFilters]);
 
 
   React.useEffect(() => {
+    if (!showFilters) return;
     table.getColumn('category')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
-  }, [categoryFilter, table]);
+  }, [categoryFilter, table, showFilters]);
 
   React.useEffect(() => {
+    if (!showFilters) return;
     table.getColumn('subcategory')?.setFilterValue(subcategoryFilter && subcategoryFilter.trim() ? [subcategoryFilter] : undefined);
-  }, [subcategoryFilter, table]);
+  }, [subcategoryFilter, table, showFilters]);
   
   React.useEffect(() => {
+    if (!showFilters) return;
     table.getColumn('microcategory')?.setFilterValue(microcategoryFilter && microcategoryFilter.trim() ? [microcategoryFilter] : undefined);
-  }, [microcategoryFilter, table]);
+  }, [microcategoryFilter, table, showFilters]);
 
   React.useEffect(() => {
+    if (!showFilters) return;
     const parts = amountFilter.split('-').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
     let min: number | undefined;
     let max: number | undefined;
@@ -225,27 +230,29 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     }
     
     table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
-  }, [amountFilter, table]);
+  }, [amountFilter, table, showFilters]);
   
   React.useEffect(() => {
-      table.getColumn('paidBy')?.setFilterValue(paidByFilter.length > 0 ? paidByFilter : undefined);
-  }, [paidByFilter, table]);
+    if (!showFilters) return;
+    table.getColumn('paidBy')?.setFilterValue(paidByFilter.length > 0 ? paidByFilter : undefined);
+  }, [paidByFilter, table, showFilters]);
 
   React.useEffect(() => {
-      table.getColumn('date')?.setFilterValue(dateRange ? dateRange : undefined);
-  }, [dateRange, table]);
+    if (!showFilters) return;
+    table.getColumn('date')?.setFilterValue(dateRange ? dateRange : undefined);
+  }, [dateRange, table, showFilters]);
 
   const subcategories = React.useMemo(() => {
-    if (!categoryFilter) return [];
+    if (!showFilters || !categoryFilter) return [];
     const category = categories.find((c) => c.name === categoryFilter);
     return category ? category.subcategories : [];
-  }, [categoryFilter, categories]);
+  }, [categoryFilter, categories, showFilters]);
 
   const microcategories = React.useMemo(() => {
-    if(!subcategoryFilter) return [];
+    if (!showFilters || !subcategoryFilter) return [];
     const subcategory = subcategories.find(s => s.name === subcategoryFilter);
     return subcategory ? (subcategory.microcategories || []) : [];
-  }, [subcategoryFilter, subcategories]);
+  }, [subcategoryFilter, subcategories, showFilters]);
 
   return (
     <div ref={ref}>
@@ -489,5 +496,3 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     </div>
   );
 }
-
-    
