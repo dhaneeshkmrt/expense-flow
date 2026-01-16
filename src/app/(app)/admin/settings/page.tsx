@@ -87,7 +87,7 @@ export default function SettingsPage() {
     }
   });
 
-  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy, update: updatePaidBy } = useFieldArray({
+  const { fields: paidByFields, append: appendPaidBy, remove: removePaidBy } = useFieldArray({
       control: tenantForm.control,
       name: "paidByOptions",
   });
@@ -121,10 +121,10 @@ export default function SettingsPage() {
   }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
 
   useEffect(() => {
-    if (tenantForm.formState.isDirty && watchedName && paidByFields.length > 0) {
-        updatePaidBy(0, { name: watchedName });
+    if (tenantForm.formState.isDirty && watchedName && tenantForm.getValues('paidByOptions.0.name') !== watchedName) {
+        tenantForm.setValue('paidByOptions.0.name', watchedName);
     }
-  }, [watchedName, tenantForm.formState.isDirty, paidByFields, updatePaidBy]);
+  }, [watchedName, tenantForm]);
 
   const onSettingsSubmit = async (data: SettingsFormValues) => {
     if (!selectedTenantId) {
