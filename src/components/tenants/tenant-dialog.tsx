@@ -89,10 +89,6 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
   const { toast } = useToast();
   const isEditing = !!tenant;
 
-  if (!isAdminUser) {
-    return null;
-  }
-
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: {
@@ -144,12 +140,12 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
   useEffect(() => {
     const isFirstPaidByOptionSameAsName = form.getValues('paidByOptions.0.name') === watchedName;
   
-    if (!isEditing && !isFirstPaidByOptionSameAsName) {
+    if (watchedName && !isFirstPaidByOptionSameAsName) {
       const currentPaidBy = form.getValues('paidByOptions');
       if (currentPaidBy.length > 0) {
         currentPaidBy[0].name = watchedName;
         form.setValue('paidByOptions', currentPaidBy, { shouldDirty: true });
-      } else {
+      } else if (!isEditing) { // Only auto-add if it's a new tenant
         form.setValue('paidByOptions', [{ name: watchedName }], { shouldDirty: true });
       }
     }
@@ -172,7 +168,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               yearlyReport: tenant.featureAccess?.yearlyReport ?? false,
               aiImageStudio: tenant.featureAccess?.aiImageStudio ?? false,
               calculators: tenant.featureAccess?.calculators ?? false,
-              admin: tenant.featureAccess?.admin ?? false,
+              admin: tenant.featureAccess?.admin ?? tenant.isRootUser ?? false,
             }
           });
         } else {
@@ -210,6 +206,10 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
     }
     handleClose();
   };
+  
+  if (!isAdminUser) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
