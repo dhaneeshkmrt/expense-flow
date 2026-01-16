@@ -126,7 +126,7 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
         subcategory: false,
         microcategory: false,
         paidBy: false,
-        categorization: true, // Keep this visible
+        category: true, // Keep this visible
       });
     } else {
       setColumnVisibility({
@@ -200,7 +200,7 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
 
 
   React.useEffect(() => {
-    table.getColumn('categorization')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
+    table.getColumn('category')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
   }, [categoryFilter, table]);
 
   React.useEffect(() => {
