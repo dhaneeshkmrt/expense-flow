@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2, Copy, RefreshCw } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,15 @@ import {
 } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { useTheme } from '@/components/theme-provider';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const dynamic = 'force-dynamic';
 
@@ -69,8 +78,18 @@ const tenantSchema = z.object({
 type SettingsFormValues = z.infer<typeof settingsSchema>;
 type TenantFormValues = z.infer<typeof tenantSchema>;
 
+const colorThemes = [
+    { value: 'default', label: 'Default', preview: 'bg-primary' },
+    { value: 'rainbow', label: 'Rainbow', preview: 'bg-gradient-to-r from-pink-500 to-cyan-500' },
+    { value: 'ocean', label: 'Ocean', preview: 'bg-gradient-to-r from-blue-600 to-cyan-400' },
+    { value: 'sunset', label: 'Sunset', preview: 'bg-gradient-to-r from-orange-500 to-pink-600' },
+    { value: 'forest', label: 'Forest', preview: 'bg-gradient-to-r from-green-600 to-lime-500' },
+    { value: 'electric', label: 'Electric', preview: 'bg-gradient-to-r from-purple-600 to-cyan-500' },
+];
+
 export default function SettingsPage() {
   const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser } = useApp();
+  const { theme, colorTheme, setColorTheme, toggleTheme } = useTheme();
   
   const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
 
@@ -121,8 +140,20 @@ export default function SettingsPage() {
   }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
 
   useEffect(() => {
-    if (tenantForm.formState.isDirty && watchedName && tenantForm.getValues('paidByOptions.0.name') !== watchedName) {
-        tenantForm.setValue('paidByOptions.0.name', watchedName);
+    const paidByOptions = tenantForm.getValues('paidByOptions');
+    // Only update if it's the main tenant name and the first option is empty or different.
+    if (watchedName && (paidByOptions.length === 0 || (paidByOptions.length > 0 && paidByOptions[0].name !== watchedName))) {
+        const newPaidByOptions = [...paidByOptions];
+        if (newPaidByOptions.length > 0) {
+            // Update the first one only if it's the default/main one tied to the tenant name.
+            if(tenantForm.formState.dirtyFields.name){
+                newPaidByOptions[0] = { name: watchedName };
+            }
+        } else {
+            // If empty, add it.
+            newPaidByOptions.push({ name: watchedName });
+        }
+        tenantForm.setValue('paidByOptions', newPaidByOptions, { shouldDirty: true });
     }
   }, [watchedName, tenantForm]);
 
@@ -338,6 +369,59 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>Customize the look and feel of the application.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="dark-mode-toggle" className="flex items-center gap-2">
+              <Moon />
+              <span>Theme</span>
+            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+              id="dark-mode-toggle"
+            >
+              {theme === 'dark' ? <Sun className="mr-2" /> : <Moon className="mr-2" />}
+              {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="color-theme-selector" className="flex items-center gap-2">
+              <Palette />
+              <span>Color Palette</span>
+            </Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button id="color-theme-selector" variant="outline">
+                  {colorThemes.find(ct => ct.value === colorTheme)?.label}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Color Theme</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {colorThemes.map((colorOption) => (
+                  <DropdownMenuItem
+                    key={colorOption.value}
+                    onClick={() => setColorTheme(colorOption.value as any)}
+                    className="flex items-center justify-between"
+                  >
+                    <span>{colorOption.label}</span>
+                    <div className={`w-4 h-4 rounded-full ${colorOption.preview} ${
+                      colorTheme === colorOption.value ? 'ring-2 ring-foreground' : ''
+                    }`} />
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>General Settings</CardTitle>
            <CardDescription>Configure currency, number formatting, and UI preferences for your tenant.</CardDescription>
         </CardHeader>
@@ -408,5 +492,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
-    

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -10,18 +11,17 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import AddTransactionSheet from './transactions/add-transaction-sheet';
-import { ThemeSelector } from './theme-selector';
 
 const months = [
   { value: 0, label: 'January' }, { value: 1, label: 'February' }, { value: 2, label: 'March' },
   { value: 3, label: 'April' }, { value: 4, label: 'May' }, { value: 5, label: 'June' },
-  { value: 6, label: 'July' }, { value: 7, 'label': 'August' }, { value: 8, label: 'September' },
+  { value: 6, 'label': 'July' }, { value: 7, 'label': 'August' }, { value: 8, label: 'September' },
   { value: 9, label: 'October' }, { value: 10, label: 'November' }, { value: 11, label: 'December' }
 ];
 
 export function AppShellHeader() {
   const { 
-    tenants, selectedTenantId, setSelectedTenantId, loadingTenants, isRootUser,
+    tenants, selectedTenantId, setSelectedTenantId, loadingTenants, isAdminUser,
     selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, availableYears,
   } = useApp();
   const [tenantPopoverOpen, setTenantPopoverOpen] = useState(false);
@@ -63,8 +63,7 @@ export function AppShellHeader() {
         </div>
       <div className="flex-1" />
       <div className="flex items-center gap-4">
-        <ThemeSelector />
-        {isRootUser && (
+        {isAdminUser && (
           <Popover open={tenantPopoverOpen} onOpenChange={setTenantPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
