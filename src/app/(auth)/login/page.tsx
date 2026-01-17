@@ -1,18 +1,14 @@
 
 'use client';
 
-import { useForm } from 'react-hook-form';
 import { useApp } from '@/lib/provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Logo } from '@/components/logo';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,13 +22,7 @@ const GoogleIcon = () => (
 );
 
 export default function LoginPage() {
-  const { user, signIn, signInWithGoogle } = useApp();
-  const { register, handleSubmit } = useForm({
-    defaultValues: {
-      email: '',
-      secretToken: '',
-    },
-  });
+  const { user, signInWithGoogle } = useApp();
   const { toast } = useToast();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,25 +32,6 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, router]);
-
-  const onSubmit = async (data: any) => {
-    setIsSubmitting(true);
-    const success = await signIn(data.email, data.secretToken);
-    if (success) {
-      toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
-      });
-      router.push('/dashboard');
-    } else {
-      toast({
-        title: 'Login Failed',
-        description: 'Invalid email or secret token. Please ensure an admin has added your tenant data to the system.',
-        variant: 'destructive',
-      });
-    }
-    setIsSubmitting(false);
-  };
 
   const handleGoogleSignIn = async () => {
     setIsSubmitting(true);
@@ -83,7 +54,7 @@ export default function LoginPage() {
           <Logo />
           <CardTitle className="pt-4">Welcome Back</CardTitle>
           <CardDescription>
-            Sign in with your provider or email. Only users whose tenant data has been added by an admin can login.
+            Sign in with Google to continue. Only users whose tenant data has been added by an admin can login.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -91,32 +62,6 @@ export default function LoginPage() {
              {isSubmitting ? <Loader2 className="mr-2 animate-spin" /> : <GoogleIcon />}
               Sign In with Google
            </Button>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" {...register('email')} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="secretToken">Secret Token</Label>
-              <Input id="secretToken" type="password" {...register('secretToken')} />
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-              Sign In with Email
-            </Button>
-          </form>
         </CardContent>
       </Card>
     </div>
