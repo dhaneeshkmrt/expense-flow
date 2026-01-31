@@ -1,6 +1,6 @@
 
 import { add, set, getDay, getDate, getDaysInMonth, startOfMonth, endOfMonth, eachDayOfInterval, isBefore, isAfter, isEqual, format, parseISO } from 'date-fns';
-import type { Reminder, RecurrenceRule } from './types';
+import type { Reminder, RecurrenceRule, ReminderInstance } from './types';
 
 function getOrdinalNth(n: number) {
     if (n > 3 && n < 21) return 'th';
@@ -137,13 +137,16 @@ export function generateReminderInstances(
         }
         
         // Advance the cursor for the next iteration
-        if(reminder.recurrence.frequency !== 'one-time') {
-            const nextMonthStart = add(startOfMonth(cursorDate), { months: 1 });
-            if(isBefore(nextMonthStart, cursorDate)) { // Should not happen with startOfMonth, but as a safeguard
-                 cursorDate = add(cursorDate, { months: 1 });
-            } else {
-                 cursorDate = nextMonthStart;
+        if (reminder.recurrence.frequency !== 'one-time') {
+            let monthsToAdd = 1;
+            if (reminder.recurrence.frequency === 'quarterly') {
+                monthsToAdd = 3;
+            } else if (reminder.recurrence.frequency === 'yearly') {
+                monthsToAdd = 12;
             }
+            
+            // Advance from the start of the cursor's month to avoid date issues (e.g. from Jan 31 to Feb)
+            cursorDate = add(startOfMonth(cursorDate), { months: monthsToAdd });
         }
     }
   });
