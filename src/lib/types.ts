@@ -9,6 +9,7 @@ export type FeatureAccess = {
   aiImageStudio?: boolean;
   calculators?: boolean;
   admin?: boolean;
+  reminders?: boolean;
 };
 
 export type Microcategory = {
@@ -157,4 +158,41 @@ export type MonthEndProcessResult = {
 
 export type CategoryBudget = {
   budgets: { [monthKey: string]: { [categoryId: string]: number } };
+};
+
+// Reminder System Types
+export type RecurrenceRule = {
+  frequency: 'one-time' | 'monthly' | 'quarterly' | 'yearly';
+  // For monthly/quarterly/yearly on a specific date
+  dayOfMonth?: number; // 1-31
+  // Or for weekly/monthly/... on a specific weekday
+  dayOfWeek?: number; // 0-6 (Sun-Sat)
+  weekOfMonth?: number; // 1-4, 5 for last
+};
+
+export type Reminder = {
+  id: string;
+  tenantId: string;
+  userId: string;
+  description: string;
+  amount: number;
+  category: string;
+  subcategory: string;
+  microcategory?: string;
+  paidBy: string;
+  notes?: string;
+
+  startDate: string; // ISO date string
+  
+  recurrence: RecurrenceRule;
+
+  // Map of 'YYYY-MM-DD' due dates to the ID of the transaction that completed it
+  completedInstances: Record<string, string>; 
+};
+
+export type ReminderInstance = {
+  reminder: Reminder;
+  dueDate: Date;
+  isCompleted: boolean;
+  transactionId?: string;
 };

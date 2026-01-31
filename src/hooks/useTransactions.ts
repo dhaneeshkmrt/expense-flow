@@ -41,14 +41,16 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     }
   }, [tenantId, fetchTransactions]);
 
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>) => {
-    if (!tenantId) return;
-    const transactionData = { ...transaction, tenantId: tenantId, userId: user?.name };
+  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>): Promise<string> => {
+    if (!tenantId || !user) throw new Error("Tenant or user not available");
+    const transactionData = { ...transaction, tenantId: tenantId, userId: user.name };
     try {
       const docRef = await addDoc(collection(db, "transactions"), transactionData);
       setTransactions(prev => sortTransactions([...prev, { ...transactionData, id: docRef.id }]));
+      return docRef.id;
     } catch (e) {
       console.error("Error adding document: ", e);
+      throw e;
     }
   };
   

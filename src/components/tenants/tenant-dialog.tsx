@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Tenant, FeatureAccess } from '@/lib/types';
-import { PlusCircle, Trash2, Copy, RefreshCw, Landmark, Wallet, Database, Wand2, Calculator, Shield } from 'lucide-react';
+import { PlusCircle, Trash2, Copy, RefreshCw, Landmark, Wallet, Database, Wand2, Calculator, Shield, BellReminder } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
@@ -62,6 +62,7 @@ const tenantSchema = z.object({
     aiImageStudio: z.boolean().optional(),
     calculators: z.boolean().optional(),
     admin: z.boolean().optional(),
+    reminders: z.boolean().optional(),
   }).optional(),
 });
 
@@ -73,6 +74,7 @@ const featureList: { id: keyof FeatureAccess, label: string, icon: React.Element
     { id: 'yearlyReport', label: 'Yearly Report', icon: Database },
     { id: 'aiImageStudio', label: 'AI Image Studio', icon: Wand2 },
     { id: 'calculators', label: 'Calculators', icon: Calculator },
+    { id: 'reminders', label: 'Reminders', icon: BellReminder },
     { id: 'admin', label: 'Admin', icon: Shield },
 ];
 
@@ -106,6 +108,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
         aiImageStudio: false,
         calculators: false,
         admin: false,
+        reminders: false,
       }
     },
   });
@@ -154,6 +157,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
               aiImageStudio: tenant.featureAccess?.aiImageStudio ?? false,
               calculators: tenant.featureAccess?.calculators ?? false,
               admin: tenant.featureAccess?.admin ?? false,
+              reminders: tenant.featureAccess?.reminders ?? false,
             }
           });
         } else {
@@ -172,6 +176,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                 aiImageStudio: false,
                 calculators: false,
                 admin: false,
+                reminders: false,
             }
           });
         }

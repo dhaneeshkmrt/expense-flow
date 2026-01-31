@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import type { User as AuthUser } from 'firebase/auth';
-import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User, BalanceSheet, VirtualAccount, AccountTransaction, MonthLock, MonthEndProcessResult } from './types';
+import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User, BalanceSheet, VirtualAccount, AccountTransaction, MonthLock, MonthEndProcessResult, Reminder, ReminderInstance } from './types';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -14,6 +14,8 @@ import { useSettings } from '@/hooks/useSettings';
 import { useCategories } from '@/hooks/useCategories';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useReminders } from '@/hooks/useReminders';
+import { generateReminderInstances } from './reminder-utils';
 import { getYear, getMonth, parseISO, format } from 'date-fns';
 
 interface CategoryTransferData {
@@ -86,6 +88,16 @@ interface AppContextType {
   getAccountTransactions: (accountId: string) => AccountTransaction[];
   handleOverspendWithdrawal: (categoryId: string, categoryName: string, overspendAmount: number, monthYear: string) => Promise<boolean>;
 
+  // Reminders
+  reminders: Reminder[];
+  reminderInstances: ReminderInstance[];
+  pendingReminders: ReminderInstance[];
+  completedReminders: ReminderInstance[];
+  addReminder: (reminderData: Omit<Reminder, 'id' | 'tenantId' | 'userId' | 'completedInstances'>) => Promise<void>;
+  editReminder: (reminderId: string, reminderData: Partial<Omit<Reminder, 'id' | 'tenantId' | 'userId'>>) => Promise<void>;
+  deleteReminder: (reminderId: string) => Promise<void>;
+  completeReminderInstance: (reminder: Reminder, dueDate: Date, transactionId: string) => Promise<void>;
+
   loading: boolean;
   loadingAuth: boolean;
   loadingCategories: boolean;
@@ -94,6 +106,7 @@ interface AppContextType {
   loadingTransactions: boolean;
   loadingAccounts: boolean;
   loadingProcessing: boolean;
+  loadingReminders: boolean;
   isCopyingBudget: boolean;
 }
 
@@ -115,6 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const categoriesHook = useCategories(selectedTenantId, selectedYear, selectedMonth);
   const transactionsHook = useTransactions(selectedTenantId, user);
   const accountsHook = useAccounts(selectedTenantId);
+  const remindersHook = useReminders(selectedTenantId, user);
 
   
   const availableYears = useMemo(() => {
@@ -135,6 +149,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const selectedMonthName = useMemo(() => {
     return format(new Date(selectedYear, selectedMonth), 'MMMM');
   }, [selectedYear, selectedMonth]);
+
+  const reminderInstances = useMemo(() => {
+    if (!remindersHook.reminders) return [];
+    return generateReminderInstances(remindersHook.reminders, selectedYear, selectedMonth);
+  }, [remindersHook.reminders, selectedYear, selectedMonth]);
+  
+  const pendingReminders = useMemo(() => reminderInstances.filter(inst => !inst.isCompleted), [reminderInstances]);
+  const completedReminders = useMemo(() => reminderInstances.filter(inst => inst.isCompleted), [reminderInstances]);
+
 
   const fetchBalanceSheet = useCallback(async (year: number, month: number): Promise<BalanceSheet | null> => {
     if (!selectedTenantId) return null;
@@ -357,6 +380,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...settingsHook,
     ...categoriesHook,
     ...transactionsHook,
+    ...remindersHook,
     
     // Override transaction functions with lock-checking versions
     addTransaction: addTransactionWithLockCheck,
@@ -386,6 +410,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     getTotalAccountBalance: accountsHook.getTotalBalance,
     getAccountTransactions: accountsHook.getAccountTransactions,
     handleOverspendWithdrawal: accountsHook.handleOverspendWithdrawal,
+    
+    // Reminders
+    reminderInstances,
+    pendingReminders,
+    completedReminders,
 
     loading,
     loadingAuth,
@@ -395,8 +424,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingTransactions: transactionsHook.loadingTransactions,
     loadingAccounts: accountsHook.loading,
     loadingProcessing: accountsHook.loadingProcessing,
+    loadingReminders: remindersHook.loadingReminders,
     isCopyingBudget: categoriesHook.isCopyingBudget,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, reminderInstances, pendingReminders, completedReminders]);
 
   return (
     <ThemeProvider>
