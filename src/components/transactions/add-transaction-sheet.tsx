@@ -313,19 +313,19 @@ export default function AddTransactionSheet({
     }
   };
 
-  const handleAddSubcategory = async (subcategoryData: { name: string }) => {
+  const handleAddSubcategory = async (categoryId: string, subcategoryData: { name: string }) => {
     if (!selectedCategory) return;
-    await addSubcategory(selectedCategory.id, subcategoryData);
+    await addSubcategory(categoryId, subcategoryData);
     form.setValue('subcategory', subcategoryData.name, { shouldValidate: true, shouldDirty: true });
     toast({ title: "Subcategory Added", description: `"${subcategoryData.name}" was added to ${selectedCategory.name}.` });
   };
 
-  const handleAddMicrocategory = async (microcategoryData: { name: string }) => {
+  const handleAddMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryData: { name: string }) => {
     if (!selectedCategory || !selectedSubcategoryName) return;
     const subcategory = subcategories.find(s => s.name === selectedSubcategoryName);
     if (!subcategory) return;
 
-    await addMicrocategory(selectedCategory.id, subcategory.id, microcategoryData);
+    await addMicrocategory(categoryId, subcategoryId, microcategoryData);
     form.setValue('microcategory', microcategoryData.name, { shouldValidate: true, shouldDirty: true });
     toast({ title: "Micro-category Added", description: `"${microcategoryData.name}" was added.` });
   };
@@ -687,3 +687,4 @@ export default function AddTransactionSheet({
     
 
     
+
