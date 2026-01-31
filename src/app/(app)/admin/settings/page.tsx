@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -101,7 +101,7 @@ export default function SettingsPage() {
     resolver: zodResolver(tenantSchema),
     defaultValues: {
         name: '',
-        paidByOptions: [],
+        paidByOptions: [{ name: 'Cash' }],
         members: [],
     }
   });
@@ -126,16 +126,22 @@ export default function SettingsPage() {
     }
   }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
 
+  const resetTenantForm = useCallback((tenant: Tenant | undefined) => {
+    if (tenant) {
+      tenantForm.reset({
+        name: tenant.name,
+        paidByOptions: tenant.paidByOptions?.map(name => ({name})) || [{ name: 'Cash' }],
+        members: tenant.members || [],
+      });
+    }
+  }, [tenantForm]);
+  
   useEffect(() => {
     const currentTenant = tenants.find(t => t.id === selectedTenantId);
     if (currentTenant && !tenantForm.formState.isDirty) {
-      tenantForm.reset({ 
-        name: currentTenant.name,
-        paidByOptions: currentTenant.paidByOptions?.map(name => ({name})) || [{ name: currentTenant.name }],
-        members: currentTenant.members || [],
-       });
+      resetTenantForm(currentTenant);
     }
-  }, [selectedTenantId, tenants, tenantForm.reset, tenantForm.formState.isDirty]);
+  }, [selectedTenantId, tenants, tenantForm.formState.isDirty, resetTenantForm]);
 
   const onSettingsSubmit = async (data: SettingsFormValues) => {
     if (!selectedTenantId) {
@@ -237,17 +243,15 @@ export default function SettingsPage() {
                                 </FormItem>
                                 )}
                             />
-                            {index > 0 && (
-                                <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-9 w-9 text-destructive"
-                                onClick={() => removePaidBy(index)}
-                                >
-                                <Trash2 className="h-4 w-4" />
-                                </Button>
-                            )}
+                            <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-destructive"
+                            onClick={() => removePaidBy(index)}
+                            >
+                            <Trash2 className="h-4 w-4" />
+                            </Button>
                             </div>
                         ))}
                         <Button

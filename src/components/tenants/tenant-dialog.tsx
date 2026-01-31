@@ -98,7 +98,7 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
       address: '',
       secretToken: '',
       members: [],
-      paidByOptions: [],
+      paidByOptions: [{ name: 'Cash' }],
       featureAccess: {
         balanceSheet: false,
         virtualAccounts: false,
@@ -331,17 +331,15 @@ export function TenantDialog({ open, setOpen, tenant, setSelectedTenant }: Tenan
                         </FormItem>
                       )}
                     />
-                    {index > 0 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-destructive"
-                        onClick={() => removePaidBy(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive"
+                      onClick={() => removePaidBy(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
                 <Button
