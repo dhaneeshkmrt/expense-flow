@@ -52,7 +52,7 @@ export default function LogsPage() {
                     </p>
                 </div>
             </div>
-            <DataTable columns={columns} data={logs as AuditLog[]} showFilters={true} />
+            <DataTable columns={columns} data={(logs || []) as AuditLog[]} showFilters={true} />
         </div>
     )
 }
