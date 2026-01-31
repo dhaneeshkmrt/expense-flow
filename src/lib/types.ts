@@ -10,6 +10,7 @@ export type FeatureAccess = {
   calculators?: boolean;
   admin?: boolean;
   reminders?: boolean;
+  logs?: boolean;
 };
 
 export type Microcategory = {
@@ -195,4 +196,18 @@ export type ReminderInstance = {
   dueDate: Date;
   isCompleted: boolean;
   transactionId?: string;
+};
+
+// Audit Log Types
+export type AuditLog = {
+  id: string;
+  tenantId: string;
+  userId: string;
+  timestamp: string; // ISO string
+  operationType: 'CREATE' | 'UPDATE' | 'DELETE' | 'PROCESS';
+  collectionName: string;
+  docId: string;
+  description: string;
+  oldData?: string; // JSON string
+  newData?: string; // JSON string
 };

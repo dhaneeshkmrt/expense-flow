@@ -7,7 +7,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing, ScrollText } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -17,7 +17,7 @@ type NavItemWithHref = {
   href: string;
   label: string;
   icon: React.ComponentType;
-  featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin' | 'reminders'
+  featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin' | 'reminders' | 'logs'
 };
 
 type NavItemWithSubItems = {
@@ -65,6 +65,7 @@ const allNavItems: NavItem[] = [
         { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
         { href: '/admin/default-categories', label: 'Default Categories', icon: Shapes },
         { href: '/admin/backup', label: 'Backup / Restore', icon: DatabaseBackup },
+        { href: '/admin/logs', label: 'Audit Logs', icon: ScrollText, featureFlag: 'logs' },
     ]
   },
 ];
@@ -93,23 +94,34 @@ export function AppShellNav() {
   const navItems = useMemo(() => {
     if (!userTenant) return [];
     
-    return allNavItems.filter(item => {
-      // Default items are always shown
-      if (!item.featureFlag) return true;
-      
-      // Use the isAdminUser flag (which checks both new and old properties) for the admin menu
-      if (item.featureFlag === 'admin') {
-        return isAdminUser;
-      }
-      
-      // Items for main tenant user (Settings)
-      if (item.href === '/admin/settings') {
-        return true;
-      }
-      
-      // Check feature flags for other items
-      return userTenant.featureAccess?.[item.featureFlag] ?? false;
-    });
+    const filterItems = (items: NavItem[]): NavItem[] => {
+      return items.reduce((acc: NavItem[], item: NavItem) => {
+        if (item.featureFlag && item.featureFlag === 'admin' && !isAdminUser) {
+          return acc;
+        }
+
+        if (item.featureFlag && userTenant.featureAccess?.[item.featureFlag] === false) {
+           return acc;
+        }
+
+        if (hasSubItems(item)) {
+          const filteredSubItems = item.subItems.filter(subItem => {
+             if (!subItem.featureFlag) return true;
+             return userTenant.featureAccess?.[subItem.featureFlag] ?? false;
+          });
+          if (filteredSubItems.length > 0) {
+            acc.push({ ...item, subItems: filteredSubItems });
+          }
+        } else {
+           if (!item.featureFlag || userTenant.featureAccess?.[item.featureFlag] !== false) {
+             acc.push(item);
+           }
+        }
+        return acc;
+      }, []);
+    };
+    
+    return filterItems(allNavItems);
 
   }, [userTenant, isAdminUser]);
   
