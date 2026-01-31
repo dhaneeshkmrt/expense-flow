@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -119,6 +120,8 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
   const [amountFilter, setAmountFilter] = React.useState('');
   const [showDuplicates, setShowDuplicates] = React.useState(false);
   const [duplicateIds, setDuplicateIds] = React.useState<Set<string>>(new Set());
+  const [userFilter, setUserFilter] = React.useState<string>('');
+  const [operationFilter, setOperationFilter] = React.useState<string>('');
   
   const selectedTenant = React.useMemo(() => {
     return tenants.find(t => t.id === selectedTenantId);
@@ -197,6 +200,19 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
   const hasMicrocategoryColumn = hasColumn('microcategory');
   const hasPaidByColumn = hasColumn('paidBy');
   const hasAmountColumn = hasColumn('amount');
+  const hasUserIdColumn = hasColumn('userId');
+  const hasOperationTypeColumn = hasColumn('operationType');
+
+  const users = React.useMemo(() => {
+    if (!showFilters || !hasUserIdColumn) return [];
+    const userSet = new Set<string>();
+    data.forEach((row: any) => {
+        if (row.userId) userSet.add(row.userId);
+    });
+    return Array.from(userSet).sort();
+  }, [data, showFilters, hasUserIdColumn]);
+
+  const operationTypes = ['CREATE', 'UPDATE', 'DELETE', 'PROCESS'];
   
   React.useEffect(() => {
     if (!showFilters || !hasAmountColumn) return;
@@ -267,6 +283,16 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
     table.getColumn(dateColumnId)?.setFilterValue(dateRange ? dateRange : undefined);
   }, [dateRange, table, showFilters, dateColumnId]);
 
+  React.useEffect(() => {
+    if (!showFilters || !hasUserIdColumn) return;
+    table.getColumn('userId')?.setFilterValue(userFilter ? [userFilter] : undefined);
+  }, [userFilter, table, showFilters, hasUserIdColumn]);
+
+  React.useEffect(() => {
+    if (!showFilters || !hasOperationTypeColumn) return;
+    table.getColumn('operationType')?.setFilterValue(operationFilter ? [operationFilter] : undefined);
+  }, [operationFilter, table, showFilters, hasOperationTypeColumn]);
+
   const subcategories = React.useMemo(() => {
     if (!showFilters || !categoryFilter) return [];
     const category = categories.find((c) => c.name === categoryFilter);
@@ -326,6 +352,32 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
                   />
                 </PopoverContent>
               </Popover>
+            )}
+            {hasUserIdColumn && (
+              <Select value={userFilter} onValueChange={(value) => setUserFilter(value === 'all' ? '' : value)}>
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="User" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Users</SelectItem>
+                    {users.map((user) => (
+                    <SelectItem key={user} value={user}>{user}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+            {hasOperationTypeColumn && (
+              <Select value={operationFilter} onValueChange={(value) => setOperationFilter(value === 'all' ? '' : value)}>
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Operation" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Operations</SelectItem>
+                    {operationTypes.map((op) => (
+                    <SelectItem key={op} value={op}>{op}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
             )}
             {hasCategoryColumn && (
               <Select value={categoryFilter} onValueChange={(value) => {

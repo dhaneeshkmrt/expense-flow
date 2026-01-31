@@ -30,6 +30,9 @@ export const columns: ColumnDef<AuditLog>[] = [
         accessorKey: 'userId',
         header: 'User',
         cell: ({ row }) => row.getValue('userId'),
+        filterFn: (row, id, value) => {
+            return value.includes(row.getValue(id));
+        },
     },
     {
         accessorKey: 'operationType',
