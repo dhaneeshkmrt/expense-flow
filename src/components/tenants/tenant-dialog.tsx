@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Tenant, FeatureAccess } from '@/lib/types';
-import { PlusCircle, Trash2, Copy, RefreshCw, Landmark, Wallet, Database, Wand2, Calculator, Shield, BellReminder } from 'lucide-react';
+import { PlusCircle, Trash2, Copy, RefreshCw, Landmark, Wallet, Database, Wand2, Calculator, Shield, BellRing } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '../ui/checkbox';
 import { Separator } from '../ui/separator';
@@ -74,7 +74,7 @@ const featureList: { id: keyof FeatureAccess, label: string, icon: React.Element
     { id: 'yearlyReport', label: 'Yearly Report', icon: Database },
     { id: 'aiImageStudio', label: 'AI Image Studio', icon: Wand2 },
     { id: 'calculators', label: 'Calculators', icon: Calculator },
-    { id: 'reminders', label: 'Reminders', icon: BellReminder },
+    { id: 'reminders', label: 'Reminders', icon: BellRing },
     { id: 'admin', label: 'Admin', icon: Shield },
 ];
 
