@@ -40,7 +40,7 @@ const reminderSchema = z.object({
   notes: z.string().optional(),
   startDate: z.date(),
   frequency: z.enum(['one-time', 'monthly', 'quarterly', 'yearly']),
-  dayOfMonth: z.number().optional(),
+  dayOfMonth: z.coerce.number().optional(),
   // dayOfWeek and weekOfMonth will be handled with custom validation
 });
 
