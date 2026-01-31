@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -86,8 +85,18 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
   const [ref, width] = useContainerWidth<HTMLDivElement>();
   const isMobile = width < MOBILE_TABLE_BREAKPOINT;
   
+  const initialSortColumnId = React.useMemo(() => {
+    const hasDate = columns.some(c => (c as any).accessorKey === 'date' || c.id === 'date');
+    if (hasDate) return 'date';
+
+    const hasTimestamp = columns.some(c => (c as any).accessorKey === 'timestamp' || c.id === 'timestamp');
+    if (hasTimestamp) return 'timestamp';
+
+    return null;
+  }, [columns]);
+  
   const [sorting, setSorting] = React.useState<SortingState>(
-    showFilters ? [{ id: 'date', desc: true }] : []
+    (showFilters && initialSortColumnId) ? [{ id: initialSortColumnId, desc: true }] : []
   );
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
