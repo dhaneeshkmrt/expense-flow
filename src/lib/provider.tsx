@@ -49,7 +49,7 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
 
   categories: Category[];
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number; }) => Promise<void>;
   editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
   addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
@@ -122,16 +122,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
-  const { seedDefaultSettings } = useSettings(null);
-  const { seedDefaultCategories } = useCategories(null, selectedYear, selectedMonth); 
+  const { seedDefaultSettings } = useSettings(null, null);
+  const { seedDefaultCategories } = useCategories(null, null, selectedYear, selectedMonth); 
 
   const tenantHook = useTenants(seedDefaultCategories, seedDefaultSettings, user);
   const { selectedTenantId } = tenantHook;
 
-  const settingsHook = useSettings(selectedTenantId);
-  const categoriesHook = useCategories(selectedTenantId, selectedYear, selectedMonth);
+  const settingsHook = useSettings(selectedTenantId, user);
+  const categoriesHook = useCategories(selectedTenantId, user, selectedYear, selectedMonth);
   const transactionsHook = useTransactions(selectedTenantId, user);
-  const accountsHook = useAccounts(selectedTenantId);
+  const accountsHook = useAccounts(selectedTenantId, user);
   const remindersHook = useReminders(selectedTenantId, user);
   const logsHook = useLogs(selectedTenantId);
 

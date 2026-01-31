@@ -2,20 +2,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Category, Subcategory, Microcategory, CategoryBudget } from '@/lib/types';
+import type { Category, Subcategory, Microcategory, CategoryBudget, User } from '@/lib/types';
 import {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
   GraduationCap, Sparkles, ShoppingBag, CircleDollarSign, Factory, HelpCircle,
-  Apple, Building, User, Calendar
+  Apple, Building, User as UserIcon, Calendar
 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, doc, writeBatch, updateDoc, deleteDoc, setDoc, getDocs, query, where, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { logChange } from '@/lib/logger';
 
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
   GraduationCap, Sparkles, ShoppingBag, CircleDollarSign, Factory, HelpCircle,
-  Apple, Building, User, Calendar,
+  Apple, Building, User: UserIcon, Calendar,
 };
 
 export const getIconName = (iconComponent: React.ElementType) => {
@@ -33,7 +34,7 @@ type EditCategoryData = {
     budget?: number;
 };
 
-export function useCategories(tenantId: string | null, selectedYear: number, selectedMonth: number) {
+export function useCategories(tenantId: string | null, user: User | null, selectedYear: number, selectedMonth: number) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [isCopyingBudget, setIsCopyingBudget] = useState(false);
@@ -177,7 +178,7 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
   }
 
   const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
-    if (!tenantId) return;
+    if (!tenantId || !user) return;
     const id = `${tenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     
     const newCategory: Category = {
@@ -206,11 +207,14 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     }
 
     setCategories(prev => [...prev, newCategory]);
+    
+    await logChange(tenantId, user.name, 'CREATE', 'categories', id, `Created category: ${categoryData.name}`, undefined, newCategory);
   };
   
   const editCategory = async (categoryId: string, categoryUpdate: EditCategoryData) => {
-    if (!tenantId) return;
+    if (!tenantId || !user) return;
     
+    const oldCategory = categories.find(c => c.id === categoryId);
     const dbUpdate: { [key: string]: any } = {};
 
     if (categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
@@ -233,9 +237,10 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
         }, { merge: true });
     }
     
+    let updatedCat: Category | undefined;
     setCategories(prev => prev.map(c => {
         if (c.id === categoryId) {
-            const updatedCat = { ...c };
+            updatedCat = { ...c };
             if (categoryUpdate.name) updatedCat.name = categoryUpdate.name;
             if (categoryUpdate.icon && typeof categoryUpdate.icon === 'string') {
                 updatedCat.icon = getIconComponent(categoryUpdate.icon);
@@ -249,10 +254,13 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
         }
         return c;
     }));
+    
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Updated category: ${categoryUpdate.name || oldCategory?.name}`, oldCategory, updatedCat);
   };
   
   const deleteCategory = async (categoryId: string) => {
-    if (!tenantId) return;
+    if (!tenantId || !user) return;
+    const categoryToDelete = categories.find(c => c.id === categoryId);
     const categoryRef = doc(db, 'categories', categoryId);
     await deleteDoc(categoryRef);
     
@@ -267,9 +275,14 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     }
 
     setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    
+    if (categoryToDelete) {
+      await logChange(tenantId, user.name, 'DELETE', 'categories', categoryId, `Deleted category: ${categoryToDelete.name}`, categoryToDelete, undefined);
+    }
   };
 
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const id = `${categoryId}_${subcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
@@ -278,25 +291,38 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Added subcategory: ${newSubcategory.name} to ${category.name}`, category, updatedCategory);
   };
 
   const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
+    const subcategoryToUpdate = category.subcategories.find(s => s.id === subcategoryId);
     const updatedCategory = { ...category, subcategories: category.subcategories.map(sub => sub.id === subcategoryId ? { ...sub, ...subcategoryUpdate } : sub) };
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited subcategory: from "${subcategoryToUpdate?.name}" to "${subcategoryUpdate.name}" in ${category.name}`, category, updatedCategory);
   };
 
   const deleteSubcategory = async (categoryId: string, subcategoryId: string) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
+    const subcategoryToDelete = category.subcategories.find(s => s.id === subcategoryId);
     const updatedCategory = { ...category, subcategories: category.subcategories.filter(sub => sub.id !== subcategoryId) };
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    
+    if (subcategoryToDelete) {
+      await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Deleted subcategory: ${subcategoryToDelete.name} from ${category.name}`, category, updatedCategory);
+    }
   };
 
   const addMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryData: Omit<Microcategory, 'id'>) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const id = `${subcategoryId}_${microcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
     const newMicrocategory: Microcategory = { ...microcategoryData, id };
@@ -313,10 +339,16 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Added micro-category: ${newMicrocategory.name} to ${category.name}/${updatedCategory.subcategories.find(s => s.id === subcategoryId)?.name}`, category, updatedCategory);
   };
 
   const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Pick<Microcategory, 'name'>) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
+    const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+    const microcategory = subcategory?.microcategories.find(m => m.id === microcategoryId);
+
     const updatedCategory = {
         ...category,
         subcategories: category.subcategories.map(sub => {
@@ -329,10 +361,16 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited micro-category from "${microcategory?.name}" to "${microcategoryUpdate.name}"`, category, updatedCategory);
   };
 
   const deleteMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string) => {
+    if (!tenantId || !user) return;
     const category = findCategory(categoryId);
+    const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+    const microcategory = subcategory?.microcategories.find(m => m.id === microcategoryId);
+    
     const updatedCategory = {
         ...category,
         subcategories: category.subcategories.map(sub => {
@@ -345,6 +383,10 @@ export function useCategories(tenantId: string | null, selectedYear: number, sel
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    
+    if (microcategory) {
+      await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Deleted micro-category: ${microcategory.name}`, category, updatedCategory);
+    }
   };
 
   return {

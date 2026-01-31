@@ -6,6 +6,7 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc,
 import { db } from '@/lib/firebase';
 import type { Tenant, User, Category, Transaction, Settings } from '@/lib/types';
 import { format } from 'date-fns';
+import { logChange } from '@/lib/logger';
 
 const generateSecretToken = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
@@ -78,7 +79,7 @@ export function useTenants(
     };
 
     const addTenant = async (tenantData: Partial<Omit<Tenant, 'id'>>) => {
-        if (!isAdminUser) {
+        if (!isAdminUser || !user) {
             console.error("Access denied: Only admin users can add tenants");
             return;
         }
@@ -91,6 +92,8 @@ export function useTenants(
             await seedDefaultSettings(newTenant.id);
     
             setTenants(prev => [...prev, newTenant].sort((a,b) => a.name.localeCompare(b.name)));
+
+            await logChange(user.tenantId, user.name, 'CREATE', 'tenants', docRef.id, `Created new tenant: ${newTenant.name}`, undefined, newTenant);
             
         } catch(e) {
             console.error("Error adding tenant: ", e);
@@ -98,22 +101,27 @@ export function useTenants(
     };
 
     const editTenant = async (tenantId: string, tenantData: Partial<Omit<Tenant, 'id'>>) => {
-        if (!isAdminUser) {
+        if (!isAdminUser || !user) {
             console.error("Access denied: Only admin users can edit tenants");
             return;
         }
         
         try {
+            const oldTenant = tenants.find(t => t.id === tenantId);
             const tenantRef = doc(db, 'tenants', tenantId);
             await updateDoc(tenantRef, tenantData);
-            setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, ...tenantData } as Tenant : t).sort((a,b) => a.name.localeCompare(b.name)));
+            const updatedTenant = { ...oldTenant, ...tenantData } as Tenant;
+            setTenants(prev => prev.map(t => t.id === tenantId ? updatedTenant : t).sort((a,b) => a.name.localeCompare(b.name)));
+
+            await logChange(user.tenantId, user.name, 'UPDATE', 'tenants', tenantId, `Updated tenant: ${tenantData.name}`, oldTenant, updatedTenant);
+
         } catch(e) {
             console.error("Error updating tenant: ", e);
         }
     };
 
     const deleteTenant = async (tenantId: string) => {
-        if (!isAdminUser) {
+        if (!isAdminUser || !user) {
             console.error("Access denied: Only admin users can delete tenants");
             return;
         }
@@ -126,6 +134,7 @@ export function useTenants(
             if(selectedTenantId === tenantId) {
                 setSelectedTenantId(user?.tenantId ?? null);
             }
+            const tenantToDelete = tenants.find(t => t.id === tenantId);
 
             const batch = writeBatch(db);
 
@@ -155,6 +164,10 @@ export function useTenants(
 
             const remainingTenants = tenants.filter(t => t.id !== tenantId);
             setTenants(remainingTenants);
+
+            if(tenantToDelete) {
+                await logChange(user.tenantId, user.name, 'DELETE', 'tenants', tenantId, `Deleted tenant: ${tenantToDelete.name}`, tenantToDelete, undefined);
+            }
 
         } catch(e) {
             console.error("Error deleting tenant and associated data: ", e);
@@ -190,11 +203,16 @@ export function useTenants(
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        
+        if (user) {
+            await logChange(user.tenantId, user.name, 'PROCESS', 'all', 'all', 'Created a database backup', undefined, { file: `money-purse-backup-${date}.json` });
+        }
         console.log("Backup complete.");
     };
 
     const restoreAllData = async (data: { [key: string]: any[] }) => {
         console.log("Starting restore...");
+        if (!user) throw new Error("User not authenticated for restore operation.");
         const collectionsToDelete = ['tenants', 'categories', 'transactions', 'settings', 'budgets'];
         const batch = writeBatch(db);
         
@@ -220,6 +238,9 @@ export function useTenants(
             }
         }
         await restoreBatch.commit();
+
+        await logChange(user.tenantId, user.name, 'PROCESS', 'all', 'all', 'Restored database from backup file', 'all existing data', 'new data from backup');
+        
         console.log("Restore complete.");
         // Force a page reload to reflect the new state
         window.location.reload();

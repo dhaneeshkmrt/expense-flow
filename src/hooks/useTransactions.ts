@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Transaction, User } from '@/lib/types';
+import { logChange } from '@/lib/logger';
 
 const sortTransactions = (transactions: Transaction[]) => {
   return transactions.sort((a, b) => {
@@ -46,7 +47,20 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     const transactionData = { ...transaction, tenantId: tenantId, userId: user.name };
     try {
       const docRef = await addDoc(collection(db, "transactions"), transactionData);
-      setTransactions(prev => sortTransactions([...prev, { ...transactionData, id: docRef.id }]));
+      const newTransaction = { ...transactionData, id: docRef.id };
+      setTransactions(prev => sortTransactions([...prev, newTransaction]));
+
+      await logChange(
+        tenantId,
+        user.name,
+        'CREATE',
+        'transactions',
+        docRef.id,
+        `Created transaction: ${transaction.description}`,
+        undefined,
+        newTransaction
+      );
+
       return docRef.id;
     } catch (e) {
       console.error("Error adding document: ", e);
@@ -55,7 +69,7 @@ export function useTransactions(tenantId: string | null, user: User | null) {
   };
   
   const addMultipleTransactions = async (transactionsToAdd: Omit<Transaction, 'id' | 'tenantId' | 'userId'>[]) => {
-    if (!tenantId) throw new Error("Please select a tenant first.");
+    if (!tenantId || !user) throw new Error("Please select a tenant first.");
     const batch = writeBatch(db);
     const newTransactions: Transaction[] = [];
 
@@ -69,6 +83,20 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     try {
       await batch.commit();
       setTransactions(prev => sortTransactions([...prev, ...newTransactions]));
+
+      for (const newTx of newTransactions) {
+        await logChange(
+          tenantId,
+          user.name,
+          'CREATE',
+          'transactions',
+          newTx.id,
+          `Created transaction via bulk import: ${newTx.description}`,
+          undefined,
+          newTx
+        );
+      }
+
     } catch (e) {
       console.error("Error adding multiple documents: ", e);
       throw new Error("Failed to import transactions.");
@@ -76,23 +104,52 @@ export function useTransactions(tenantId: string | null, user: User | null) {
   };
 
   const editTransaction = async (transactionId: string, transactionUpdate: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => {
-    if (!tenantId) return;
-    const transactionData = { ...transactionUpdate, tenantId: tenantId, userId: user?.name };
+    if (!tenantId || !user) return;
+    const transactionData = { ...transactionUpdate, tenantId: tenantId, userId: user.name };
     try {
+        const oldTransaction = transactions.find(t => t.id === transactionId);
         const transactionRef = doc(db, "transactions", transactionId);
         await updateDoc(transactionRef, transactionData);
+        const newTransaction = { id: transactionId, ...transactionData };
         setTransactions(prev => 
-            sortTransactions(prev.map(t => t.id === transactionId ? { id: transactionId, ...transactionData } : t))
+            sortTransactions(prev.map(t => t.id === transactionId ? newTransaction : t))
         );
+
+        await logChange(
+          tenantId,
+          user.name,
+          'UPDATE',
+          'transactions',
+          transactionId,
+          `Updated transaction: ${transactionUpdate.description}`,
+          oldTransaction,
+          newTransaction
+        );
+
     } catch (e) {
         console.error("Error updating document: ", e);
     }
   };
 
   const deleteTransaction = async (transactionId: string) => {
+    if (!tenantId || !user) return;
     try {
+        const transactionToDelete = transactions.find(t => t.id === transactionId);
         await deleteDoc(doc(db, "transactions", transactionId));
         setTransactions(prev => prev.filter(t => t.id !== transactionId));
+        
+        if (transactionToDelete) {
+          await logChange(
+            tenantId,
+            user.name,
+            'DELETE',
+            'transactions',
+            transactionId,
+            `Deleted transaction: ${transactionToDelete.description}`,
+            transactionToDelete,
+            undefined
+          );
+        }
     } catch (e) {
         console.error("Error deleting document: ", e);
     }

@@ -24,11 +24,13 @@ import type {
   MonthEndProcessResult,
   Category,
   Transaction, 
-  AccountTransactionType
+  AccountTransactionType,
+  User
 } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
+import { logChange } from '@/lib/logger';
 
-export function useAccounts(tenantId: string | null) {
+export function useAccounts(tenantId: string | null, user: User | null) {
   const [accounts, setAccounts] = useState<VirtualAccount[]>([]);
   const [accountTransactions, setAccountTransactions] = useState<AccountTransaction[]>([]);
   const [monthLocks, setMonthLocks] = useState<MonthLock[]>([]);
@@ -142,7 +144,7 @@ export function useAccounts(tenantId: string | null) {
     description: string,
     monthYear: string
   ): Promise<void> => {
-    if (!tenantId) throw new Error('No tenant selected');
+    if (!tenantId || !user) throw new Error('No tenant or user selected');
 
     const transaction: Omit<AccountTransaction, 'id'> = {
       accountId,
@@ -174,7 +176,18 @@ export function useAccounts(tenantId: string | null) {
     }
 
     await batch.commit();
-  }, [tenantId, accounts]);
+
+    await logChange(
+      tenantId,
+      user.name,
+      'CREATE',
+      'accountTransactions',
+      transactionRef.id,
+      `Created account transaction: ${description}`,
+      undefined,
+      { id: transactionRef.id, ...transaction }
+    );
+  }, [tenantId, user, accounts]);
 
   // Check if month is locked
   const isMonthLocked = useCallback((year: number, month: number): boolean => {
@@ -200,11 +213,26 @@ export function useAccounts(tenantId: string | null) {
 
   // Unlock a month
   const unlockMonth = useCallback(async (year: number, month: number): Promise<void> => {
-    if (!tenantId) throw new Error('No tenant selected');
+    if (!tenantId || !user) throw new Error('No tenant or user selected');
 
     const lockId = `${tenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
-    await deleteDoc(doc(db, 'monthLocks', lockId));
-  }, [tenantId]);
+    const lockRef = doc(db, 'monthLocks', lockId);
+    const lockSnap = await getDoc(lockRef);
+    const oldData = lockSnap.exists() ? lockSnap.data() : undefined;
+
+    await deleteDoc(lockRef);
+
+    await logChange(
+      tenantId,
+      user.name,
+      'DELETE',
+      'monthLocks',
+      lockId,
+      `Unlocked month: ${format(new Date(year, month), 'MMMM yyyy')}`,
+      oldData,
+      undefined
+    );
+  }, [tenantId, user]);
 
   // Process month-end (main function)
   const processMonthEnd = useCallback(async (
@@ -353,6 +381,17 @@ export function useAccounts(tenantId: string | null) {
       // 5. Commit the batch
       await batch.commit();
 
+      await logChange(
+        tenantId,
+        lockedBy,
+        'PROCESS',
+        'virtualAccounts/monthLocks',
+        lockId,
+        `Processed month-end for ${monthName}`,
+        undefined,
+        result
+      );
+      
       return result;
     } finally {
       setLoadingProcessing(false);
