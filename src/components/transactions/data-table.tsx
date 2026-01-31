@@ -81,7 +81,7 @@ interface DataTableProps<TData, TValue> {
 
 const MOBILE_TABLE_BREAKPOINT = 768; // pixels
 
-export function DataTable<TData extends { id: string, date: string, amount: number }, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
+export function DataTable<TData extends { id: string }, TValue>({ columns, data, showFilters = false }: DataTableProps<TData, TValue>) {
   const { categories, tenants, selectedTenantId } = useApp();
   const [ref, width] = useContainerWidth<HTMLDivElement>();
   const isMobile = width < MOBILE_TABLE_BREAKPOINT;
@@ -172,15 +172,31 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
       pagination,
     },
   });
+
+  const hasColumn = React.useCallback((id: string) => {
+    return table.getAllColumns().some(c => c.id === id);
+  }, [table]);
+
+  const dateColumnId = React.useMemo(() => {
+    if (hasColumn('date')) return 'date';
+    if (hasColumn('timestamp')) return 'timestamp';
+    return null;
+  }, [hasColumn]);
+
+  const hasCategoryColumn = hasColumn('category');
+  const hasSubcategoryColumn = hasColumn('subcategory');
+  const hasMicrocategoryColumn = hasColumn('microcategory');
+  const hasPaidByColumn = hasColumn('paidBy');
+  const hasAmountColumn = hasColumn('amount');
   
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasAmountColumn) return;
     const potentialDuplicates = new Map<string, TData[]>();
     
-    // The `data` prop already contains only the transactions for the selected month.
-    // So we use it directly for duplicate detection within the current month.
     data.forEach(row => {
+      // @ts-ignore
       if (typeof row.amount === 'number') {
+        // @ts-ignore
         const key = `${row.amount.toFixed(2)}`;
         if (!potentialDuplicates.has(key)) {
           potentialDuplicates.set(key, []);
@@ -197,26 +213,26 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     });
     setDuplicateIds(newDuplicateIds);
   
-  }, [data, showFilters]);
+  }, [data, showFilters, hasAmountColumn]);
 
 
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasCategoryColumn) return;
     table.getColumn('category')?.setFilterValue(categoryFilter && categoryFilter.trim() ? [categoryFilter] : undefined);
-  }, [categoryFilter, table, showFilters]);
+  }, [categoryFilter, table, showFilters, hasCategoryColumn]);
 
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasSubcategoryColumn) return;
     table.getColumn('subcategory')?.setFilterValue(subcategoryFilter && subcategoryFilter.trim() ? [subcategoryFilter] : undefined);
-  }, [subcategoryFilter, table, showFilters]);
+  }, [subcategoryFilter, table, showFilters, hasSubcategoryColumn]);
   
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasMicrocategoryColumn) return;
     table.getColumn('microcategory')?.setFilterValue(microcategoryFilter && microcategoryFilter.trim() ? [microcategoryFilter] : undefined);
-  }, [microcategoryFilter, table, showFilters]);
+  }, [microcategoryFilter, table, showFilters, hasMicrocategoryColumn]);
 
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasAmountColumn) return;
     const parts = amountFilter.split('-').map(p => parseFloat(p.trim())).filter(p => !isNaN(p));
     let min: number | undefined;
     let max: number | undefined;
@@ -230,17 +246,17 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
     }
     
     table.getColumn('amount')?.setFilterValue((min !== undefined || max !== undefined) ? [min, max] : undefined);
-  }, [amountFilter, table, showFilters]);
+  }, [amountFilter, table, showFilters, hasAmountColumn]);
   
   React.useEffect(() => {
-    if (!showFilters) return;
+    if (!showFilters || !hasPaidByColumn) return;
     table.getColumn('paidBy')?.setFilterValue(paidByFilter.length > 0 ? paidByFilter : undefined);
-  }, [paidByFilter, table, showFilters]);
+  }, [paidByFilter, table, showFilters, hasPaidByColumn]);
 
   React.useEffect(() => {
-    if (!showFilters) return;
-    table.getColumn('date')?.setFilterValue(dateRange ? dateRange : undefined);
-  }, [dateRange, table, showFilters]);
+    if (!showFilters || !dateColumnId) return;
+    table.getColumn(dateColumnId)?.setFilterValue(dateRange ? dateRange : undefined);
+  }, [dateRange, table, showFilters, dateColumnId]);
 
   const subcategories = React.useMemo(() => {
     if (!showFilters || !categoryFilter) return [];
@@ -264,118 +280,132 @@ export function DataTable<TData extends { id: string, date: string, amount: numb
             onChange={(event) => setGlobalFilter(String(event.target.value))}
             className="max-w-xs"
             />
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  id="date"
-                  variant={"outline"}
-                  className={cn(
-                    "w-[240px] justify-start text-left font-normal",
-                    !dateRange && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "LLL dd, y")} -{" "}
-                        {format(dateRange.to, "LLL dd, y")}
-                      </>
+            {dateColumnId && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-[240px] justify-start text-left font-normal",
+                      !dateRange && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateRange?.from ? (
+                      dateRange.to ? (
+                        <>
+                          {format(dateRange.from, "LLL dd, y")} -{" "}
+                          {format(dateRange.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(dateRange.from, "LLL dd, y")
+                      )
                     ) : (
-                      format(dateRange.from, "LLL dd, y")
-                    )
-                  ) : (
-                    <span>Pick a date range</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  initialFocus
-                  mode="range"
-                  defaultMonth={dateRange?.from}
-                  selected={dateRange}
-                  onSelect={setDateRange}
-                  numberOfMonths={2}
-                />
-              </PopoverContent>
-            </Popover>
-            <Select value={categoryFilter} onValueChange={(value) => {
-            setCategoryFilter(value === 'all' ? '' : value);
-            setSubcategoryFilter('');
-            setMicrocategoryFilter('');
-            }}>
-            <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
-            <Select value={subcategoryFilter} onValueChange={(value) => {
-                setSubcategoryFilter(value === 'all' ? '' : value);
-                setMicrocategoryFilter('');
-            }} disabled={!categoryFilter}>
-            <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Subcategory" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Subcategories</SelectItem>
-                {subcategories.map((sub) => (
-                <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
-            <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
-            <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Micro-Sub" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All Micros</SelectItem>
-                {microcategories.map((micro) => (
-                <SelectItem key={micro.id} value={micro.name}>{micro.name}</SelectItem>
-                ))}
-            </SelectContent>
-            </Select>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full sm:w-auto">
-                      Paid By
-                      {paidByFilter.length > 0 && <Badge variant="secondary" className="ml-2">{paidByFilter.length}</Badge>}
+                      <span>Pick a date range</span>
+                    )}
                   </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56">
-                  <DropdownMenuLabel>Filter by Payer</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {paidByOptions.map(p => (
-                      <DropdownMenuCheckboxItem
-                          key={p}
-                          checked={paidByFilter.includes(p)}
-                          onSelect={(e) => e.preventDefault()}
-                          onCheckedChange={(checked) => {
-                            return checked
-                              ? setPaidByFilter((prev) => [...prev, p])
-                              : setPaidByFilter((prev) => prev.filter((value) => value !== p))
-                          }}
-                      >
-                          {p.toUpperCase()}
-                      </DropdownMenuCheckboxItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Input
-                placeholder="e.g. 50 or 50-100"
-                value={amountFilter}
-                onChange={(event) => setAmountFilter(event.target.value)}
-                className="w-48"
-            />
-            <div className="flex items-center space-x-2">
-              <Switch id="duplicates-mode" checked={showDuplicates} onCheckedChange={setShowDuplicates}/>
-              <Label htmlFor="duplicates-mode">Find Duplicates</Label>
-            </div>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={dateRange?.from}
+                    selected={dateRange}
+                    onSelect={setDateRange}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+            {hasCategoryColumn && (
+              <Select value={categoryFilter} onValueChange={(value) => {
+              setCategoryFilter(value === 'all' ? '' : value);
+              setSubcategoryFilter('');
+              setMicrocategoryFilter('');
+              }}>
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+            {hasSubcategoryColumn && (
+              <Select value={subcategoryFilter} onValueChange={(value) => {
+                  setSubcategoryFilter(value === 'all' ? '' : value);
+                  setMicrocategoryFilter('');
+              }} disabled={!categoryFilter}>
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Subcategories</SelectItem>
+                    {subcategories.map((sub) => (
+                    <SelectItem key={sub.id} value={sub.name}>{sub.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+            {hasMicrocategoryColumn && (
+              <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
+                <SelectTrigger className="w-[160px]">
+                    <SelectValue placeholder="Micro-Sub" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Micros</SelectItem>
+                    {microcategories.map((micro) => (
+                    <SelectItem key={micro.id} value={micro.name}>{micro.name}</SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            )}
+            {hasPaidByColumn && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                        Paid By
+                        {paidByFilter.length > 0 && <Badge variant="secondary" className="ml-2">{paidByFilter.length}</Badge>}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56">
+                    <DropdownMenuLabel>Filter by Payer</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {paidByOptions.map(p => (
+                        <DropdownMenuCheckboxItem
+                            key={p}
+                            checked={paidByFilter.includes(p)}
+                            onSelect={(e) => e.preventDefault()}
+                            onCheckedChange={(checked) => {
+                              return checked
+                                ? setPaidByFilter((prev) => [...prev, p])
+                                : setPaidByFilter((prev) => prev.filter((value) => value !== p))
+                            }}
+                        >
+                            {p.toUpperCase()}
+                        </DropdownMenuCheckboxItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {hasAmountColumn && (
+              <Input
+                  placeholder="e.g. 50 or 50-100"
+                  value={amountFilter}
+                  onChange={(event) => setAmountFilter(event.target.value)}
+                  className="w-48"
+              />
+            )}
+            {hasAmountColumn && (
+              <div className="flex items-center space-x-2">
+                <Switch id="duplicates-mode" checked={showDuplicates} onCheckedChange={setShowDuplicates}/>
+                <Label htmlFor="duplicates-mode">Find Duplicates</Label>
+              </div>
+            )}
         </div>
        )}
       <div className="rounded-md border">
