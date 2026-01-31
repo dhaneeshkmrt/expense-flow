@@ -12,7 +12,7 @@ import { Check, Edit, Loader2 } from 'lucide-react';
 import { CompleteReminderDialog } from '../reminders/complete-reminder-dialog';
 import { ReminderDialog } from '../reminders/reminder-dialog';
 
-function ReminderItem({ instance, onComplete, onEdit }: { instance: ReminderInstance, onComplete: (instance: ReminderInstance) => void, onEdit: (reminderId: string) => void }) {
+function ReminderItem({ instance, onComplete }: { instance: ReminderInstance, onComplete: (instance: ReminderInstance) => void }) {
     const formatCurrency = useCurrencyFormatter();
     
     return (
@@ -25,9 +25,6 @@ function ReminderItem({ instance, onComplete, onEdit }: { instance: ReminderInst
             </div>
             {!instance.isCompleted && (
                  <div className="flex items-center gap-1">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => onEdit(instance.reminder.id)}>
-                        <Edit className="h-4 w-4"/>
-                    </Button>
                     <Button size="sm" className="h-8" onClick={() => onComplete(instance)}>
                         <Check className="mr-1 h-4 w-4" />
                         Complete
@@ -47,18 +44,11 @@ function ReminderItem({ instance, onComplete, onEdit }: { instance: ReminderInst
 export default function RemindersSection() {
   const { pendingReminders, completedReminders, loadingReminders } = useApp();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState<ReminderInstance | null>(null);
-  const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
 
   const handleCompleteClick = (instance: ReminderInstance) => {
     setSelectedInstance(instance);
     setCompleteDialogOpen(true);
-  }
-
-  const handleEditClick = (reminderId: string) => {
-    setSelectedReminderId(reminderId);
-    setEditDialogOpen(true);
   }
 
   return (
@@ -83,7 +73,7 @@ export default function RemindersSection() {
                             {pendingReminders.length > 0 ? (
                                 <div className="space-y-1">
                                     {pendingReminders.map(inst => (
-                                        <ReminderItem key={`${inst.reminder.id}-${inst.dueDate}`} instance={inst} onComplete={handleCompleteClick} onEdit={handleEditClick} />
+                                        <ReminderItem key={`${inst.reminder.id}-${inst.dueDate}`} instance={inst} onComplete={handleCompleteClick} />
                                     ))}
                                 </div>
                             ) : (
@@ -94,7 +84,7 @@ export default function RemindersSection() {
                             {completedReminders.length > 0 ? (
                                 <div className="space-y-1">
                                     {completedReminders.map(inst => (
-                                        <ReminderItem key={`${inst.reminder.id}-${inst.dueDate}`} instance={inst} onComplete={handleCompleteClick} onEdit={handleEditClick} />
+                                        <ReminderItem key={`${inst.reminder.id}-${inst.dueDate}`} instance={inst} onComplete={handleCompleteClick} />
                                     ))}
                                 </div>
                             ) : (
@@ -113,14 +103,6 @@ export default function RemindersSection() {
             setOpen={setCompleteDialogOpen}
             instance={selectedInstance}
           />
-      )}
-
-      {selectedReminderId && (
-        <ReminderDialog 
-            open={editDialogOpen}
-            setOpen={setEditDialogOpen}
-            reminderId={selectedReminderId}
-        />
       )}
     </>
   );

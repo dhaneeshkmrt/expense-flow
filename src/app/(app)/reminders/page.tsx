@@ -7,11 +7,16 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { ReminderDialog } from '@/components/reminders/reminder-dialog';
 import { ReminderList } from '@/components/reminders/reminders-list';
+import { CompleteReminderDialog } from '@/components/reminders/complete-reminder-dialog';
+import type { ReminderInstance } from '@/lib/types';
 
 export default function RemindersPage() {
-    const { reminders, loadingReminders, deleteReminder } = useApp();
+    const { reminders, loadingReminders, deleteReminder, pendingReminders } = useApp();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedReminderId, setSelectedReminderId] = useState<string | null>(null);
+
+    const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+    const [selectedInstance, setSelectedInstance] = useState<ReminderInstance | null>(null);
 
     const handleAdd = () => {
         setSelectedReminderId(null);
@@ -21,6 +26,11 @@ export default function RemindersPage() {
     const handleEdit = (reminderId: string) => {
         setSelectedReminderId(reminderId);
         setIsDialogOpen(true);
+    };
+
+    const handleComplete = (instance: ReminderInstance) => {
+        setSelectedInstance(instance);
+        setCompleteDialogOpen(true);
     };
 
     return (
@@ -51,6 +61,8 @@ export default function RemindersPage() {
                             reminders={reminders} 
                             onEdit={handleEdit}
                             onDelete={deleteReminder}
+                            pendingReminders={pendingReminders}
+                            onComplete={handleComplete}
                         />
                     )}
                 </CardContent>
@@ -61,6 +73,14 @@ export default function RemindersPage() {
                 setOpen={setIsDialogOpen}
                 reminderId={selectedReminderId}
             />
+
+            {selectedInstance && (
+                <CompleteReminderDialog
+                    open={completeDialogOpen}
+                    setOpen={setCompleteDialogOpen}
+                    instance={selectedInstance}
+                />
+            )}
         </div>
     );
 }
