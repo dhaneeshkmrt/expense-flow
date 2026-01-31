@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
@@ -12,7 +13,8 @@ import {
   setDoc,
   getDoc,
   writeBatch,
-  orderBy
+  orderBy,
+  increment
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { 
@@ -21,7 +23,8 @@ import type {
   MonthLock, 
   MonthEndProcessResult,
   Category,
-  Transaction 
+  Transaction, 
+  AccountTransactionType
 } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 
@@ -216,6 +219,39 @@ export function useAccounts(tenantId: string | null) {
     setLoadingProcessing(true);
     
     try {
+      const batch = writeBatch(db);
+      const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthName = format(new Date(year, month), 'MMM yyyy');
+
+      // 1. Get all existing month-end transactions for this month/year
+      const monthEndTxTypes: AccountTransactionType[] = ['surplus_transfer', 'overspend_deficit', 'zero_balance'];
+      const q = query(
+        collection(db, 'accountTransactions'),
+        where('tenantId', '==', tenantId),
+        where('monthYear', '==', monthYear),
+        where('type', 'in', monthEndTxTypes)
+      );
+      const existingTxsSnapshot = await getDocs(q);
+      const existingTxsByCategoryId = new Map<string, { id: string; data: AccountTransaction }>();
+      existingTxsSnapshot.forEach(doc => {
+        const tx = doc.data() as AccountTransaction;
+        existingTxsByCategoryId.set(tx.categoryId, { id: doc.id, data: tx });
+      });
+      
+      // 2. Calculate current month's spending
+      const categorySpending = new Map<string, number>();
+      transactions
+        .filter(t => {
+          try {
+            const transactionDate = parseISO(t.date);
+            return transactionDate.getFullYear() === year && transactionDate.getMonth() === month;
+          } catch(e) { return false; }
+        })
+        .forEach(t => {
+          const current = categorySpending.get(t.category) || 0;
+          categorySpending.set(t.category, current + t.amount);
+        });
+
       const result: MonthEndProcessResult = {
         processedCategories: [],
         totalSurplus: 0,
@@ -223,88 +259,105 @@ export function useAccounts(tenantId: string | null) {
         accountsCreated: 0
       };
 
-      const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
-      const monthName = format(new Date(year, month), 'MMM yyyy');
-
-      // Calculate spending by category for the month
-      const categorySpending = new Map<string, number>();
-      transactions
-        .filter(t => {
-          const transactionDate = parseISO(t.date);
-          return transactionDate.getFullYear() === year && transactionDate.getMonth() === month;
-        })
-        .forEach(t => {
-          const current = categorySpending.get(t.category) || 0;
-          categorySpending.set(t.category, current + t.amount);
-        });
-
-      // Process each category with budget
+      // 3. Process each category
       for (const category of categories) {
         if (!category.budget || category.budget <= 0) continue;
 
         const spent = categorySpending.get(category.name) || 0;
         const surplus = Math.round((category.budget - spent) * 100) / 100;
 
-        // Create or get account for all categories (even zero balance ones for tracking)
-        const account = await createOrGetAccount(category.id, category.name);
-        const isNewAccount = !accounts.some(acc => acc.id === account.id);
-        if (isNewAccount) {
+        // Get or create account reference
+        let account = accounts.find(acc => acc.categoryId === category.id);
+        let accountRef;
+
+        if (account) {
+          accountRef = doc(db, 'virtualAccounts', account.id);
+        } else {
+          // Account doesn't exist, create it within the batch
+          accountRef = doc(collection(db, 'virtualAccounts'));
+          const newAccountData: Omit<VirtualAccount, 'id'> = {
+            categoryId: category.id,
+            categoryName: category.name,
+            tenantId,
+            currentBalance: 0, // Will be adjusted by increment
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          batch.set(accountRef, newAccountData);
+          account = { id: accountRef.id, ...newAccountData }; // for use later
           result.accountsCreated++;
         }
+        
+        const oldTx = existingTxsByCategoryId.get(category.id);
+        const oldSurplus = oldTx ? oldTx.data.amount : 0;
+        const balanceAdjustment = surplus - oldSurplus;
 
-        if (surplus > 0) {
-          // Positive surplus - transfer to virtual account
-          await addAccountTransaction(
-            account.id,
-            category.id,
-            surplus,
-            'surplus_transfer',
-            `Month-end surplus from ${category.name} for ${monthName}`,
-            monthYear
-          );
-        } else if (surplus < 0) {
-          // Overspending - create negative balance in virtual account
-          await addAccountTransaction(
-            account.id,
-            category.id,
-            surplus, // Already negative
-            'overspend_deficit',
-            `Month-end overspend deficit from ${category.name} for ${monthName} (overspent by ${Math.abs(surplus)})`,
-            monthYear
-          );
-        } else {
-          // Zero balance - track for monitoring purposes
-          await addAccountTransaction(
-            account.id,
-            category.id,
-            0,
-            'zero_balance',
-            `Month-end zero balance from ${category.name} for ${monthName} (spent exactly budget amount)`,
-            monthYear
-          );
+        // Update balance using increment
+        if (balanceAdjustment !== 0) {
+            batch.update(accountRef, {
+                currentBalance: increment(balanceAdjustment)
+            });
+        }
+        batch.update(accountRef, { updatedAt: new Date().toISOString() });
+
+        // Delete old transaction if it exists
+        if (oldTx) {
+          batch.delete(doc(db, 'accountTransactions', oldTx.id));
         }
 
-        result.processedCategories.push({
-          categoryId: category.id,
-          categoryName: category.name,
-          budget: category.budget,
-          spent,
-          surplus,
-          accountId: account.id
-        });
+        // Add new transaction
+        let txType: AccountTransactionType;
+        let txDesc: string;
+        if (surplus > 0) {
+            txType = 'surplus_transfer';
+            txDesc = `Month-end surplus from ${category.name} for ${monthName}`;
+        } else if (surplus < 0) {
+            txType = 'overspend_deficit';
+            txDesc = `Month-end overspend deficit from ${category.name} for ${monthName}`;
+        } else {
+            txType = 'zero_balance';
+            txDesc = `Month-end zero balance from ${category.name} for ${monthName}`;
+        }
+        
+        const newTxData: Omit<AccountTransaction, 'id'> = {
+            accountId: account.id,
+            categoryId: category.id,
+            tenantId,
+            amount: surplus,
+            type: txType,
+            description: txDesc,
+            monthYear,
+            date: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        };
+        const newTxRef = doc(collection(db, 'accountTransactions'));
+        batch.set(newTxRef, newTxData);
 
-        result.totalSurplus += surplus; // This will be net (positive surplus minus negative deficit)
+        // Update result object
+        result.processedCategories.push({ categoryId: category.id, categoryName: category.name, budget: category.budget, spent, surplus, accountId: account.id });
+        result.totalSurplus += surplus;
         result.transactionsCreated++;
       }
 
-      // Lock the month
-      await lockMonth(year, month, lockedBy);
+      // 4. Lock the month
+      const lockId = `${tenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
+      const monthLock: Omit<MonthLock, 'id'> = {
+        tenantId,
+        year,
+        month,
+        lockedAt: new Date().toISOString(),
+        lockedBy
+      };
+      batch.set(doc(db, 'monthLocks', lockId), monthLock);
+
+      // 5. Commit the batch
+      await batch.commit();
 
       return result;
     } finally {
       setLoadingProcessing(false);
     }
-  }, [tenantId, accounts, createOrGetAccount, addAccountTransaction, lockMonth]);
+  }, [tenantId, accounts]);
 
   // Get total balance across all accounts
   const getTotalBalance = useCallback((): number => {
