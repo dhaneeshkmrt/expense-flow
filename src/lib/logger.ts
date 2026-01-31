@@ -25,8 +25,8 @@ export const logChange = async (
     collectionName,
     docId,
     description,
-    oldData: oldData ? JSON.stringify(oldData, null, 2) : undefined,
-    newData: newData ? JSON.stringify(newData, null, 2) : undefined,
+    ...(oldData && { oldData: JSON.stringify(oldData, null, 2) }),
+    ...(newData && { newData: JSON.stringify(newData, null, 2) }),
   };
 
   try {
