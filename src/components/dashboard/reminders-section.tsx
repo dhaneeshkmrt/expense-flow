@@ -1,8 +1,7 @@
-
 'use client';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '@/lib/provider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '../ui/button';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
@@ -45,17 +44,37 @@ export default function RemindersSection() {
   const { pendingReminders, completedReminders, loadingReminders } = useApp();
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [selectedInstance, setSelectedInstance] = useState<ReminderInstance | null>(null);
+  const formatCurrency = useCurrencyFormatter();
 
   const handleCompleteClick = (instance: ReminderInstance) => {
     setSelectedInstance(instance);
     setCompleteDialogOpen(true);
   }
 
+  const totalPendingAmount = useMemo(() => 
+    pendingReminders.reduce((sum, inst) => sum + inst.reminder.amount, 0),
+    [pendingReminders]
+  );
+  const totalCompletedAmount = useMemo(() =>
+    completedReminders.reduce((sum, inst) => sum + inst.reminder.amount, 0),
+    [completedReminders]
+  );
+  const totalReminders = pendingReminders.length + completedReminders.length;
+
   return (
     <>
       <Card>
         <CardHeader className="pb-2">
           <CardTitle>Monthly Reminders</CardTitle>
+          <CardDescription>
+            {totalReminders > 0 ? (
+                <>
+                You have {totalReminders} reminders this month. {formatCurrency(totalPendingAmount)} is pending and {formatCurrency(totalCompletedAmount)} is completed.
+                </>
+            ) : (
+                "No reminders scheduled for this month."
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
            <Tabs defaultValue="pending">
