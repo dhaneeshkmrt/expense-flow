@@ -1,6 +1,8 @@
-
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { useApp } from '@/lib/provider';
 import type { ReminderInstance } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
@@ -8,7 +10,20 @@ import { Button } from '../ui/button';
 import { toast } from '@/hooks/use-toast';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarIcon } from 'lucide-react';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { cn } from '@/lib/utils';
+
+const completeReminderSchema = z.object({
+  date: z.date(),
+  paidBy: z.string().min(1, 'Please select a payer.'),
+});
+
+type CompleteReminderFormValues = z.infer<typeof completeReminderSchema>;
+
 
 interface CompleteReminderDialogProps {
   open: boolean;
@@ -17,35 +32,43 @@ interface CompleteReminderDialogProps {
 }
 
 export function CompleteReminderDialog({ open, setOpen, instance }: CompleteReminderDialogProps) {
-  const { addTransaction, completeReminderInstance } = useApp();
+  const { addTransaction, completeReminderInstance, userTenant } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formatCurrency = useCurrencyFormatter();
   
-  const handleComplete = async () => {
+  const form = useForm<CompleteReminderFormValues>({
+    resolver: zodResolver(completeReminderSchema),
+    defaultValues: {
+      date: new Date(),
+      paidBy: instance.reminder.paidBy,
+    }
+  });
+
+  useEffect(() => {
+    if (open && instance) {
+      form.reset({
+        date: new Date(),
+        paidBy: instance.reminder.paidBy,
+      });
+    }
+  }, [open, instance, form]);
+
+  const paidByOptions = userTenant?.paidByOptions || [];
+  
+  const handleComplete = async (data: CompleteReminderFormValues) => {
     setIsSubmitting(true);
     try {
       const transactionData = {
         ...instance.reminder,
-        date: format(new Date(), 'yyyy-MM-dd'),
-        time: format(new Date(), 'HH:mm'),
+        date: format(data.date, 'yyyy-MM-dd'),
+        time: format(data.date, 'HH:mm'),
+        paidBy: data.paidBy,
         notes: `Reminder: ${instance.reminder.notes || ''}`.trim(),
       };
-      // addTransaction returns void but we need an ID. Let's modify useTransactions to return the new doc
-      // For now, I can't change that hook, so I'll just have to assume it worked.
-      // This is a limitation. I'll pass a placeholder ID.
-      // Ideally, addTransaction should return the created transaction ID.
       
-      // Let's modify the flow. I will create the transaction and get its ID first.
-      const newTransaction = await addTransaction(transactionData);
+      const newTransactionId = await addTransaction(transactionData);
       
-      // I'll assume addTransaction now returns the ID, or I'll have to change it.
-      // The current hook doesn't. This will fail.
-      // I need to update the useTransactions hook. I can't do that now.
-      // I will proceed with a conceptual fix. The user will have to fix the hook.
-      // A better approach: I'll simulate the ID here.
-      const pseudoTransactionId = 'completed_via_reminder_' + Date.now();
-      
-      await completeReminderInstance(instance.reminder, instance.dueDate, pseudoTransactionId);
+      await completeReminderInstance(instance.reminder, instance.dueDate, newTransactionId);
       
       toast({
         title: 'Reminder Completed!',
@@ -69,88 +92,71 @@ export function CompleteReminderDialog({ open, setOpen, instance }: CompleteRemi
         <DialogHeader>
           <DialogTitle>Complete Reminder</DialogTitle>
           <DialogDescription>
-            This will create a new transaction for today with the details from the reminder. Are you sure?
+            This will create a new transaction. You can adjust the date and payment method below.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleComplete)} className="space-y-4">
             <div className="p-4 border rounded-md bg-muted/50 space-y-2">
                 <p><strong>Description:</strong> {instance.reminder.description}</p>
                 <p><strong>Amount:</strong> {formatCurrency(instance.reminder.amount)}</p>
                 <p><strong>Category:</strong> {instance.reminder.category} / {instance.reminder.subcategory}</p>
                 <p><strong>Scheduled For:</strong> {format(instance.dueDate, 'PPP')}</p>
-                <p className="text-sm text-foreground/80 pt-2">A new transaction will be created with today's date and time.</p>
             </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)} disabled={isSubmitting}>Cancel</Button>
-          <Button onClick={handleComplete} disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Confirm & Create Transaction
-          </Button>
-        </DialogFooter>
+            
+             <FormField
+              control={form.control}
+              name="date"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Transaction Date</FormLabel>
+                   <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground" )}
+                            >
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/>
+                        </PopoverContent>
+                    </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="paidBy"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Paid By</FormLabel>
+                   <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select payer..."/></SelectTrigger></FormControl>
+                        <SelectContent>{paidByOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)} disabled={isSubmitting}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirm & Create Transaction
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
 }
-
-// I have a problem here. addTransaction is async but returns void. 
-// I need the ID of the newly created transaction to update the reminder.
-// I will need to modify `useTransactions.ts` to return the new transaction doc or its ID.
-// I cannot do that in this response.
-// I'll proceed by assuming `addTransaction` returns something useful, and if not, this will be the next bug to fix.
-// Ok, `addTransaction` in `useTransactions.ts` returns `void`. I'll update the function to return the ID.
-
-// I will make a small change to useTransactions to return the id.
-// `addTransaction` should be:
-/*
-  const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>): Promise<string> => {
-    if (!tenantId) throw new Error("No tenant");
-    const transactionData = { ...transaction, tenantId: tenantId, userId: user?.name };
-    try {
-      const docRef = await addDoc(collection(db, "transactions"), transactionData);
-      setTransactions(prev => sortTransactions([...prev, { ...transactionData, id: docRef.id }]));
-      return docRef.id;
-    } catch (e) {
-      console.error("Error adding document: ", e);
-      throw e;
-    }
-  };
-*/
-// The user prompt is big. I will assume this change is made implicitly.
-// To be safe, I'll modify `useTransactions` as part of this change set.
-
-// And for `completeReminderInstance` in `CompleteReminderDialog`:
-/*
-  const handleComplete = async () => {
-    setIsSubmitting(true);
-    try {
-      const transactionData = { ... };
-      const newTransactionId = await addTransaction(transactionData);
-      if (newTransactionId) {
-        await completeReminderInstance(instance.reminder, instance.dueDate, newTransactionId);
-        toast(...);
-        setOpen(false);
-      } else {
-         throw new Error("Failed to get new transaction ID.");
-      }
-    } ...
-  };
-*/
-// This seems correct. I will edit `useTransactions` to support this.
-// The `addTransaction` hook in provider also needs to pass back the return value.
-
-// Let's trace it:
-// `CompleteReminderDialog` calls `useApp().addTransaction`.
-// `useApp` calls `addTransactionWithLockCheck`.
-// `addTransactionWithLockCheck` calls `transactionsHook.addTransaction`.
-// `transactionsHook.addTransaction` in `useTransactions.ts` is what I need to change.
-// Then I need to make sure the return value is passed all the way back up.
-
-// useTransactions.ts
-// `addTransaction` returns `docRef.id`. It should return `Promise<string>`.
-// Okay.
-
-// lib/provider.tsx
-// `addTransactionWithLockCheck` should return the result of `transactionsHook.addTransaction(transaction);`.
-// `addTransaction` in `AppContextType` should be `Promise<string | void>`. Let's make it `Promise<string>`.
-// Then in `CompleteReminderDialog`, I can use `await`. This looks correct.
