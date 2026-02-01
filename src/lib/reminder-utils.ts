@@ -145,8 +145,7 @@ export function generateReminderInstances(
                 monthsToAdd = 12;
             }
             
-            // Advance from the start of the cursor's month to avoid date issues (e.g. from Jan 31 to Feb)
-            cursorDate = add(startOfMonth(cursorDate), { months: monthsToAdd });
+            cursorDate = add(cursorDate, { months: monthsToAdd });
         }
     }
   });
