@@ -60,6 +60,7 @@ export default function RemindersSection() {
     [completedReminders]
   );
   const totalReminders = pendingReminders.length + completedReminders.length;
+  const totalRemindersAmount = totalPendingAmount + totalCompletedAmount;
 
   return (
     <>
@@ -69,7 +70,8 @@ export default function RemindersSection() {
           <CardDescription>
             {totalReminders > 0 ? (
                 <>
-                You have {totalReminders} reminders this month. {formatCurrency(totalPendingAmount)} is pending and {formatCurrency(totalCompletedAmount)} is completed.
+                You have {totalReminders} reminders this month with a total value of {formatCurrency(totalRemindersAmount)}.
+                Of this, {formatCurrency(totalPendingAmount)} is pending and {formatCurrency(totalCompletedAmount)} has been completed.
                 </>
             ) : (
                 "No reminders scheduled for this month."
