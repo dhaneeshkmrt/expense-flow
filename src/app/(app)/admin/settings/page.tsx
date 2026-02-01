@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon, Download } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,7 +89,7 @@ const colorThemes = [
 ];
 
 export default function SettingsPage() {
-  const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser } = useApp();
+  const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser, generateCurrentMonthCsv, selectedMonth, selectedMonthName, selectedYear } = useApp();
   const { theme, colorTheme, setColorTheme, toggleTheme } = useTheme();
   
   const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
@@ -187,6 +188,31 @@ export default function SettingsPage() {
   const handleCopyToClipboard = (token: string) => {
     navigator.clipboard.writeText(token);
     toast({ title: 'Copied!', description: 'Secret token copied to clipboard.' });
+  }
+
+  const handleDownload = () => {
+    const csv = generateCurrentMonthCsv();
+    if (!csv) {
+        toast({
+            title: 'No Data',
+            description: `No transactions or budget data to export for ${selectedMonthName} ${selectedYear}.`,
+            variant: 'destructive',
+        });
+        return;
+    }
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      const monthName = format(new Date(selectedYear, selectedMonth), 'MMMM');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `transactions-${monthName}-${selectedYear}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   }
 
   if (loadingSettings) {
@@ -350,6 +376,25 @@ export default function SettingsPage() {
             </CardContent>
         </Card>
       )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Export</CardTitle>
+          <CardDescription>Download your financial data.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h3 className="font-medium">Monthly Transactions CSV</h3>
+            <p className="text-sm text-muted-foreground">
+              Download all transactions and budget data for {selectedMonthName} {selectedYear} as a CSV file.
+            </p>
+          </div>
+          <Button onClick={handleDownload}>
+            <Download className="mr-2" />
+            Download CSV for {selectedMonthName}
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

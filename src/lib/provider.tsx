@@ -7,6 +7,7 @@ import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenan
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
+import Papa from 'papaparse';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useTenants } from '@/hooks/useTenants';
@@ -17,7 +18,7 @@ import { useAccounts } from '@/hooks/useAccounts';
 import { useReminders } from '@/hooks/useReminders';
 import { useLogs } from '@/hooks/useLogs';
 import { generateReminderInstances } from './reminder-utils';
-import { getYear, getMonth, parseISO, format } from 'date-fns';
+import { getYear, getMonth, parseISO, format, startOfMonth } from 'date-fns';
 
 interface CategoryTransferData {
     sourceCategoryId: string;
@@ -100,6 +101,7 @@ interface AppContextType {
   completeReminderInstance: (reminder: Reminder, dueDate: Date, transactionId: string) => Promise<void>;
   
   logs: AuditLog[];
+  generateCurrentMonthCsv: () => string | null;
 
   loading: boolean;
   loadingAuth: boolean;
@@ -373,6 +375,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return await transactionsHook.deleteTransaction(transactionId);
   }, [accountsHook.isMonthLocked, transactionsHook]);
 
+  const generateCurrentMonthCsv = useCallback((): string | null => {
+    if (!tenantHook.selectedTenantId) {
+        return null;
+    }
+    
+    const selectedTenant = tenantHook.tenants.find(t => t.id === tenantHook.selectedTenantId);
+    const firstPaidBy = selectedTenant?.paidByOptions?.[0] || '';
+    
+    const budgetData = categoriesHook.categories
+        .map(cat => ({
+            name: cat.name,
+            budget: cat.budget || 0
+        }))
+        .filter(cat => cat.budget > 0)
+        .map(cat => ({
+            'Date': format(startOfMonth(new Date(selectedYear, selectedMonth)), 'd-MMM-yy'),
+            'Cate': 'Income',
+            'sub': cat.name,
+            'Amount': cat.budget.toFixed(2),
+            'Paid by': firstPaidBy,
+            'Desc': '',
+            'Notes': '',
+            '': '',
+            ' ': '',
+        }));
+
+    const transactionData = filteredTransactions.map(t => ({
+      'Date': format(parseISO(t.date), 'd-MMM-yy'),
+      'Cate': t.category,
+      'sub': t.subcategory,
+      'Amount': t.amount.toFixed(2),
+      'Paid by': t.paidBy,
+      'Desc': t.description,
+      'Notes': t.notes || '',
+      '': '',
+      ' ': '',
+    }));
+    
+    const dataToExport = [...budgetData, ...transactionData];
+
+    if (dataToExport.length === 0) {
+        return null;
+    }
+
+    return Papa.unparse(dataToExport, { header: false });
+  }, [tenantHook.selectedTenantId, tenantHook.tenants, categoriesHook.categories, selectedYear, selectedMonth, filteredTransactions]);
+
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions || accountsHook.loading || logsHook.loadingLogs;
 
   const contextValue = useMemo(() => ({
@@ -405,6 +454,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     fetchBalanceSheet,
     saveBalanceSheet,
+    generateCurrentMonthCsv,
 
     // Virtual Banking System
     virtualAccounts: accountsHook.accounts,
@@ -433,7 +483,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingReminders: remindersHook.loadingReminders,
     loadingLogs: logsHook.loadingLogs,
     isCopyingBudget: categoriesHook.isCopyingBudget,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, logsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, reminderInstances, pendingReminders, completedReminders]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, logsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
 
   return (
     <ThemeProvider>
