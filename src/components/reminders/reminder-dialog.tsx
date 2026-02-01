@@ -1,4 +1,3 @@
-
 'use client';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
@@ -123,7 +122,26 @@ export function ReminderDialog({ open, setOpen, reminderId }: { open: boolean, s
   }, [open, isEditing, reminder, form, paidByOptions]);
 
   const watchedCategory = form.watch('category');
+  const watchedSubcategory = form.watch('subcategory');
+  
   const subcategoryOptions = useMemo(() => categories.find(c => c.name === watchedCategory)?.subcategories || [], [categories, watchedCategory]);
+  const microcategoryOptions = useMemo(() => {
+    const subcategory = subcategoryOptions.find(s => s.name === watchedSubcategory);
+    return subcategory ? (subcategory.microcategories || []) : [];
+  }, [subcategoryOptions, watchedSubcategory]);
+
+  useEffect(() => {
+    if (form.formState.isDirty) {
+        form.setValue('subcategory', '');
+        form.setValue('microcategory', '');
+    }
+  }, [watchedCategory, form.setValue, form.formState.isDirty]);
+
+  useEffect(() => {
+    if (form.formState.isDirty) {
+        form.setValue('microcategory', '');
+    }
+  }, [watchedSubcategory, form.setValue, form.formState.isDirty]);
   
   const onSubmit = async (data: ReminderFormValues) => {
     const reminderData: any = {
@@ -182,6 +200,11 @@ export function ReminderDialog({ open, setOpen, reminderId }: { open: boolean, s
             <FormField name="subcategory" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Subcategory</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!watchedCategory}><FormControl><SelectTrigger><SelectValue placeholder="Select subcategory..."/></SelectTrigger></FormControl><SelectContent>{subcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
             )}/>
+             {microcategoryOptions.length > 0 && (
+                 <FormField name="microcategory" control={form.control} render={({ field }) => (
+                    <FormItem><FormLabel>Micro-category (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select micro-category..."/></SelectTrigger></FormControl><SelectContent>{microcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                )}/>
+            )}
             <FormField name="paidBy" control={form.control} render={({ field }) => (
                 <FormItem><FormLabel>Paid By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select payer..."/></SelectTrigger></FormControl><SelectContent>{paidByOptions.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
             )}/>
