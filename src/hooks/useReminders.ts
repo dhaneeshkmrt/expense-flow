@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Reminder, User } from '@/lib/types';
+import { logChange } from '@/lib/logger';
 
 export function useReminders(tenantId: string | null, user: User | null) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -51,34 +52,64 @@ export function useReminders(tenantId: string | null, user: User | null) {
   const addReminder = async (reminderData: Omit<Reminder, 'id' | 'tenantId' | 'userId' | 'completedInstances'>) => {
     if (!tenantId || !user) throw new Error("User or tenant not available");
 
-    const newReminder = {
+    const newReminderData = {
       ...reminderData,
       tenantId,
       userId: user.name,
       completedInstances: {},
     };
-    await addDoc(collection(db, 'reminders'), newReminder);
+    const docRef = await addDoc(collection(db, 'reminders'), newReminderData);
+    const newReminder = { id: docRef.id, ...newReminderData };
+    await logChange(tenantId, user.name, 'CREATE', 'reminders', docRef.id, `Created reminder: ${newReminder.description}`, undefined, newReminder);
   };
   
   const editReminder = async (reminderId: string, reminderData: Partial<Omit<Reminder, 'id' | 'tenantId' | 'userId'>>) => {
+    if (!tenantId || !user) return;
+    const oldReminder = reminders.find(r => r.id === reminderId);
     const reminderRef = doc(db, 'reminders', reminderId);
     await updateDoc(reminderRef, reminderData);
+    const updatedReminder = { ...oldReminder, ...reminderData } as Reminder;
+    await logChange(tenantId, user.name, 'UPDATE', 'reminders', reminderId, `Updated reminder: ${updatedReminder.description}`, oldReminder, updatedReminder);
   };
   
   const deleteReminder = async (reminderId: string) => {
-    await deleteDoc(doc(db, 'reminders', reminderId));
+    if (!tenantId || !user) return;
+    const reminderToDelete = reminders.find(r => r.id === reminderId);
+    
+    setReminders(prev => prev.filter(r => r.id !== reminderId));
+
+    try {
+      await deleteDoc(doc(db, 'reminders', reminderId));
+      if (reminderToDelete) {
+        await logChange(tenantId, user.name, 'DELETE', 'reminders', reminderId, `Deleted reminder: ${reminderToDelete.description}`, reminderToDelete, undefined);
+      }
+    } catch (error) {
+      console.error("Error deleting reminder, reverting state:", error);
+      if (reminderToDelete) {
+          setReminders(prev => [...prev, reminderToDelete].sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()));
+      }
+    }
   };
   
   const completeReminderInstance = async (reminder: Reminder, dueDate: Date, transactionId: string) => {
-    const reminderRef = doc(db, 'reminders', reminder.id);
-    const dueDateKey = dueDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    if (!tenantId || !user) return;
+    const dueDateKey = dueDate.toISOString().split('T')[0];
     
     const updatedCompletedInstances = {
         ...reminder.completedInstances,
         [dueDateKey]: transactionId,
     };
-    
-    await updateDoc(reminderRef, { completedInstances: updatedCompletedInstances });
+
+    setReminders(prev => prev.map(r => r.id === reminder.id ? { ...r, completedInstances: updatedCompletedInstances } : r));
+
+    try {
+      const reminderRef = doc(db, 'reminders', reminder.id);
+      await updateDoc(reminderRef, { completedInstances: updatedCompletedInstances });
+      await logChange(tenantId, user.name, 'UPDATE', 'reminders', reminder.id, `Completed reminder instance for ${reminder.description} on ${dueDateKey}`, reminder, { ...reminder, completedInstances: updatedCompletedInstances });
+    } catch (error) {
+      console.error("Error completing reminder instance, reverting state:", error);
+      setReminders(prev => prev.map(r => r.id === reminder.id ? reminder : r));
+    }
   };
 
   return {
