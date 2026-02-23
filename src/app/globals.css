@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    /* Sophisticated Dark Theme - Default */
+    /* Deep Obsidian Theme - Inspired by the reference image */
     --background: 216 33% 6%; /* #0a0e14 */
     --foreground: 210 67% 96%; /* #f0f6fc */
     
@@ -41,36 +41,19 @@
     --chart-3: 0 91% 71%; /* Red */
     --chart-4: 210 67% 96%; /* Light */
     --chart-5: 212 9% 58%; /* Grey */
+
+    /* Sidebar specific */
+    --sidebar-background: 216 33% 4%;
+    --sidebar-foreground: 212 9% 58%;
+    --sidebar-primary: 40 48% 56%;
+    --sidebar-primary-foreground: 216 33% 6%;
+    --sidebar-accent: 215 21% 11%;
+    --sidebar-accent-foreground: 40 48% 56%;
+    --sidebar-border: 210 67% 96% / 0.05;
+    --sidebar-ring: 40 48% 56%;
   }
 
-  /* Keep legacy themes for selection but update their base to be compatible */
-  .theme-rainbow {
-    --primary: 340 100% 50%;
-    --ring: 340 100% 50%;
-  }
-
-  .theme-ocean {
-    --primary: 200 100% 40%;
-    --ring: 200 100% 50%;
-  }
-
-  .theme-sunset {
-    --primary: 15 100% 55%;
-    --ring: 15 100% 55%;
-  }
-
-  .theme-forest {
-    --primary: 140 70% 40%;
-    --ring: 140 70% 50%;
-  }
-
-  .theme-electric {
-    --primary: 280 100% 60%;
-    --ring: 280 100% 60%;
-  }
- 
   .dark {
-    /* Since root is now dark, we keep .dark consistent or slightly darker */
     --background: 216 33% 4%;
     --card: 216 33% 6%;
   }
@@ -82,8 +65,8 @@
   }
   body {
     @apply bg-background text-foreground font-body antialiased;
-    background-image: radial-gradient(circle at top right, rgba(197, 160, 89, 0.05), transparent),
-                      radial-gradient(circle at bottom left, rgba(197, 160, 89, 0.02), transparent);
+    background-image: radial-gradient(circle at top right, rgba(197, 160, 89, 0.03), transparent),
+                      radial-gradient(circle at bottom left, rgba(197, 160, 89, 0.01), transparent);
     background-attachment: fixed;
   }
 

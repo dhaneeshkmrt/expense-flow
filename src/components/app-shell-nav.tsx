@@ -1,4 +1,3 @@
-
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -12,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/lib/provider';
+import { cn } from '@/lib/utils';
 
 type NavItemWithHref = {
   href: string;
@@ -144,14 +144,18 @@ export function AppShellNav() {
       {navItems.map((item) => {
         const sectionKey = item.label.toLowerCase() as keyof typeof openSections;
         const isNavigating = navigatingTo === (hasHref(item) ? item.href : undefined);
+        const isActive = hasHref(item) && pathname === item.href;
 
         return hasSubItems(item) ? (
           <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
             <SidebarMenuItem>
               <CollapsibleTrigger asChild>
                   <SidebarMenuButton
-                      className="w-full justify-start"
-                      variant={pathname.startsWith(`/${sectionKey}`) ? 'default' : 'outline'}
+                      className={cn(
+                        "w-full justify-start",
+                        pathname.startsWith(`/${sectionKey}`) ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                      variant="ghost"
                   >
                     <>
                       <item.icon />
@@ -164,12 +168,16 @@ export function AppShellNav() {
               <div className="flex flex-col gap-1 ml-7 pl-3 border-l">
                   {item.subItems.map((subItem: NavItemWithHref) => {
                       const isSubItemNavigating = navigatingTo === subItem.href;
+                      const isSubActive = pathname === subItem.href;
                       return (
                        <SidebarMenuItem key={subItem.href}>
                           <Link href={subItem.href} onClick={() => handleNavClick(subItem.href)}>
                               <SidebarMenuButton
-                                  isActive={pathname === subItem.href}
-                                  className="h-8"
+                                  isActive={isSubActive}
+                                  className={cn(
+                                    "h-8",
+                                    isSubActive ? "text-primary" : "text-muted-foreground"
+                                  )}
                                   disabled={isSubItemNavigating}
                               >
                                   {isSubItemNavigating ? <Loader2 className="animate-spin" /> : <subItem.icon />}
@@ -186,7 +194,10 @@ export function AppShellNav() {
           <SidebarMenuItem key={item.href}>
              <Link href={hasHref(item) ? item.href : '#'} onClick={() => hasHref(item) && handleNavClick(item.href)}>
                   <SidebarMenuButton
-                      isActive={hasHref(item) && pathname === item.href}
+                      isActive={isActive}
+                      className={cn(
+                        isActive ? "text-primary font-bold" : "text-muted-foreground"
+                      )}
                       disabled={isNavigating}
                   >
                       {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon />}

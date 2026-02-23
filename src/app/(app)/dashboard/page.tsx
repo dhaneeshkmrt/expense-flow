@@ -1,4 +1,3 @@
-
 'use client';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { DashboardStats } from '@/components/dashboard/dashboard-stats';
@@ -18,9 +17,9 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Dashboard</h1>
           <p className="text-muted-foreground">
-            Here&apos;s a quick overview of your finances.
+            Good morning — here&apos;s your financial overview.
           </p>
         </div>
       </div>
