@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useApp } from '@/lib/provider';
@@ -46,7 +45,7 @@ export default function LogsPage() {
         <div className="flex flex-col gap-6">
             <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-primary">Audit Logs</h1>
                     <p className="text-muted-foreground">
                         Track all changes made within the application.
                     </p>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -218,7 +217,7 @@ export default function SettingsPage() {
   if (loadingSettings) {
     return (
       <div className="flex flex-col gap-6">
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Settings</h1>
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
@@ -227,7 +226,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-primary">Settings</h1>
       
       {isMainTenantUser && (
         <Card>
@@ -342,7 +341,7 @@ export default function SettingsPage() {
                                     <FormControl>
                                       <Input readOnly {...field} />
                                     </FormControl>
-                                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(field.value)}>
+                                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(token)}>
                                         <Copy className="h-4 w-4"/>
                                     </Button>
                                     <Button type="button" variant="outline" size="icon" onClick={() => tenantForm.setValue(`members.${index}.secretToken`, generateSecretToken())}>

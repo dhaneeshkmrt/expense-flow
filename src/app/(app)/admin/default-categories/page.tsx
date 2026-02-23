@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -264,7 +263,7 @@ export default function DefaultCategoriesPage() {
         <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
             <div>
-            <h1 className="text-3xl font-bold tracking-tight">Default Categories</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Default Categories</h1>
             <p className="text-muted-foreground">Manage the master list of categories for all new tenants.</p>
             </div>
             <div className="flex items-center gap-2">

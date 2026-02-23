@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -117,7 +116,7 @@ export default function CategoriesPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Categories</h1>
           <p className="text-muted-foreground">Manage your expense categories and their budgets for {selectedMonthName}.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -125,7 +124,7 @@ export default function CategoriesPage() {
                 <PiggyBank className="h-6 w-6 text-muted-foreground" />
                 <div>
                     <div className="text-xs text-muted-foreground">Total Budget</div>
-                    <div className="text-base font-bold">{formatCurrency(totalBudget)}</div>
+                    <div className="text-base font-bold text-primary">{formatCurrency(totalBudget)}</div>
                 </div>
             </div>
             <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
@@ -157,7 +156,7 @@ export default function CategoriesPage() {
                     </CardTitle>
                     {monthlyBudget !== undefined && monthlyBudget > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
-                            Budget for {selectedMonthName}: <span className="font-semibold">{formatCurrency(monthlyBudget)}</span>
+                            Budget for {selectedMonthName}: <span className="font-semibold text-primary">{formatCurrency(monthlyBudget)}</span>
                         </p>
                     )}
                 </div>
@@ -285,5 +284,3 @@ export default function CategoriesPage() {
     </div>
   );
 }
-
-    

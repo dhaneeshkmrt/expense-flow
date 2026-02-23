@@ -144,7 +144,7 @@ export function AppShellNav() {
       {navItems.map((item) => {
         const sectionKey = item.label.toLowerCase() as keyof typeof openSections;
         const isNavigating = navigatingTo === (hasHref(item) ? item.href : undefined);
-        const isActive = hasHref(item) && pathname === item.href;
+        const isSectionActive = pathname.startsWith(`/${sectionKey}`);
 
         return hasSubItems(item) ? (
           <Collapsible key={item.label} open={openSections[sectionKey]} onOpenChange={() => toggleSection(sectionKey)}>
@@ -153,12 +153,12 @@ export function AppShellNav() {
                   <SidebarMenuButton
                       className={cn(
                         "w-full justify-start",
-                        pathname.startsWith(`/${sectionKey}`) ? 'text-primary' : 'text-muted-foreground'
+                        isSectionActive ? 'text-primary font-bold' : 'text-muted-foreground'
                       )}
                       variant="ghost"
                   >
                     <>
-                      <item.icon />
+                      <item.icon className={cn(isSectionActive && "text-primary")} />
                       <span>{item.label}</span>
                     </>
                   </SidebarMenuButton>
@@ -176,11 +176,11 @@ export function AppShellNav() {
                                   isActive={isSubActive}
                                   className={cn(
                                     "h-8",
-                                    isSubActive ? "text-primary" : "text-muted-foreground"
+                                    isSubActive ? "text-primary font-bold" : "text-muted-foreground"
                                   )}
                                   disabled={isSubItemNavigating}
                               >
-                                  {isSubItemNavigating ? <Loader2 className="animate-spin" /> : <subItem.icon />}
+                                  {isSubItemNavigating ? <Loader2 className="animate-spin" /> : <subItem.icon className={cn(isSubActive && "text-primary")} />}
                                   <span>{subItem.label}</span>
                               </SidebarMenuButton>
                           </Link>
@@ -194,13 +194,13 @@ export function AppShellNav() {
           <SidebarMenuItem key={item.href}>
              <Link href={hasHref(item) ? item.href : '#'} onClick={() => hasHref(item) && handleNavClick(item.href)}>
                   <SidebarMenuButton
-                      isActive={isActive}
+                      isActive={pathname === item.href}
                       className={cn(
-                        isActive ? "text-primary font-bold" : "text-muted-foreground"
+                        pathname === item.href ? "text-primary font-bold" : "text-muted-foreground"
                       )}
                       disabled={isNavigating}
                   >
-                      {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon />}
+                      {isNavigating ? <Loader2 className="animate-spin" /> : <item.icon className={cn(pathname === item.href && "text-primary")} />}
                        <span>{hasHref(item) && item.href === '/dashboard' && userTenant ? `Dashboard (${userTenant.name})` : item.label}</span>
                   </SidebarMenuButton>
              </Link>

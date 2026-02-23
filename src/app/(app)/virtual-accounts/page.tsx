@@ -68,7 +68,7 @@ export default function VirtualAccountsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Virtual Accounts</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-primary">Virtual Accounts</h1>
             <p className="text-muted-foreground">
               Monitor your virtual bank accounts and their transactions.
             </p>
@@ -85,7 +85,7 @@ export default function VirtualAccountsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Virtual Accounts</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Virtual Accounts</h1>
           <p className="text-muted-foreground">
             Monitor your virtual bank accounts and their transactions.
           </p>
@@ -147,7 +147,7 @@ export default function VirtualAccountsPage() {
                       </DialogTrigger>
                       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>
+                          <DialogTitle className="text-primary">
                             {account.categoryName} Virtual Account
                           </DialogTitle>
                         </DialogHeader>

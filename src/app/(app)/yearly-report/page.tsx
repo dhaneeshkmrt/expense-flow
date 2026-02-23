@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -138,7 +137,7 @@ const ChartView = ({ reportData, monthWeekData, yearTransactions, formatCurrency
             <PieChartIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{reportData.length}</div>
+            <div className="text-2xl font-bold text-primary">{reportData.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -147,7 +146,7 @@ const ChartView = ({ reportData, monthWeekData, yearTransactions, formatCurrency
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{yearTransactions.length}</div>
+            <div className="text-2xl font-bold text-primary">{yearTransactions.length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -156,7 +155,7 @@ const ChartView = ({ reportData, monthWeekData, yearTransactions, formatCurrency
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-primary">
               {formatCurrency(grandTotal / Math.max(monthWeekData.length, 1))}
             </div>
           </CardContent>
@@ -490,7 +489,7 @@ export default function YearlyReportPage() {
                     <span>{tx.description}</span>
                 </div>
             </TableCell>
-            <TableCell className="text-right">{formatCurrency(tx.amount)}</TableCell>
+            <TableCell className="text-right text-primary font-medium">{formatCurrency(tx.amount)}</TableCell>
         </TableRow>
     )
   };
@@ -506,7 +505,7 @@ export default function YearlyReportPage() {
                         <div className="flex items-center gap-4 w-full">
                             <Calendar className="w-5 h-5 text-primary" />
                             <span className="font-semibold flex-1 text-left">{monthData.month}</span>
-                            <span className="font-bold text-right w-28">{formatCurrency(monthData.total)}</span>
+                            <span className="font-bold text-right w-28 text-primary">{formatCurrency(monthData.total)}</span>
                         </div>
                     </AccordionTrigger>
                     <AccordionContent className="pb-4 pl-8 pr-2 space-y-2">
@@ -516,7 +515,7 @@ export default function YearlyReportPage() {
                                     <AccordionTrigger className="py-2.5 px-3 text-sm hover:no-underline [&[data-state=open]>svg]:text-primary">
                                         <div className="flex items-center gap-4 w-full">
                                             <span className="font-medium flex-1 text-left">{weekData.week}</span>
-                                            <span className="font-semibold text-right w-24">{formatCurrency(weekData.total)}</span>
+                                            <span className="font-semibold text-right w-24 text-primary">{formatCurrency(weekData.total)}</span>
                                         </div>
                                     </AccordionTrigger>
                                     <AccordionContent className="px-4 pt-2 pb-4">
@@ -539,7 +538,7 @@ export default function YearlyReportPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Yearly Spending Report</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Yearly Spending Report</h1>
         <p className="text-muted-foreground">Hierarchical spending breakdown for {selectedYear}, excluding category transfers.</p>
       </div>
 
@@ -551,7 +550,7 @@ export default function YearlyReportPage() {
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(grandTotal)}</div>
+          <div className="text-2xl font-bold text-primary">{formatCurrency(grandTotal)}</div>
         </CardContent>
       </Card>
 
@@ -578,7 +577,7 @@ export default function YearlyReportPage() {
                                 <span className="font-semibold flex-1 text-left">{category.name}</span>
                                 <div className="flex items-center gap-4 w-1/3">
                                 <Progress value={categoryPercentage} className="h-2 w-full" />
-                                <span className="font-bold text-right w-32">{formatCurrency(category.total)}</span>
+                                <span className="font-bold text-right w-32 text-primary">{formatCurrency(category.total)}</span>
                                 </div>
                             </div>
                             </AccordionTrigger>
@@ -591,7 +590,7 @@ export default function YearlyReportPage() {
                                             <span className="font-medium flex-1 text-left">{sub.name}</span>
                                             <div className="flex items-center gap-4 w-1/2">
                                                 <Progress value={getPercentage(sub.total, category.total)} className="h-1.5 w-full"/>
-                                                <span className="font-semibold text-right w-28">{formatCurrency(sub.total)}</span>
+                                                <span className="font-semibold text-right w-28 text-primary">{formatCurrency(sub.total)}</span>
                                             </div>
                                     </div>
                                     </AccordionTrigger>
@@ -606,7 +605,7 @@ export default function YearlyReportPage() {
                                                         <span className="font-normal flex-1 text-left">{micro.name}</span>
                                                         <div className="flex items-center gap-4 w-2/3">
                                                             <Progress value={getPercentage(micro.total, sub.total)} className="h-1 w-full"/>
-                                                            <span className="font-medium text-right w-24">{formatCurrency(micro.total)}</span>
+                                                            <span className="font-medium text-right w-24 text-primary">{formatCurrency(micro.total)}</span>
                                                         </div>
                                                 </div>
                                                 </AccordionTrigger>

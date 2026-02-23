@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -63,7 +62,7 @@ export default function TenantsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Tenants</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Tenants</h1>
           <p className="text-muted-foreground">
             Manage your tenants and their members.
           </p>

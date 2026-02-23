@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -246,7 +245,7 @@ export default function BalanceSheetPage() {
     <>
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Balance Sheet</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-primary">Balance Sheet</h1>
         <p className="text-muted-foreground">Financial overview for {selectedMonthName}.</p>
       </div>
 
@@ -257,7 +256,7 @@ export default function BalanceSheetPage() {
                     <PiggyBank className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(totalBudget)}</div>
+                    <div className="text-2xl font-bold text-primary">{formatCurrency(totalBudget)}</div>
                 </CardContent>
             </Card>
              <Card>
@@ -266,7 +265,7 @@ export default function BalanceSheetPage() {
                     <Wallet className="w-4 h-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(totalSpent)}</div>
+                    <div className="text-2xl font-bold text-primary">{formatCurrency(totalSpent)}</div>
                 </CardContent>
             </Card>
              <Card>
@@ -295,7 +294,7 @@ export default function BalanceSheetPage() {
                           </div>
                           <div>
                               <p className="font-semibold text-lg">{p.name}</p>
-                              <p className="text-xl font-bold">{formatCurrency(p.amount)}</p>
+                              <p className="text-xl font-bold text-primary">{formatCurrency(p.amount)}</p>
                           </div>
                       </div>
                   ))}
