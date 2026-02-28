@@ -53,6 +53,7 @@ export type Settings = {
   currency: string;
   locale: string;
   tenantId: string;
+  userId?: string;
   dateInputStyle?: 'popup' | 'inline';
   defaultCategory?: string;
   defaultSubcategory?: string;

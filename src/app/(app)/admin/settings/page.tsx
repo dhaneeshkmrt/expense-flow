@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
-import { Skeleton } from '@/skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon, Download, Sparkles } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -93,7 +93,7 @@ const colorThemes = [
 
 export default function SettingsPage() {
   const { 
-    settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, 
+    user, settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, 
     isMainTenantUser, generateCurrentMonthCsv, selectedMonth, selectedMonthName, 
     selectedYear, categories 
   } = useApp();
@@ -167,7 +167,7 @@ export default function SettingsPage() {
     await updateSettings(data);
     toast({
  title: 'Settings Saved',
- description: 'Your new settings have been saved successfully.',
+ description: 'Your personal settings have been saved successfully.',
     });
     settingsForm.reset(data); // Resets the form's dirty state
   };
@@ -427,7 +427,7 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Appearance</CardTitle>
-          <CardDescription>Customize the look and feel of the application.</CardDescription>
+          <CardDescription>Customize the look and feel of the application for your account.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
@@ -481,9 +481,9 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Transaction Defaults
+            Personal Transaction Defaults
           </CardTitle>
-          <CardDescription>Pre-fill values for new transactions to save time.</CardDescription>
+          <CardDescription>Pre-fill values for new transactions to save time. These settings are private to you ({user?.name}).</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...settingsForm}>
@@ -593,7 +593,7 @@ export default function SettingsPage() {
               </div>
               <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty}>
                 {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                Save Defaults
+                Save My Defaults
               </Button>
             </form>
           </Form>
@@ -602,8 +602,8 @@ export default function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>General Settings</CardTitle>
-           <CardDescription>Configure currency, number formatting, and UI preferences for your tenant.</CardDescription>
+          <CardTitle>Regional Settings</CardTitle>
+           <CardDescription>Configure personal currency and formatting preferences.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...settingsForm}>
@@ -663,7 +663,7 @@ export default function SettingsPage() {
               </div>
               <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty || !selectedTenantId}>
                 {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
-                Save Settings
+                Save My Settings
               </Button>
             </form>
           </Form>
