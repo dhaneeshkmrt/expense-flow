@@ -8,13 +8,23 @@ import type { Settings, User } from '@/lib/types';
 import { logChange } from '@/lib/logger';
 
 export function useSettings(tenantId: string | null, user: User | null) {
-  const [settings, setSettings] = useState<Settings>({ ...defaultSettings, tenantId: '', userId: '' });
+  const [settings, setSettings] = useState<Settings>({ 
+    ...defaultSettings, 
+    tenantId: '', 
+    userId: '',
+    dateInputStyle: 'popup'
+  });
   const [loadingSettings, setLoadingSettings] = useState(true);
 
   const seedDefaultSettings = useCallback(async (tenantIdToSeed: string, userIdToSeed: string) => {
     const docId = `${tenantIdToSeed}_${userIdToSeed}`;
     const settingsRef = doc(db, 'settings', docId);
-    const newSettings = { ...defaultSettings, tenantId: tenantIdToSeed, userId: userIdToSeed };
+    const newSettings = { 
+      ...defaultSettings, 
+      tenantId: tenantIdToSeed, 
+      userId: userIdToSeed,
+      dateInputStyle: 'popup'
+    };
     await setDoc(settingsRef, newSettings);
     return newSettings;
   }, []);
@@ -31,7 +41,13 @@ export function useSettings(tenantId: string | null, user: User | null) {
             setSettings(newSettings);
         } else {
             const data = docSnap.data() as Omit<Settings, 'tenantId' | 'userId'>;
-            setSettings({ ...defaultSettings, ...data, tenantId: tenantIdToFetch, userId: userIdToFetch });
+            setSettings({ 
+              ...defaultSettings, 
+              dateInputStyle: 'popup',
+              ...data, 
+              tenantId: tenantIdToFetch, 
+              userId: userIdToFetch 
+            });
         }
     } catch (error) {
         console.error("Error fetching user settings: ", error);
@@ -44,7 +60,12 @@ export function useSettings(tenantId: string | null, user: User | null) {
     if (tenantId && user?.name) {
       fetchSettings(tenantId, user.name);
     } else if (!tenantId) {
-      setSettings({ ...defaultSettings, tenantId: '', userId: ''});
+      setSettings({ 
+        ...defaultSettings, 
+        tenantId: '', 
+        userId: '',
+        dateInputStyle: 'popup'
+      });
       setLoadingSettings(false);
     }
   }, [tenantId, user?.name, fetchSettings]);
@@ -53,10 +74,15 @@ export function useSettings(tenantId: string | null, user: User | null) {
       if (!tenantId || !user) return;
       const oldSettings = { ...settings };
       const docId = `${tenantId}_${user.name}`;
+      
       try {
           const settingsRef = doc(db, 'settings', docId);
-          await setDoc(settingsRef, newSettings, { merge: true });
-          const updatedSettings = { ...settings, ...newSettings};
+          // We clean up the data slightly before saving to avoid issues with undefined
+          const dataToSave = { ...newSettings };
+          
+          await setDoc(settingsRef, dataToSave, { merge: true });
+          
+          const updatedSettings = { ...settings, ...dataToSave };
           setSettings(updatedSettings);
 
           await logChange(
@@ -71,6 +97,7 @@ export function useSettings(tenantId: string | null, user: User | null) {
           );
       } catch (error) {
           console.error("Error updating settings: ", error);
+          throw error; // Re-throw so the UI can handle the error
       }
   };
 

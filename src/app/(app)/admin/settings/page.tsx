@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon, Download, Sparkles } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Moon, Sun, Download, Sparkles, AlertCircle } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,11 +99,21 @@ export default function SettingsPage() {
     selectedYear, categories 
   } = useApp();
   const { theme, colorTheme, setColorTheme, toggleTheme } = useTheme();
+  const { toast } = useToast();
   
   const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
 
   const settingsForm = useForm<SettingsFormValues>({
     resolver: zodResolver(settingsSchema),
+    defaultValues: {
+      currency: '₹',
+      locale: 'en-IN',
+      dateInputStyle: 'popup',
+      defaultCategory: 'none',
+      defaultSubcategory: 'none',
+      defaultMicrocategory: 'none',
+      defaultPaidBy: 'none',
+    }
   });
 
   const tenantForm = useForm<TenantFormValues>({
@@ -127,13 +138,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (settings && !settingsForm.formState.isDirty) {
       settingsForm.reset({
-        currency: settings.currency,
-        locale: settings.locale,
+        currency: settings.currency || '₹',
+        locale: settings.locale || 'en-IN',
         dateInputStyle: settings.dateInputStyle || 'popup',
-        defaultCategory: settings.defaultCategory || '',
-        defaultSubcategory: settings.defaultSubcategory || '',
-        defaultMicrocategory: settings.defaultMicrocategory || '',
-        defaultPaidBy: settings.defaultPaidBy || '',
+        defaultCategory: settings.defaultCategory || 'none',
+        defaultSubcategory: settings.defaultSubcategory || 'none',
+        defaultMicrocategory: settings.defaultMicrocategory || 'none',
+        defaultPaidBy: settings.defaultPaidBy || 'none',
       });
     }
   }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
@@ -158,18 +169,37 @@ export default function SettingsPage() {
   const onSettingsSubmit = async (data: SettingsFormValues) => {
     if (!selectedTenantId) {
         toast({
- title: 'No Tenant Selected',
- description: 'Please select a tenant before saving settings.',
- variant: 'destructive',
+          title: 'No Tenant Selected',
+          description: 'Please select a tenant before saving settings.',
+          variant: 'destructive',
         });
         return;
     }
-    await updateSettings(data);
+    
+    try {
+      await updateSettings(data);
+      toast({
+        title: 'Settings Saved',
+        description: 'Your personal settings have been saved successfully.',
+      });
+      settingsForm.reset(data);
+    } catch (error: any) {
+      toast({
+        title: 'Save Failed',
+        description: error.message || 'An error occurred while saving settings.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const onSettingsError = (errors: any) => {
+    console.error("Settings Form Errors:", errors);
+    const firstError = Object.values(errors)[0] as any;
     toast({
- title: 'Settings Saved',
- description: 'Your personal settings have been saved successfully.',
+      title: 'Validation Error',
+      description: firstError?.message || 'Please check the form for errors.',
+      variant: 'destructive',
     });
-    settingsForm.reset(data); // Resets the form's dirty state
   };
   
   const onTenantSubmit = async (data: TenantFormValues) => {
@@ -187,7 +217,7 @@ export default function SettingsPage() {
           title: 'Tenant Details Updated',
           description: 'Your tenant information has been updated successfully.',
         });
-        tenantForm.reset(data); // Resets dirty state
+        tenantForm.reset(data);
     } catch(e) {
         console.error(e);
         toast({ title: "Update Failed", description: "Could not update tenant details.", variant: "destructive" });
@@ -231,12 +261,12 @@ export default function SettingsPage() {
   const watchedSubcategoryName = settingsForm.watch('defaultSubcategory');
 
   const availableSubcategories = useMemo(() => {
-    if (!watchedCategoryName) return [];
+    if (!watchedCategoryName || watchedCategoryName === 'none') return [];
     return categories.find(c => c.name === watchedCategoryName)?.subcategories || [];
   }, [watchedCategoryName, categories]);
 
   const availableMicrocategories = useMemo(() => {
-    if (!watchedSubcategoryName || !watchedCategoryName) return [];
+    if (!watchedSubcategoryName || watchedSubcategoryName === 'none' || !watchedCategoryName) return [];
     return availableSubcategories.find(s => s.name === watchedSubcategoryName)?.microcategories || [];
   }, [watchedSubcategoryName, availableSubcategories, watchedCategoryName]);
 
@@ -253,8 +283,10 @@ export default function SettingsPage() {
     );
   }
 
+  const hasFormErrors = Object.keys(settingsForm.formState.errors).length > 0;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 pb-10">
       <h1 className="text-3xl font-bold tracking-tight text-primary">Settings</h1>
       
       {isMainTenantUser && (
@@ -487,7 +519,17 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Form {...settingsForm}>
-            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit, onSettingsError)} className="space-y-6">
+              {hasFormErrors && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Action Required</AlertTitle>
+                  <AlertDescription>
+                    Some fields in your settings are invalid. Please check all sections (Defaults and Regional) before saving.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={settingsForm.control}
@@ -498,8 +540,8 @@ export default function SettingsPage() {
                       <Select 
                         onValueChange={(val) => {
                           field.onChange(val);
-                          settingsForm.setValue('defaultSubcategory', '');
-                          settingsForm.setValue('defaultMicrocategory', '');
+                          settingsForm.setValue('defaultSubcategory', 'none', { shouldDirty: true });
+                          settingsForm.setValue('defaultMicrocategory', 'none', { shouldDirty: true });
                         }} 
                         value={field.value}
                       >
@@ -527,10 +569,10 @@ export default function SettingsPage() {
                       <Select 
                         onValueChange={(val) => {
                           field.onChange(val);
-                          settingsForm.setValue('defaultMicrocategory', '');
+                          settingsForm.setValue('defaultMicrocategory', 'none', { shouldDirty: true });
                         }} 
                         value={field.value}
-                        disabled={!watchedCategoryName}
+                        disabled={!watchedCategoryName || watchedCategoryName === 'none'}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -553,7 +595,11 @@ export default function SettingsPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Default Micro-Subcategory</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={availableMicrocategories.length === 0}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value} 
+                        disabled={availableMicrocategories.length === 0}
+                      >
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="No default" />
@@ -607,18 +653,26 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Form {...settingsForm}>
-            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-4">
+            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit, onSettingsError)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency Symbol</Label>
-                    <Input
-                      id="currency"
-                      {...settingsForm.register('currency')}
-                      className="w-full md:w-2/3"
-                      disabled={!selectedTenantId}
-                      placeholder="e.g. ₹, $, €"
-                    />
-                  </div>
+                  <FormField
+                    control={settingsForm.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Currency Symbol</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            className="w-full md:w-2/3"
+                            disabled={!selectedTenantId}
+                            placeholder="e.g. ₹, $, €"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="space-y-2">
                       <Label htmlFor="locale">Country for Formatting</Label>
                       <Controller
