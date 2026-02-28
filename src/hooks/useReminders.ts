@@ -15,6 +15,7 @@ import {
 import { db } from '@/lib/firebase';
 import type { Reminder, User } from '@/lib/types';
 import { logChange } from '@/lib/logger';
+import { format } from 'date-fns';
 
 export function useReminders(tenantId: string | null, user: User | null) {
   const [reminders, setReminders] = useState<Reminder[]>([]);
@@ -92,7 +93,9 @@ export function useReminders(tenantId: string | null, user: User | null) {
   
   const completeReminderInstance = async (reminder: Reminder, dueDate: Date, transactionId: string) => {
     if (!tenantId || !user) return;
-    const dueDateKey = dueDate.toISOString().split('T')[0];
+    
+    // Use format(date, 'yyyy-MM-dd') to get local date string consistently
+    const dueDateKey = format(dueDate, 'yyyy-MM-dd');
     
     const updatedCompletedInstances = {
         ...reminder.completedInstances,
