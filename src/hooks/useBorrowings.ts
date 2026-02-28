@@ -1,19 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   collection, 
   query, 
   where, 
   onSnapshot, 
   addDoc, 
-  updateDoc, 
   deleteDoc, 
   doc, 
   writeBatch,
-  getDocs,
-  orderBy,
-  increment
+  orderBy
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { 
@@ -21,7 +18,8 @@ import type {
   Borrowing, 
   Repayment, 
   BorrowingStatus,
-  User 
+  User,
+  BorrowingRelationship
 } from '@/lib/types';
 import { differenceInDays, parseISO, startOfDay } from 'date-fns';
 import { logChange } from '@/lib/logger';
@@ -98,18 +96,35 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
   }, []);
 
   // Action: Add Contact
-  const addContact = async (name: string, email?: string, phone?: string) => {
+  const addContact = async (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => {
     if (!tenantId) return;
     const newContact: Omit<BorrowingContact, 'id'> = {
       tenantId,
-      name,
-      email: email || '',
-      phone: phone || '',
+      name: data.name,
+      relationship: data.relationship,
+      phone: data.phone || '',
+      address: data.address || '',
+      notes: data.notes || '',
       creditScore: 750, // Initial Score
       createdAt: new Date().toISOString(),
     };
     const docRef = await addDoc(collection(db, 'borrowingContacts'), newContact);
-    await logChange(tenantId, user?.name || 'System', 'CREATE', 'borrowingContacts', docRef.id, `Added borrowing contact: ${name}`, undefined, newContact);
+    await logChange(tenantId, user?.name || 'System', 'CREATE', 'borrowingContacts', docRef.id, `Added borrowing contact: ${data.name}`, undefined, newContact);
+  };
+
+  // Action: Delete Contact
+  const deleteContact = async (id: string) => {
+    if (!tenantId || !user) return;
+    
+    // Safety check: Don't delete if there is history
+    const hasHistory = borrowings.some(b => b.contactId === id);
+    if (hasHistory) {
+      throw new Error("Cannot delete contact with existing financial history.");
+    }
+
+    const contact = contacts.find(c => c.id === id);
+    await deleteDoc(doc(db, 'borrowingContacts', id));
+    await logChange(tenantId, user.name, 'DELETE', 'borrowingContacts', id, `Deleted borrowing contact: ${contact?.name || id}`);
   };
 
   // Action: Add Borrowing
@@ -193,6 +208,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     repayments,
     loading,
     addContact,
+    deleteContact,
     addBorrowing,
     addRepayment,
     deleteBorrowing,

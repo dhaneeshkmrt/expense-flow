@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
-import type { User as AuthUser } from 'firebase/auth';
 import type { 
   Transaction, 
   Category, 
@@ -21,7 +20,8 @@ import type {
   BorrowingContact,
   Borrowing,
   Repayment,
-  BorrowingStatus
+  BorrowingStatus,
+  BorrowingRelationship
 } from './types';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -124,7 +124,8 @@ interface AppContextType {
   borrowingContacts: BorrowingContact[];
   borrowings: Borrowing[];
   borrowingRepayments: Repayment[];
-  addBorrowingContact: (name: string, email?: string, phone?: string) => Promise<void>;
+  addBorrowingContact: (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => Promise<void>;
+  deleteBorrowingContact: (id: string) => Promise<void>;
   addBorrowing: (data: Omit<Borrowing, 'id' | 'tenantId' | 'userId' | 'balance' | 'isClosed' | 'createdAt'>) => Promise<void>;
   addRepayment: (borrowingId: string, amount: number, date: string, notes?: string) => Promise<void>;
   deleteBorrowing: (id: string) => Promise<void>;
@@ -474,6 +475,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     borrowings: borrowingsHook.borrowings,
     borrowingRepayments: borrowingsHook.repayments,
     addBorrowingContact: borrowingsHook.addContact,
+    deleteBorrowingContact: borrowingsHook.deleteContact,
     addBorrowing: borrowingsHook.addBorrowing,
     addRepayment: borrowingsHook.addRepayment,
     deleteBorrowing: borrowingsHook.deleteBorrowing,

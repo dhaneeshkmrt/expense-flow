@@ -218,12 +218,16 @@ export type AuditLog = {
 };
 
 // Borrowings System Types
+export type BorrowingRelationship = 'Close Relative' | 'Relative' | 'Close Friend' | 'Friend' | 'Colleague' | 'Neighbour' | 'Other';
+
 export type BorrowingContact = {
   id: string;
   tenantId: string;
   name: string;
-  email?: string;
+  relationship: BorrowingRelationship;
   phone?: string;
+  address?: string;
+  notes?: string;
   creditScore: number; // 300 - 900
   createdAt: string;
 };
