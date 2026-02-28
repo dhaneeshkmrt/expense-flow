@@ -7,7 +7,7 @@ import { useApp } from '@/lib/provider';
 import type { ReminderInstance } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format } from 'date-fns';
 import { Loader2, CalendarIcon } from 'lucide-react';
@@ -35,6 +35,7 @@ export function CompleteReminderDialog({ open, setOpen, instance }: CompleteRemi
   const { addTransaction, completeReminderInstance, userTenant } = useApp();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formatCurrency = useCurrencyFormatter();
+  const { toast } = useToast();
   
   const form = useForm<CompleteReminderFormValues>({
     resolver: zodResolver(completeReminderSchema),
@@ -58,27 +59,35 @@ export function CompleteReminderDialog({ open, setOpen, instance }: CompleteRemi
   const handleComplete = async (data: CompleteReminderFormValues) => {
     setIsSubmitting(true);
     try {
+      // Explicitly map only required transaction fields to avoid spreading junk like recurrence/id
       const transactionData = {
-        ...instance.reminder,
+        description: instance.reminder.description,
+        amount: instance.reminder.amount,
+        category: instance.reminder.category,
+        subcategory: instance.reminder.subcategory,
+        microcategory: instance.reminder.microcategory || '',
         date: format(data.date, 'yyyy-MM-dd'),
-        time: format(data.date, 'HH:mm'),
+        time: format(new Date(), 'HH:mm'), // Use current time for completion
         paidBy: data.paidBy,
-        notes: `Reminder: ${instance.reminder.notes || ''}`.trim(),
+        notes: `Reminder completion: ${instance.reminder.notes || ''}`.trim(),
       };
       
+      // 1. Create the actual expense transaction
       const newTransactionId = await addTransaction(transactionData);
       
+      // 2. Mark this specific instance as completed in the reminder series
       await completeReminderInstance(instance.reminder, instance.dueDate, newTransactionId);
       
       toast({
         title: 'Reminder Completed!',
-        description: `Transaction for "${instance.reminder.description}" has been created.`,
+        description: `Transaction for "${instance.reminder.description}" has been recorded.`,
       });
       setOpen(false);
     } catch (e: any) {
+      console.error("Failed to complete reminder:", e);
       toast({
-        title: 'Error',
-        description: e.message || 'Failed to complete reminder.',
+        title: 'Completion Failed',
+        description: e.message || 'An unexpected error occurred while processing the reminder.',
         variant: 'destructive',
       });
     } finally {

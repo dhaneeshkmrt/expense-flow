@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -100,6 +99,7 @@ export function useReminders(tenantId: string | null, user: User | null) {
         [dueDateKey]: transactionId,
     };
 
+    // Optimistic update
     setReminders(prev => prev.map(r => r.id === reminder.id ? { ...r, completedInstances: updatedCompletedInstances } : r));
 
     try {
@@ -108,7 +108,10 @@ export function useReminders(tenantId: string | null, user: User | null) {
       await logChange(tenantId, user.name, 'UPDATE', 'reminders', reminder.id, `Completed reminder instance for ${reminder.description} on ${dueDateKey}`, reminder, { ...reminder, completedInstances: updatedCompletedInstances });
     } catch (error) {
       console.error("Error completing reminder instance, reverting state:", error);
+      // Revert local state on failure
       setReminders(prev => prev.map(r => r.id === reminder.id ? reminder : r));
+      // CRITICAL: Re-throw the error so the UI can show a failure notification
+      throw error;
     }
   };
 
