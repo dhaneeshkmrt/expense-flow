@@ -5,8 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Phone, MapPin, History, Trash2, Info, MessageSquare } from 'lucide-react';
-import { useState } from 'react';
+import { UserPlus, Phone, MapPin, History, Trash2, Info, MessageSquare, Edit } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { 
   Dialog, 
   DialogContent, 
@@ -25,7 +25,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import type { BorrowingRelationship } from '@/lib/types';
+import type { BorrowingRelationship, BorrowingContact } from '@/lib/types';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -49,9 +49,10 @@ const relationships: BorrowingRelationship[] = [
 ];
 
 export default function ContactsPage() {
-  const { borrowingContacts, addBorrowingContact, deleteBorrowingContact, borrowings } = useApp();
+  const { borrowingContacts, addBorrowingContact, editBorrowingContact, deleteBorrowingContact, borrowings } = useApp();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [editingContact, setEditingContact] = useState<BorrowingContact | null>(null);
   
   // Form State
   const [name, setName] = useState('');
@@ -60,18 +61,43 @@ export default function ContactsPage() {
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
 
-  const handleAdd = async () => {
+  // Pre-fill form if editing
+  useEffect(() => {
+    if (editingContact) {
+      setName(editingContact.name);
+      setRelationship(editingContact.relationship);
+      setPhone(editingContact.phone || '');
+      setAddress(editingContact.address || '');
+      setNotes(editingContact.notes || '');
+    } else {
+      resetForm();
+    }
+  }, [editingContact]);
+
+  const handleSave = async () => {
     if (!name || !relationship) return;
     try {
-      await addBorrowingContact({
-        name,
-        relationship,
-        phone,
-        address,
-        notes
-      });
-      toast({ title: 'Contact Created', description: `${name} has been added.` });
+      if (editingContact) {
+        await editBorrowingContact(editingContact.id, {
+          name,
+          relationship,
+          phone,
+          address,
+          notes
+        });
+        toast({ title: 'Contact Updated', description: `${name}'s details have been saved.` });
+      } else {
+        await addBorrowingContact({
+          name,
+          relationship,
+          phone,
+          address,
+          notes
+        });
+        toast({ title: 'Contact Created', description: `${name} has been added.` });
+      }
       setOpen(false);
+      setEditingContact(null);
       resetForm();
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
@@ -95,6 +121,11 @@ export default function ContactsPage() {
     }
   };
 
+  const handleEdit = (contact: BorrowingContact) => {
+    setEditingContact(contact);
+    setOpen(true);
+  };
+
   const getScoreColor = (score: number) => {
     if (score >= 800) return 'text-green-500';
     if (score >= 700) return 'text-blue-500';
@@ -109,7 +140,7 @@ export default function ContactsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Contacts & Credit Scores</h1>
           <p className="text-muted-foreground">Manage people you deal with and monitor their return efficiency.</p>
         </div>
-        <Button onClick={() => setOpen(true)}>
+        <Button onClick={() => { setEditingContact(null); setOpen(true); }}>
           <UserPlus className="mr-2 h-4 w-4" />
           New Contact
         </Button>
@@ -129,29 +160,39 @@ export default function ContactsPage() {
                   </div>
                   <div className="text-[10px] uppercase font-bold text-muted-foreground">Trust Score</div>
                 </div>
-                {!hasHistory && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Contact?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete <strong>{contact.name}</strong>? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(contact.id)} className="bg-destructive hover:bg-destructive/90">
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={() => handleEdit(contact)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  {!hasHistory && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Contact?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete <strong>{contact.name}</strong>? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(contact.id)} className="bg-destructive hover:bg-destructive/90">
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
               <CardHeader>
                 <div className="flex items-center gap-2 mb-1">
@@ -211,11 +252,13 @@ export default function ContactsPage() {
         )}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(val) => { setOpen(val); if(!val) setEditingContact(null); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Contact</DialogTitle>
-            <DialogDescription>Create a profile for a friend, relative, or entity before recording transactions.</DialogDescription>
+            <DialogTitle>{editingContact ? 'Edit Contact' : 'Add New Contact'}</DialogTitle>
+            <DialogDescription>
+              {editingContact ? `Update details for ${editingContact.name}.` : 'Create a profile for a friend, relative, or entity before recording transactions.'}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -253,8 +296,10 @@ export default function ContactsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={handleAdd} disabled={!name || !relationship}>Create Contact</Button>
+            <Button variant="outline" onClick={() => { setOpen(false); setEditingContact(null); }}>Cancel</Button>
+            <Button onClick={handleSave} disabled={!name || !relationship}>
+              {editingContact ? 'Save Changes' : 'Create Contact'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

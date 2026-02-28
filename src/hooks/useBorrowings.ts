@@ -7,6 +7,7 @@ import {
   where, 
   onSnapshot, 
   addDoc, 
+  updateDoc, 
   deleteDoc, 
   doc, 
   writeBatch,
@@ -112,6 +113,24 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     await logChange(tenantId, user?.name || 'System', 'CREATE', 'borrowingContacts', docRef.id, `Added borrowing contact: ${data.name}`, undefined, newContact);
   };
 
+  // Action: Edit Contact
+  const editContact = async (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => {
+    if (!tenantId || !user) return;
+    const contactRef = doc(db, 'borrowingContacts', id);
+    const oldContact = contacts.find(c => c.id === id);
+    
+    const updateData = {
+      name: data.name,
+      relationship: data.relationship,
+      phone: data.phone || '',
+      address: data.address || '',
+      notes: data.notes || '',
+    };
+
+    await updateDoc(contactRef, updateData);
+    await logChange(tenantId, user.name, 'UPDATE', 'borrowingContacts', id, `Updated contact details for ${data.name}`, oldContact, { ...oldContact, ...updateData });
+  };
+
   // Action: Delete Contact
   const deleteContact = async (id: string) => {
     if (!tenantId || !user) return;
@@ -208,6 +227,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     repayments,
     loading,
     addContact,
+    editContact,
     deleteContact,
     addBorrowing,
     addRepayment,

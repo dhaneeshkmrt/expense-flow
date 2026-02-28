@@ -125,6 +125,7 @@ interface AppContextType {
   borrowings: Borrowing[];
   borrowingRepayments: Repayment[];
   addBorrowingContact: (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => Promise<void>;
+  editBorrowingContact: (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => Promise<void>;
   deleteBorrowingContact: (id: string) => Promise<void>;
   addBorrowing: (data: Omit<Borrowing, 'id' | 'tenantId' | 'userId' | 'balance' | 'isClosed' | 'createdAt'>) => Promise<void>;
   addRepayment: (borrowingId: string, amount: number, date: string, notes?: string) => Promise<void>;
@@ -475,6 +476,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     borrowings: borrowingsHook.borrowings,
     borrowingRepayments: borrowingsHook.repayments,
     addBorrowingContact: borrowingsHook.addContact,
+    editBorrowingContact: borrowingsHook.editContact,
     deleteBorrowingContact: borrowingsHook.deleteContact,
     addBorrowing: borrowingsHook.addBorrowing,
     addRepayment: borrowingsHook.addRepayment,
