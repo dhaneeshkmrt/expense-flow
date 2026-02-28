@@ -97,7 +97,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
   }, []);
 
   // Action: Add Contact
-  const addContact = async (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => {
+  const addContact = async (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string, job?: string }) => {
     if (!tenantId) return;
     const newContact: Omit<BorrowingContact, 'id'> = {
       tenantId,
@@ -106,6 +106,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
       phone: data.phone || '',
       address: data.address || '',
       notes: data.notes || '',
+      job: data.job || '',
       creditScore: 750, // Initial Score
       createdAt: new Date().toISOString(),
     };
@@ -114,7 +115,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
   };
 
   // Action: Edit Contact
-  const editContact = async (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => {
+  const editContact = async (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string, job?: string }) => {
     if (!tenantId || !user) return;
     const contactRef = doc(db, 'borrowingContacts', id);
     const oldContact = contacts.find(c => c.id === id);
@@ -125,6 +126,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
       phone: data.phone || '',
       address: data.address || '',
       notes: data.notes || '',
+      job: data.job || '',
     };
 
     await updateDoc(contactRef, updateData);
@@ -159,6 +161,32 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     };
     const docRef = await addDoc(collection(db, 'borrowings'), newBorrowing);
     await logChange(tenantId, user.name, 'CREATE', 'borrowings', docRef.id, `Recorded ${data.type} of ${data.amount} from/to ${data.contactName}`, undefined, newBorrowing);
+  };
+
+  // Action: Edit Borrowing
+  const editBorrowing = async (id: string, data: { startDate: string, dueDate: string, notes?: string, amount?: number }) => {
+    if (!tenantId || !user) return;
+    const borrowingRef = doc(db, 'borrowings', id);
+    const oldBorrowing = borrowings.find(b => b.id === id);
+    if (!oldBorrowing) return;
+
+    // Logic: If amount changed, we need to adjust balance carefully
+    let newBalance = oldBorrowing.balance;
+    if (data.amount !== undefined && data.amount !== oldBorrowing.amount) {
+      const paidAlready = oldBorrowing.amount - oldBorrowing.balance;
+      newBalance = Math.max(0, data.amount - paidAlready);
+    }
+
+    const updateData = {
+      ...data,
+      balance: newBalance,
+      isClosed: newBalance <= 0,
+      ...(newBalance <= 0 && !oldBorrowing.isClosed && { closedAt: new Date().toISOString() }),
+      ...(newBalance > 0 && oldBorrowing.isClosed && { closedAt: null })
+    };
+
+    await updateDoc(borrowingRef, updateData);
+    await logChange(tenantId, user.name, 'UPDATE', 'borrowings', id, `Updated borrowing record: ${oldBorrowing.contactName}`, oldBorrowing, { ...oldBorrowing, ...updateData });
   };
 
   // Action: Add Repayment
@@ -230,6 +258,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     editContact,
     deleteContact,
     addBorrowing,
+    editBorrowing,
     addRepayment,
     deleteBorrowing,
     getBorrowingStatus

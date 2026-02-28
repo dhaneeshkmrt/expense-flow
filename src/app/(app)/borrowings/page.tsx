@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format, parseISO } from 'date-fns';
@@ -21,6 +21,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import type { Borrowing } from '@/lib/types';
 
 export default function BorrowingsPage() {
   const { borrowings, repayments, getBorrowingStatus, deleteBorrowing, loadingBorrowings } = useApp();
@@ -28,15 +29,20 @@ export default function BorrowingsPage() {
   const [borrowingDialogOpen, setBorrowingDialogOpen] = useState(false);
   const [repaymentDialogOpen, setRepaymentDialogOpen] = useState(false);
   const [selectedBorrowingId, setSelectedBorrowingId] = useState<string | null>(null);
+  const [editingBorrowing, setEditingBorrowing] = useState<Borrowing | null>(null);
 
   const stats = useMemo(() => {
-    const totalLent = borrowings.filter(b => b.type === 'Lent' && !b.isClosed).reduce((sum, b) => sum + b.balance, 0);
+    // Logic: Total Lent excludes "Written Off" records as they are technically losses
+    const totalLent = borrowings
+      .filter(b => b.type === 'Lent' && !b.isClosed && getBorrowingStatus(b) !== 'Written Off')
+      .reduce((sum, b) => sum + b.balance, 0);
+      
     const totalBorrowed = borrowings.filter(b => b.type === 'Borrowed' && !b.isClosed).reduce((sum, b) => sum + b.balance, 0);
     const activeLentCount = borrowings.filter(b => b.type === 'Lent' && !b.isClosed).length;
     const activeBorrowedCount = borrowings.filter(b => b.type === 'Borrowed' && !b.isClosed).length;
     
     return { totalLent, totalBorrowed, activeLentCount, activeBorrowedCount };
-  }, [borrowings]);
+  }, [borrowings, getBorrowingStatus]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -55,6 +61,11 @@ export default function BorrowingsPage() {
     setRepaymentDialogOpen(true);
   };
 
+  const handleEditBorrowing = (borrowing: Borrowing) => {
+    setEditingBorrowing(borrowing);
+    setBorrowingDialogOpen(true);
+  };
+
   if (loadingBorrowings) return <div className="p-8 text-center">Loading borrowings...</div>;
 
   return (
@@ -64,7 +75,7 @@ export default function BorrowingsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-primary">Borrowings Dashboard</h1>
           <p className="text-muted-foreground">Track money lent to and borrowed from your network.</p>
         </div>
-        <Button onClick={() => setBorrowingDialogOpen(true)}>
+        <Button onClick={() => { setEditingBorrowing(null); setBorrowingDialogOpen(true); }}>
           <PlusCircle className="mr-2 h-4 w-4" />
           Record Debt
         </Button>
@@ -80,7 +91,7 @@ export default function BorrowingsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-500">{formatCurrency(stats.totalLent)}</div>
-            <p className="text-xs text-muted-foreground">From {stats.activeLentCount} active lent records</p>
+            <p className="text-xs text-muted-foreground">Excludes written off losses</p>
           </CardContent>
         </Card>
         <Card>
@@ -177,6 +188,9 @@ export default function BorrowingsPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right space-x-2">
+                              <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               {!borrowing.isClosed && (
                                 <Button size="sm" variant="outline" onClick={() => handleLogRepayment(borrowing.id)}>
                                   Log Pay
@@ -204,7 +218,11 @@ export default function BorrowingsPage() {
         ))}
       </Tabs>
 
-      <BorrowingDialog open={borrowingDialogOpen} setOpen={setBorrowingDialogOpen} />
+      <BorrowingDialog 
+        open={borrowingDialogOpen} 
+        setOpen={setBorrowingDialogOpen} 
+        borrowing={editingBorrowing} 
+      />
       <RepaymentDialog 
         open={repaymentDialogOpen} 
         setOpen={setRepaymentDialogOpen} 

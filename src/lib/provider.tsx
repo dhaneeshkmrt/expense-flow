@@ -124,10 +124,11 @@ interface AppContextType {
   borrowingContacts: BorrowingContact[];
   borrowings: Borrowing[];
   borrowingRepayments: Repayment[];
-  addBorrowingContact: (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => Promise<void>;
-  editBorrowingContact: (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string }) => Promise<void>;
+  addBorrowingContact: (data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string, job?: string }) => Promise<void>;
+  editBorrowingContact: (id: string, data: { name: string, relationship: BorrowingRelationship, phone?: string, address?: string, notes?: string, job?: string }) => Promise<void>;
   deleteBorrowingContact: (id: string) => Promise<void>;
   addBorrowing: (data: Omit<Borrowing, 'id' | 'tenantId' | 'userId' | 'balance' | 'isClosed' | 'createdAt'>) => Promise<void>;
+  editBorrowing: (id: string, data: { startDate: string, dueDate: string, notes?: string, amount?: number }) => Promise<void>;
   addRepayment: (borrowingId: string, amount: number, date: string, notes?: string) => Promise<void>;
   deleteBorrowing: (id: string) => Promise<void>;
   getBorrowingStatus: (borrowing: Borrowing) => BorrowingStatus;
@@ -479,6 +480,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     editBorrowingContact: borrowingsHook.editContact,
     deleteBorrowingContact: borrowingsHook.deleteContact,
     addBorrowing: borrowingsHook.addBorrowing,
+    editBorrowing: borrowingsHook.editBorrowing,
     addRepayment: borrowingsHook.addRepayment,
     deleteBorrowing: borrowingsHook.deleteBorrowing,
     getBorrowingStatus: borrowingsHook.getBorrowingStatus,

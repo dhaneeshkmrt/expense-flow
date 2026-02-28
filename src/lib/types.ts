@@ -228,6 +228,7 @@ export type BorrowingContact = {
   phone?: string;
   address?: string;
   notes?: string;
+  job?: string;
   creditScore: number; // 300 - 900
   createdAt: string;
 };

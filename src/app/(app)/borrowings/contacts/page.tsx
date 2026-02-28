@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { UserPlus, Phone, MapPin, History, Trash2, Info, MessageSquare, Edit } from 'lucide-react';
+import { UserPlus, Phone, MapPin, History, Trash2, Info, MessageSquare, Edit, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { 
   Dialog, 
@@ -60,6 +60,7 @@ export default function ContactsPage() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
+  const [job, setJob] = useState('');
 
   // Pre-fill form if editing
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function ContactsPage() {
       setPhone(editingContact.phone || '');
       setAddress(editingContact.address || '');
       setNotes(editingContact.notes || '');
+      setJob(editingContact.job || '');
     } else {
       resetForm();
     }
@@ -83,7 +85,8 @@ export default function ContactsPage() {
           relationship,
           phone,
           address,
-          notes
+          notes,
+          job
         });
         toast({ title: 'Contact Updated', description: `${name}'s details have been saved.` });
       } else {
@@ -92,7 +95,8 @@ export default function ContactsPage() {
           relationship,
           phone,
           address,
-          notes
+          notes,
+          job
         });
         toast({ title: 'Contact Created', description: `${name} has been added.` });
       }
@@ -110,6 +114,7 @@ export default function ContactsPage() {
     setPhone('');
     setAddress('');
     setNotes('');
+    setJob('');
   };
 
   const handleDelete = async (id: string) => {
@@ -202,6 +207,7 @@ export default function ContactsPage() {
                 </div>
                 <CardTitle>{contact.name}</CardTitle>
                 <CardDescription className="flex flex-col gap-1 mt-2">
+                  {contact.job && <div className="flex items-center gap-2 font-medium text-foreground"><Briefcase className="h-3 w-3" /> {contact.job}</div>}
                   {contact.phone && <div className="flex items-center gap-2"><Phone className="h-3 w-3" /> {contact.phone}</div>}
                   {contact.address && <div className="flex items-center gap-2"><MapPin className="h-3 w-3" /> {contact.address}</div>}
                 </CardDescription>
@@ -278,6 +284,11 @@ export default function ContactsPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Job / Occupation (Optional)</label>
+              <Input value={job} onChange={e => setJob(e.target.value)} placeholder="e.g. Software Engineer" />
             </div>
 
             <div className="space-y-2">
