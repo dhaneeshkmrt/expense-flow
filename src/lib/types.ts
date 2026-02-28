@@ -1,4 +1,3 @@
-
 'use client';
 import type { ElementType } from 'react';
 
@@ -55,6 +54,10 @@ export type Settings = {
   locale: string;
   tenantId: string;
   dateInputStyle?: 'popup' | 'inline';
+  defaultCategory?: string;
+  defaultSubcategory?: string;
+  defaultMicrocategory?: string;
+  defaultPaidBy?: string;
 };
 
 export type TenantMember = {

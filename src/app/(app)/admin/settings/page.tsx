@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { toast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon, Download } from 'lucide-react';
+import { Skeleton } from '@/skeleton';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Sun, Moon, Download, Sparkles } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -60,6 +60,10 @@ const settingsSchema = z.object({
   currency: z.string().min(1, 'Currency symbol is required.'),
   locale: z.string().min(1, 'Country selection is required.'),
   dateInputStyle: z.enum(['popup', 'inline']),
+  defaultCategory: z.string().optional(),
+  defaultSubcategory: z.string().optional(),
+  defaultMicrocategory: z.string().optional(),
+  defaultPaidBy: z.string().optional(),
 });
 
 const tenantSchema = z.object({
@@ -88,7 +92,11 @@ const colorThemes = [
 ];
 
 export default function SettingsPage() {
-  const { settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, isMainTenantUser, generateCurrentMonthCsv, selectedMonth, selectedMonthName, selectedYear } = useApp();
+  const { 
+    settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, 
+    isMainTenantUser, generateCurrentMonthCsv, selectedMonth, selectedMonthName, 
+    selectedYear, categories 
+  } = useApp();
   const { theme, colorTheme, setColorTheme, toggleTheme } = useTheme();
   
   const [isTenantSubmitting, setIsTenantSubmitting] = useState(false);
@@ -121,7 +129,11 @@ export default function SettingsPage() {
       settingsForm.reset({
         currency: settings.currency,
         locale: settings.locale,
-        dateInputStyle: settings.dateInputStyle || 'popup'
+        dateInputStyle: settings.dateInputStyle || 'popup',
+        defaultCategory: settings.defaultCategory || '',
+        defaultSubcategory: settings.defaultSubcategory || '',
+        defaultMicrocategory: settings.defaultMicrocategory || '',
+        defaultPaidBy: settings.defaultPaidBy || '',
       });
     }
   }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
@@ -213,6 +225,23 @@ export default function SettingsPage() {
       document.body.removeChild(link);
     }
   }
+
+  // Hierarchical Default Value Logic
+  const watchedCategoryName = settingsForm.watch('defaultCategory');
+  const watchedSubcategoryName = settingsForm.watch('defaultSubcategory');
+
+  const availableSubcategories = useMemo(() => {
+    if (!watchedCategoryName) return [];
+    return categories.find(c => c.name === watchedCategoryName)?.subcategories || [];
+  }, [watchedCategoryName, categories]);
+
+  const availableMicrocategories = useMemo(() => {
+    if (!watchedSubcategoryName || !watchedCategoryName) return [];
+    return availableSubcategories.find(s => s.name === watchedSubcategoryName)?.microcategories || [];
+  }, [watchedSubcategoryName, availableSubcategories, watchedCategoryName]);
+
+  const currentTenant = useMemo(() => tenants.find(t => t.id === selectedTenantId), [tenants, selectedTenantId]);
+  const paidByOptions = useMemo(() => currentTenant?.paidByOptions || [], [currentTenant]);
 
   if (loadingSettings) {
     return (
@@ -341,7 +370,7 @@ export default function SettingsPage() {
                                     <FormControl>
                                       <Input readOnly {...field} />
                                     </FormControl>
-                                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(token)}>
+                                    <Button type="button" variant="outline" size="icon" onClick={() => handleCopyToClipboard(field.value)}>
                                         <Copy className="h-4 w-4"/>
                                     </Button>
                                     <Button type="button" variant="outline" size="icon" onClick={() => tenantForm.setValue(`members.${index}.secretToken`, generateSecretToken())}>
@@ -445,6 +474,129 @@ export default function SettingsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Transaction Defaults
+          </CardTitle>
+          <CardDescription>Pre-fill values for new transactions to save time.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...settingsForm}>
+            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={settingsForm.control}
+                  name="defaultCategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Category</FormLabel>
+                      <Select 
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          settingsForm.setValue('defaultSubcategory', '');
+                          settingsForm.setValue('defaultMicrocategory', '');
+                        }} 
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No default" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={settingsForm.control}
+                  name="defaultSubcategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Subcategory</FormLabel>
+                      <Select 
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          settingsForm.setValue('defaultMicrocategory', '');
+                        }} 
+                        value={field.value}
+                        disabled={!watchedCategoryName}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No default" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {availableSubcategories.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={settingsForm.control}
+                  name="defaultMicrocategory"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Micro-Subcategory</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value} disabled={availableMicrocategories.length === 0}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No default" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {availableMicrocategories.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={settingsForm.control}
+                  name="defaultPaidBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Paid By</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="No default" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {paidByOptions.map(p => <SelectItem key={p} value={p}>{p.toUpperCase()}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty}>
+                {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                Save Defaults
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 

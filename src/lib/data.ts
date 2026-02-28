@@ -1,4 +1,3 @@
-
 'use client';
 import type { Category, Settings } from '@/lib/types';
 import {
@@ -112,4 +111,11 @@ export const categories: Omit<Category, 'id' | 'tenantId'>[] = [
 ];
 
 
-export const defaultSettings: Omit<Settings, 'tenantId' | 'dateInputStyle'> = { currency: '₹', locale: 'en-IN' };
+export const defaultSettings: Omit<Settings, 'tenantId' | 'dateInputStyle'> = { 
+  currency: '₹', 
+  locale: 'en-IN',
+  defaultCategory: '',
+  defaultSubcategory: '',
+  defaultMicrocategory: '',
+  defaultPaidBy: ''
+};

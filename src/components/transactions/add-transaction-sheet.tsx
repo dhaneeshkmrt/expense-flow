@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
@@ -168,15 +167,16 @@ export default function AddTransactionSheet({
         });
         setValue(String(transaction.amount));
       } else {
+         // Apply defaults for new transaction
          form.reset({
             date: new Date(),
             time: format(new Date(), 'HH:mm'),
             description: '',
             amount: undefined,
-            category: '',
-            subcategory: '',
-            microcategory: '',
-            paidBy: paidByOptions[0] || '',
+            category: settings.defaultCategory && settings.defaultCategory !== 'none' ? settings.defaultCategory : '',
+            subcategory: settings.defaultSubcategory && settings.defaultSubcategory !== 'none' ? settings.defaultSubcategory : '',
+            microcategory: settings.defaultMicrocategory && settings.defaultMicrocategory !== 'none' ? settings.defaultMicrocategory : '',
+            paidBy: (settings.defaultPaidBy && settings.defaultPaidBy !== 'none') ? settings.defaultPaidBy : (paidByOptions[0] || ''),
             notes: '',
         });
         setValue(''); // Reset currency input
@@ -184,7 +184,7 @@ export default function AddTransactionSheet({
       }
       setDuplicateAmount([]);
     }
-  }, [open, isEditing, transaction, paidByOptions, form, setValue, inputRef]);
+  }, [open, isEditing, transaction, paidByOptions, form, setValue, inputRef, settings]);
 
   const selectedCategoryName = form.watch('category');
   const selectedSubcategoryName = form.watch('subcategory');
@@ -285,17 +285,17 @@ export default function AddTransactionSheet({
         form.reset();
         setOpen(false);
       } else {
-        // Reset form but keep date and time
-        const { date, time, paidBy } = form.getValues();
+        // Reset form but keep date and time, and apply defaults
+        const { date, time } = form.getValues();
         form.reset({
           date,
           time,
-          paidBy,
+          paidBy: (settings.defaultPaidBy && settings.defaultPaidBy !== 'none') ? settings.defaultPaidBy : (paidByOptions[0] || ''),
           description: '',
           amount: undefined,
-          category: '',
-          subcategory: '',
-          microcategory: '',
+          category: settings.defaultCategory && settings.defaultCategory !== 'none' ? settings.defaultCategory : '',
+          subcategory: settings.defaultSubcategory && settings.defaultSubcategory !== 'none' ? settings.defaultSubcategory : '',
+          microcategory: settings.defaultMicrocategory && settings.defaultMicrocategory !== 'none' ? settings.defaultMicrocategory : '',
           notes: '',
         });
         setValue('');
@@ -683,8 +683,3 @@ export default function AddTransactionSheet({
     </>
   );
 }
-
-    
-
-    
-
