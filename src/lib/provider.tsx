@@ -1,9 +1,28 @@
-
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 import type { User as AuthUser } from 'firebase/auth';
-import type { Transaction, Category, Subcategory, Microcategory, Settings, Tenant, User, BalanceSheet, VirtualAccount, AccountTransaction, MonthLock, MonthEndProcessResult, Reminder, ReminderInstance, AuditLog } from './types';
+import type { 
+  Transaction, 
+  Category, 
+  Subcategory, 
+  Microcategory, 
+  Settings, 
+  Tenant, 
+  User, 
+  BalanceSheet, 
+  VirtualAccount, 
+  AccountTransaction, 
+  MonthLock, 
+  MonthEndProcessResult, 
+  Reminder, 
+  ReminderInstance, 
+  AuditLog,
+  BorrowingContact,
+  Borrowing,
+  Repayment,
+  BorrowingStatus
+} from './types';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -17,6 +36,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useReminders } from '@/hooks/useReminders';
 import { useLogs } from '@/hooks/useLogs';
+import { useBorrowings } from '@/hooks/useBorrowings';
 import { generateReminderInstances } from './reminder-utils';
 import { getYear, getMonth, parseISO, format, startOfMonth } from 'date-fns';
 
@@ -100,6 +120,16 @@ interface AppContextType {
   deleteReminder: (reminderId: string) => Promise<void>;
   completeReminderInstance: (reminder: Reminder, dueDate: Date, transactionId: string) => Promise<void>;
   
+  // Borrowings
+  borrowingContacts: BorrowingContact[];
+  borrowings: Borrowing[];
+  borrowingRepayments: Repayment[];
+  addBorrowingContact: (name: string, email?: string, phone?: string) => Promise<void>;
+  addBorrowing: (data: Omit<Borrowing, 'id' | 'tenantId' | 'userId' | 'balance' | 'isClosed' | 'createdAt'>) => Promise<void>;
+  addRepayment: (borrowingId: string, amount: number, date: string, notes?: string) => Promise<void>;
+  deleteBorrowing: (id: string) => Promise<void>;
+  getBorrowingStatus: (borrowing: Borrowing) => BorrowingStatus;
+
   logs: AuditLog[];
   generateCurrentMonthCsv: () => string | null;
 
@@ -113,6 +143,7 @@ interface AppContextType {
   loadingProcessing: boolean;
   loadingReminders: boolean;
   loadingLogs: boolean;
+  loadingBorrowings: boolean;
   isCopyingBudget: boolean;
 }
 
@@ -136,6 +167,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const accountsHook = useAccounts(selectedTenantId, user);
   const remindersHook = useReminders(selectedTenantId, user);
   const logsHook = useLogs(selectedTenantId);
+  const borrowingsHook = useBorrowings(selectedTenantId, user);
 
   
   const availableYears = useMemo(() => {
@@ -168,7 +200,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const fetchBalanceSheet = useCallback(async (year: number, month: number): Promise<BalanceSheet | null> => {
     if (!selectedTenantId) return null;
-    const docId = `\${selectedTenantId}_\${year}-\${String(month + 1).padStart(2, '0')}`;
+    const docId = `${selectedTenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
     const docRef = doc(db, 'balanceSheets', docId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
@@ -184,7 +216,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ): Promise<BalanceSheet> => {
     if (!selectedTenantId) throw new Error('No tenant selected');
     
-    const docId = `\${selectedTenantId}_\${year}-\${String(month + 1).padStart(2, '0')}`;
+    const docId = `${selectedTenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
     const docRef = doc(db, 'balanceSheets', docId);
 
     const dataToSave: BalanceSheet = {
@@ -223,7 +255,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const debitTransaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'> = {
         date,
         time,
-        description: `Transfer to \${destinationCategory.name}`,
+        description: `Transfer to ${destinationCategory.name}`,
         amount: amount,
         category: sourceCategory.name,
         subcategory: transferSubCategory,
@@ -235,7 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const creditTransaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'> = {
         date,
         time,
-        description: `Transfer from \${sourceCategory.name}`,
+        description: `Transfer from ${sourceCategory.name}`,
         amount: -amount, // Negative amount to credit the destination budget
         category: destinationCategory.name,
         subcategory: transferSubCategory,
@@ -267,7 +299,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const transactionDate = parseISO(transaction.date);
     const year = getYear(transactionDate);
     const month = getMonth(transactionDate);
-    const monthYear = `\${year}-\${String(month + 1).padStart(2, '0')}`;
+    const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
     
     // Calculate current spending for this category in this month
     const monthTransactions = transactionsHook.transactions.filter(t => {
@@ -282,7 +314,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const overspend = Math.round((newSpent - category.budget) * 100) / 100;
     
     if (overspend > 0) {
-      console.log(`Category \${transaction.category} overspent by \${overspend}. Attempting withdrawal...`);
+      console.log(`Category ${transaction.category} overspent by ${overspend}. Attempting withdrawal...`);
       
       try {
         const withdrawalSuccessful = await accountsHook.handleOverspendWithdrawal(
@@ -293,9 +325,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
         
         if (withdrawalSuccessful) {
-          console.log(`Successfully withdrew \${overspend} from virtual account for \${category.name}`);
+          console.log(`Successfully withdrew ${overspend} from virtual account for ${category.name}`);
         } else {
-          console.log(`Could not withdraw from virtual account for \${category.name}. Insufficient balance or no account.`);
+          console.log(`Could not withdraw from virtual account for ${category.name}. Insufficient balance or no account.`);
         }
       } catch (error) {
         console.error(`Error handling overspend withdrawal:`, error);
@@ -310,7 +342,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const month = getMonth(transactionDate);
     
     if (accountsHook.isMonthLocked(year, month)) {
-      throw new Error(`Cannot add transaction to locked month: \${format(new Date(year, month), 'MMMM yyyy')}`);
+      throw new Error(`Cannot add transaction to locked month: ${format(new Date(year, month), 'MMMM yyyy')}`);
     }
     
     // Add the transaction first
@@ -330,7 +362,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const month = getMonth(transactionDate);
       
       if (accountsHook.isMonthLocked(year, month)) {
-        throw new Error(`Cannot add transaction to locked month: \${format(new Date(year, month), 'MMMM yyyy')}`);
+        throw new Error(`Cannot add transaction to locked month: ${format(new Date(year, month), 'MMMM yyyy')}`);
       }
     }
     
@@ -351,7 +383,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const month = getMonth(transactionDate);
     
     if (accountsHook.isMonthLocked(year, month)) {
-      throw new Error(`Cannot edit transaction in locked month: \${format(new Date(year, month), 'MMMM yyyy')}`);
+      throw new Error(`Cannot edit transaction in locked month: ${format(new Date(year, month), 'MMMM yyyy')}`);
     }
     
     return await transactionsHook.editTransaction(transactionId, transaction);
@@ -369,7 +401,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const month = getMonth(transactionDate);
     
     if (accountsHook.isMonthLocked(year, month)) {
-      throw new Error(`Cannot delete transaction from locked month: \${format(new Date(year, month), 'MMMM yyyy')}`);
+      throw new Error(`Cannot delete transaction from locked month: ${format(new Date(year, month), 'MMMM yyyy')}`);
     }
     
     return await transactionsHook.deleteTransaction(transactionId);
@@ -422,7 +454,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return Papa.unparse(dataToExport, { header: false });
   }, [tenantHook.selectedTenantId, tenantHook.tenants, categoriesHook.categories, selectedYear, selectedMonth, filteredTransactions]);
 
-  const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions || accountsHook.loading || logsHook.loadingLogs;
+  const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions || accountsHook.loading || logsHook.loadingLogs || borrowingsHook.loading;
 
   const contextValue = useMemo(() => ({
     user,
@@ -437,6 +469,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ...remindersHook,
     ...logsHook,
     
+    // Borrowings
+    borrowingContacts: borrowingsHook.contacts,
+    borrowings: borrowingsHook.borrowings,
+    borrowingRepayments: borrowingsHook.repayments,
+    addBorrowingContact: borrowingsHook.addContact,
+    addBorrowing: borrowingsHook.addBorrowing,
+    addRepayment: borrowingsHook.addRepayment,
+    deleteBorrowing: borrowingsHook.deleteBorrowing,
+    getBorrowingStatus: borrowingsHook.getBorrowingStatus,
+
     // Override transaction functions with lock-checking versions
     addTransaction: addTransactionWithLockCheck,
     addMultipleTransactions: addMultipleTransactionsWithLockCheck,
@@ -482,8 +524,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingProcessing: accountsHook.loadingProcessing,
     loadingReminders: remindersHook.loadingReminders,
     loadingLogs: logsHook.loadingLogs,
+    loadingBorrowings: borrowingsHook.loading,
     isCopyingBudget: categoriesHook.isCopyingBudget,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, logsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, logsHook, borrowingsHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
 
   return (
     <ThemeProvider>

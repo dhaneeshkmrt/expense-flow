@@ -10,6 +10,7 @@ export type FeatureAccess = {
   admin?: boolean;
   reminders?: boolean;
   logs?: boolean;
+  borrowings?: boolean;
 };
 
 export type Microcategory = {
@@ -214,4 +215,46 @@ export type AuditLog = {
   description: string;
   oldData?: string; // JSON string
   newData?: string; // JSON string
+};
+
+// Borrowings System Types
+export type BorrowingContact = {
+  id: string;
+  tenantId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  creditScore: number; // 300 - 900
+  createdAt: string;
+};
+
+export type BorrowingType = 'Lent' | 'Borrowed';
+
+export type BorrowingStatus = 'Active' | 'Overdue' | 'Sub-Standard' | 'NPA' | 'Written Off' | 'Settled';
+
+export type Borrowing = {
+  id: string;
+  tenantId: string;
+  userId: string;
+  contactId: string;
+  contactName: string;
+  type: BorrowingType;
+  amount: number;
+  balance: number;
+  startDate: string;
+  dueDate: string;
+  notes?: string;
+  isClosed: boolean;
+  closedAt?: string;
+  createdAt: string;
+};
+
+export type Repayment = {
+  id: string;
+  tenantId: string;
+  borrowingId: string;
+  amount: number;
+  date: string;
+  notes?: string;
+  createdAt: string;
 };

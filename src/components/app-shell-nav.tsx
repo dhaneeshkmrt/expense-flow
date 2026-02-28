@@ -6,7 +6,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing, ScrollText } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing, ScrollText, HandCoins } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -17,14 +17,14 @@ type NavItemWithHref = {
   href: string;
   label: string;
   icon: React.ComponentType;
-  featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin' | 'reminders' | 'logs'
+  featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin' | 'reminders' | 'logs' | 'borrowings'
 };
 
 type NavItemWithSubItems = {
   label: string;
   icon: React.ComponentType;
   subItems: NavItemWithHref[];
-  featureFlag?: 'calculators' | 'admin';
+  featureFlag?: 'calculators' | 'admin' | 'borrowings';
 };
 
 type NavItem = NavItemWithHref | NavItemWithSubItems;
@@ -42,6 +42,15 @@ const allNavItems: NavItem[] = [
   { href: '/transactions', label: 'Transactions', icon: ReceiptText },
   { href: '/categories', label: 'Categories', icon: Shapes },
   { href: '/reminders', label: 'Reminders', icon: BellRing, featureFlag: 'reminders' },
+  {
+      label: 'Borrowings',
+      icon: HandCoins,
+      featureFlag: 'borrowings',
+      subItems: [
+          { href: '/borrowings', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/borrowings/contacts', label: 'Contacts', icon: Building2 },
+      ]
+  },
   { href: '/accounts', label: 'Balance Sheet', icon: Landmark, featureFlag: 'balanceSheet' },
   { href: '/virtual-accounts', label: 'Virtual Accounts', icon: Wallet, featureFlag: 'virtualAccounts' },
   { href: '/yearly-report', label: 'Yearly Report', icon: Database, featureFlag: 'yearlyReport' },
@@ -77,6 +86,7 @@ export function AppShellNav() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
       admin: false,
       calculators: false,
+      borrowings: false,
   });
   const [isMounted, setIsMounted] = useState(false);
   const [navigatingTo, setNavigatingTo] = useState<string | null>(null);
@@ -86,6 +96,7 @@ export function AppShellNav() {
     setOpenSections({
         admin: pathname.startsWith('/admin'),
         calculators: pathname.startsWith('/calculators'),
+        borrowings: pathname.startsWith('/borrowings'),
     });
     setNavigatingTo(null);
   }, [pathname]);
@@ -107,7 +118,7 @@ export function AppShellNav() {
         if (hasSubItems(item)) {
           const filteredSubItems = item.subItems.filter(subItem => {
              if (!subItem.featureFlag) return true;
-             return userTenant.featureAccess?.[subItem.featureFlag] ?? false;
+             return userTenant.featureAccess?.[subItem.featureFlag] ?? true; // Default to true if not explicitly set
           });
           if (filteredSubItems.length > 0) {
             acc.push({ ...item, subItems: filteredSubItems });
