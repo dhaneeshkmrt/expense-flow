@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Info } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format, parseISO } from 'date-fns';
@@ -38,7 +38,7 @@ export default function BorrowingsPage() {
       .reduce((sum, b) => sum + b.balance, 0);
       
     const totalBorrowed = borrowings.filter(b => b.type === 'Borrowed' && !b.isClosed).reduce((sum, b) => sum + b.balance, 0);
-    const activeLentCount = borrowings.filter(b => b.type === 'Lent' && !b.isClosed).length;
+    const activeLentCount = borrowings.filter(b => b.type === 'Lent' && !b.isClosed && getBorrowingStatus(b) !== 'Written Off').length;
     const activeBorrowedCount = borrowings.filter(b => b.type === 'Borrowed' && !b.isClosed).length;
     
     return { totalLent, totalBorrowed, activeLentCount, activeBorrowedCount };
@@ -67,6 +67,84 @@ export default function BorrowingsPage() {
   };
 
   if (loadingBorrowings) return <div className="p-8 text-center">Loading borrowings...</div>;
+
+  const lentRecords = borrowings.filter(b => b.type === 'Lent' && getBorrowingStatus(b) !== 'Written Off');
+  const borrowedRecords = borrowings.filter(b => b.type === 'Borrowed');
+  const writtenOffRecords = borrowings.filter(b => b.type === 'Lent' && getBorrowingStatus(b) === 'Written Off');
+
+  const renderTable = (records: Borrowing[], emptyMessage: string) => (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Contact</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Balance</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {records.map((borrowing) => {
+              const status = getBorrowingStatus(borrowing);
+              const paidPercent = Math.round(((borrowing.amount - borrowing.balance) / borrowing.amount) * 100);
+              
+              return (
+                <TableRow key={borrowing.id} className={cn(borrowing.isClosed && "opacity-60", status === 'Written Off' && "opacity-50 grayscale bg-muted/20")}>
+                  <TableCell>
+                    <div className="font-medium">{borrowing.contactName}</div>
+                    <div className="text-xs text-muted-foreground">{format(parseISO(borrowing.startDate), 'dd MMM yyyy')}</div>
+                  </TableCell>
+                  <TableCell>{formatCurrency(borrowing.amount)}</TableCell>
+                  <TableCell>
+                    <div className="font-semibold text-primary">{formatCurrency(borrowing.balance)}</div>
+                    <div className="w-24 mt-1">
+                      <Progress value={paidPercent} className="h-1" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className={cn("text-sm", !borrowing.isClosed && !['Active', 'Settled'].includes(status) && "text-destructive font-semibold")}>
+                      {format(parseISO(borrowing.dueDate), 'dd MMM yyyy')}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={getStatusColor(status)}>
+                      {status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {!borrowing.isClosed && status !== 'Written Off' && (
+                      <Button size="sm" variant="outline" onClick={() => handleLogRepayment(borrowing.id)}>
+                        Log Pay
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteBorrowing(borrowing.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {records.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  <div className="flex flex-col items-center gap-2">
+                    <Info className="h-8 w-8 opacity-20" />
+                    <p>{emptyMessage}</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,85 +215,36 @@ export default function BorrowingsPage() {
       </div>
 
       <Tabs defaultValue="lent" className="w-full">
-        <TabsList>
-          <TabsTrigger value="lent">Money Lent (To Others)</TabsTrigger>
-          <TabsTrigger value="borrowed">Money Borrowed (By Me)</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-flex">
+          <TabsTrigger value="lent">Money Lent</TabsTrigger>
+          <TabsTrigger value="borrowed">Money Borrowed</TabsTrigger>
+          <TabsTrigger value="writtenoff" className="relative">
+            Written Off
+            {writtenOffRecords.length > 0 && (
+              <Badge className="ml-2 bg-destructive text-destructive-foreground hover:bg-destructive h-4 px-1 min-w-[1rem] flex items-center justify-center text-[10px]">
+                {writtenOffRecords.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
         
-        {['lent', 'borrowed'].map((tab) => (
-          <TabsContent key={tab} value={tab}>
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {borrowings
-                      .filter(b => b.type === (tab === 'lent' ? 'Lent' : 'Borrowed'))
-                      .map((borrowing) => {
-                        const status = getBorrowingStatus(borrowing);
-                        const paidPercent = Math.round(((borrowing.amount - borrowing.balance) / borrowing.amount) * 100);
-                        
-                        return (
-                          <TableRow key={borrowing.id} className={cn(borrowing.isClosed && "opacity-60")}>
-                            <TableCell>
-                              <div className="font-medium">{borrowing.contactName}</div>
-                              <div className="text-xs text-muted-foreground">{format(parseISO(borrowing.startDate), 'dd MMM yyyy')}</div>
-                            </TableCell>
-                            <TableCell>{formatCurrency(borrowing.amount)}</TableCell>
-                            <TableCell>
-                              <div className="font-semibold text-primary">{formatCurrency(borrowing.balance)}</div>
-                              <div className="w-24 mt-1">
-                                <Progress value={paidPercent} className="h-1" />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className={cn("text-sm", !borrowing.isClosed && status !== 'Active' && "text-destructive font-semibold")}>
-                                {format(parseISO(borrowing.dueDate), 'dd MMM yyyy')}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className={getStatusColor(status)}>
-                                {status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right space-x-2">
-                              <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              {!borrowing.isClosed && (
-                                <Button size="sm" variant="outline" onClick={() => handleLogRepayment(borrowing.id)}>
-                                  Log Pay
-                                </Button>
-                              )}
-                              <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deleteBorrowing(borrowing.id)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    {borrowings.filter(b => b.type === (tab === 'lent' ? 'Lent' : 'Borrowed')).length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                          No {tab} records found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+        <TabsContent value="lent">
+          {renderTable(lentRecords, "No active lending records found.")}
+        </TabsContent>
+
+        <TabsContent value="borrowed">
+          {renderTable(borrowedRecords, "No borrowing records found.")}
+        </TabsContent>
+
+        <TabsContent value="writtenoff">
+          <div className="mb-4">
+            <AlertCircle className="inline-block mr-2 h-4 w-4 text-destructive" />
+            <span className="text-sm text-muted-foreground italic">
+              These are debts older than 180 days past due date and are considered non-recoverable losses.
+            </span>
+          </div>
+          {renderTable(writtenOffRecords, "No written-off records found.")}
+        </TabsContent>
       </Tabs>
 
       <BorrowingDialog 
