@@ -170,7 +170,7 @@ export function useAccounts(tenantId: string | null, user: User | null) {
     if (account) {
       const accountRef = doc(db, 'virtualAccounts', accountId);
       batch.update(accountRef, {
-        currentBalance: account.currentBalance + amount,
+        currentBalance: increment(amount),
         updatedAt: new Date().toISOString()
       });
     }
@@ -211,27 +211,76 @@ export function useAccounts(tenantId: string | null, user: User | null) {
     await setDoc(doc(db, 'monthLocks', lockId), monthLock);
   }, [tenantId]);
 
-  // Unlock a month
+  // Unlock a month - REVISED: Reverts balances and deletes month-end transactions
   const unlockMonth = useCallback(async (year: number, month: number): Promise<void> => {
     if (!tenantId || !user) throw new Error('No tenant or user selected');
 
     const lockId = `${tenantId}_${year}-${String(month + 1).padStart(2, '0')}`;
-    const lockRef = doc(db, 'monthLocks', lockId);
-    const lockSnap = await getDoc(lockRef);
-    const oldData = lockSnap.exists() ? lockSnap.data() : undefined;
+    const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthName = format(new Date(year, month), 'MMMM yyyy');
+    
+    setLoadingProcessing(true);
+    
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. Find all month-end transactions for this specific month
+      const monthEndTxTypes: AccountTransactionType[] = ['surplus_transfer', 'overspend_deficit', 'zero_balance'];
+      const q = query(
+        collection(db, 'accountTransactions'),
+        where('tenantId', '==', tenantId),
+        where('monthYear', '==', monthYear),
+        where('type', 'in', monthEndTxTypes)
+      );
+      
+      const txSnapshot = await getDocs(q);
+      const revertedTxData: any[] = [];
+      
+      // 2. Revert balances and prepare to delete transactions
+      txSnapshot.forEach((txDoc) => {
+        const txData = txDoc.data() as AccountTransaction;
+        revertedTxData.push({ id: txDoc.id, ...txData });
+        
+        const accountRef = doc(db, 'virtualAccounts', txData.accountId);
+        
+        // Revert balance: subtract the amount that was originally added
+        // If it was a surplus (pos), subtract it. If deficit (neg), add it back (double negative).
+        batch.update(accountRef, {
+          currentBalance: increment(-txData.amount),
+          updatedAt: new Date().toISOString()
+        });
+        
+        // Queue deletion of the month-end transaction record
+        batch.delete(txDoc.ref);
+      });
+      
+      // 3. Delete the month lock record
+      const lockRef = doc(db, 'monthLocks', lockId);
+      const lockSnap = await getDoc(lockRef);
+      const oldLockData = lockSnap.exists() ? lockSnap.data() : undefined;
+      batch.delete(lockRef);
+      
+      // 4. Commit all changes at once
+      await batch.commit();
 
-    await deleteDoc(lockRef);
-
-    await logChange(
-      tenantId,
-      user.name,
-      'DELETE',
-      'monthLocks',
-      lockId,
-      `Unlocked month: ${format(new Date(year, month), 'MMMM yyyy')}`,
-      oldData,
-      undefined
-    );
+      // 5. Log the reversal in Audit Logs
+      await logChange(
+        tenantId,
+        user.name,
+        'DELETE',
+        'monthLocks/accountTransactions',
+        lockId,
+        `Unlocked month and reverted ${txSnapshot.size} transfers for ${monthName}`,
+        { lock: oldLockData, transactions: revertedTxData },
+        undefined
+      );
+      
+    } catch (error: any) {
+      console.error("Error during month unlock reversal:", error);
+      throw new Error(`Failed to unlock month completely: ${error.message}`);
+    } finally {
+      setLoadingProcessing(false);
+    }
   }, [tenantId, user]);
 
   // Process month-end (main function)
@@ -251,7 +300,7 @@ export function useAccounts(tenantId: string | null, user: User | null) {
       const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
       const monthName = format(new Date(year, month), 'MMM yyyy');
 
-      // 1. Get all existing month-end transactions for this month/year
+      // 1. Get all existing month-end transactions for this month/year (idempotency check)
       const monthEndTxTypes: AccountTransactionType[] = ['surplus_transfer', 'overspend_deficit', 'zero_balance'];
       const q = query(
         collection(db, 'accountTransactions'),

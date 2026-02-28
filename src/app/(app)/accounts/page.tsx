@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -200,8 +201,8 @@ export default function BalanceSheetPage() {
       await unlockMonth(selectedYear, selectedMonth);
       
       toast({
-        title: 'Month Unlocked',
-        description: `${selectedMonthName} ${selectedYear} has been unlocked for processing.`,
+        title: 'Month Unlocked & Reverted',
+        description: `${selectedMonthName} ${selectedYear} has been unlocked and surplus transfers have been reversed.`,
       });
     } catch (error: any) {
       toast({
@@ -387,7 +388,8 @@ export default function BalanceSheetPage() {
                       <Lock className="mr-2 h-4 w-4" />
                       Month Locked
                     </Button>
-                    <Button variant="outline" onClick={handleUnlockMonth}>
+                    <Button variant="outline" onClick={handleUnlockMonth} disabled={loadingProcessing}>
+                      {loadingProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Unlock Month
                     </Button>
                   </div>
