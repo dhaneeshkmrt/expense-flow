@@ -78,8 +78,8 @@
 
   /* Custom Thinner Scrollbar */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 6px;
+    height: 6px;
   }
 
   ::-webkit-scrollbar-track {
@@ -87,17 +87,20 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted) / 0.3);
+    background: hsl(var(--muted-foreground) / 0.4);
     border-radius: 10px;
+    border: 1px solid transparent;
+    background-clip: padding-box;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.5);
+    background: hsl(var(--primary) / 0.7);
+    background-clip: padding-box;
   }
 
   /* Firefox */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted) / 0.3) transparent;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
   }
 }
