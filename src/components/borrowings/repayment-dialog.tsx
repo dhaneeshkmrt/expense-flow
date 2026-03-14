@@ -89,13 +89,15 @@ export function RepaymentDialog({
               <CreditCard className="h-5 w-5" />
               Repayment Manager
             </DialogTitle>
-            <DialogDescription>
-              Record payments for <strong>{borrowing?.contactName}</strong>.
-              {borrowing && (
-                <div className="mt-1 font-bold text-lg text-primary">
-                  Outstanding: {formatCurrency(borrowing.balance)}
-                </div>
-              )}
+            <DialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                Record payments for <strong>{borrowing?.contactName}</strong>.
+                {borrowing && (
+                  <span className="mt-1 block font-bold text-lg text-primary">
+                    Outstanding: {formatCurrency(borrowing.balance)}
+                  </span>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
         </div>
