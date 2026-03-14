@@ -67,7 +67,6 @@ export function RepaymentDialog({
         description: `Successfully logged payment of ${formatCurrency(Number(amount))}.` 
       });
       
-      // If fully paid, the parent state will update. For now, just close.
       setOpen(false);
     } catch (e: any) {
       toast({ 
@@ -104,7 +103,7 @@ export function RepaymentDialog({
           </DialogHeader>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="px-6 mb-2">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="record" disabled={borrowing?.isClosed}>
@@ -118,59 +117,63 @@ export function RepaymentDialog({
             </TabsList>
           </div>
 
-          <TabsContent value="record" className="flex-1 overflow-y-auto px-6 focus-visible:ring-0 focus-visible:ring-offset-0">
+          <TabsContent value="record" className="flex-1 flex flex-col overflow-hidden px-6 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-0">
             {!borrowing?.isClosed ? (
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Payment Amount</label>
-                  <Input 
-                    type="number" 
-                    value={amount} 
-                    onChange={e => setAmount(e.target.value)} 
-                    placeholder="Enter amount..."
-                    max={borrowing?.balance}
-                    disabled={isSubmitting}
-                    className="text-lg h-12"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 flex flex-col py-2">
+                <div className="space-y-4 flex-grow">
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Date</label>
+                    <label className="text-sm font-medium">Payment Amount</label>
                     <Input 
-                      type="date" 
-                      value={date} 
-                      onChange={e => setDate(e.target.value)}
-                      disabled={isSubmitting} 
+                      type="number" 
+                      value={amount} 
+                      onChange={e => setAmount(e.target.value)} 
+                      placeholder="Enter amount..."
+                      max={borrowing?.balance}
+                      disabled={isSubmitting}
+                      className="text-lg h-12"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Notes</label>
-                    <Input 
-                      value={notes} 
-                      onChange={e => setNotes(e.target.value)} 
-                      placeholder="e.g. UPI, Cash"
-                      disabled={isSubmitting} 
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Date</label>
+                      <Input 
+                        type="date" 
+                        value={date} 
+                        onChange={e => setDate(e.target.value)}
+                        disabled={isSubmitting} 
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Notes</label>
+                      <Input 
+                        value={notes} 
+                        onChange={e => setNotes(e.target.value)} 
+                        placeholder="e.g. UPI, Cash"
+                        disabled={isSubmitting} 
+                      />
+                    </div>
                   </div>
                 </div>
-                <Button 
-                  onClick={handleSave} 
-                  className="w-full h-12 text-lg" 
-                  disabled={!amount || Number(amount) <= 0 || isSubmitting}
-                >
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Record Payment
-                </Button>
+                <div className="pb-4">
+                  <Button 
+                    onClick={handleSave} 
+                    className="w-full h-12 text-lg" 
+                    disabled={!amount || Number(amount) <= 0 || isSubmitting}
+                  >
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Record Payment
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="flex-1 flex items-center justify-center text-center py-12 text-muted-foreground">
                 This debt is fully settled. Switch to History to view details.
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="flex-1 flex flex-col overflow-hidden px-6 focus-visible:ring-0 focus-visible:ring-offset-0">
-            <ScrollArea className="flex-1 border rounded-md bg-muted/10">
+          <TabsContent value="history" className="flex-1 flex flex-col overflow-hidden px-6 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-0">
+            <ScrollArea className="flex-1 border rounded-md bg-muted/10 mb-4">
               <div className="p-4 space-y-3">
                 {history.length > 0 ? (
                   history.map((h) => (
