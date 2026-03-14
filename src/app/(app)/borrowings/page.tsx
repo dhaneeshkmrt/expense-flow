@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Info, History } from 'lucide-react';
+import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, History } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format, parseISO } from 'date-fns';
 import { BorrowingDialog } from '@/components/borrowings/borrowing-dialog';
-import { RepaymentDialog } from '@/components/borrowings/repayment-dialog';
+import { RepaymentHistoryDialog } from '@/components/borrowings/repayment-dialog';
+import { RecordPaymentDialog } from '@/components/borrowings/record-payment-dialog';
 import { Progress } from '@/components/ui/progress';
 import { 
   Table, 
@@ -24,10 +25,13 @@ import { cn } from '@/lib/utils';
 import type { Borrowing } from '@/lib/types';
 
 export default function BorrowingsPage() {
-  const { borrowings, repayments, getBorrowingStatus, deleteBorrowing, loadingBorrowings } = useApp();
+  const { borrowings, getBorrowingStatus, deleteBorrowing, loadingBorrowings } = useApp();
   const formatCurrency = useCurrencyFormatter();
+  
   const [borrowingDialogOpen, setBorrowingDialogOpen] = useState(false);
-  const [repaymentDialogOpen, setRepaymentDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  
   const [selectedBorrowingId, setSelectedBorrowingId] = useState<string | null>(null);
   const [editingBorrowing, setEditingBorrowing] = useState<Borrowing | null>(null);
 
@@ -56,9 +60,14 @@ export default function BorrowingsPage() {
     }
   };
 
-  const handleLogRepayment = (id: string) => {
+  const handleViewHistory = (id: string) => {
     setSelectedBorrowingId(id);
-    setRepaymentDialogOpen(true);
+    setHistoryDialogOpen(true);
+  };
+
+  const handleRecordPayment = (id: string) => {
+    setSelectedBorrowingId(id);
+    setRecordPaymentDialogOpen(true);
   };
 
   const handleEditBorrowing = (borrowing: Borrowing) => {
@@ -118,11 +127,11 @@ export default function BorrowingsPage() {
                     <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)} title="Edit Record">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleLogRepayment(borrowing.id)} title="View History & Pay">
+                    <Button size="sm" variant="ghost" onClick={() => handleViewHistory(borrowing.id)} title="View Payment History">
                       <History className="h-4 w-4" />
                     </Button>
                     {!borrowing.isClosed && status !== 'Written Off' && (
-                      <Button size="sm" variant="outline" onClick={() => handleLogRepayment(borrowing.id)}>
+                      <Button size="sm" variant="outline" onClick={() => handleRecordPayment(borrowing.id)}>
                         Log Pay
                       </Button>
                     )}
@@ -255,9 +264,16 @@ export default function BorrowingsPage() {
         setOpen={setBorrowingDialogOpen} 
         borrowing={editingBorrowing} 
       />
-      <RepaymentDialog 
-        open={repaymentDialogOpen} 
-        setOpen={setRepaymentDialogOpen} 
+      
+      <RepaymentHistoryDialog 
+        open={historyDialogOpen} 
+        setOpen={setHistoryDialogOpen} 
+        borrowingId={selectedBorrowingId} 
+      />
+
+      <RecordPaymentDialog 
+        open={recordPaymentDialogOpen} 
+        setOpen={setRecordPaymentDialogOpen} 
         borrowingId={selectedBorrowingId} 
       />
     </div>
