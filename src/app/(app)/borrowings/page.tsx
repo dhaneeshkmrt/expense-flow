@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Info } from 'lucide-react';
+import { PlusCircle, HandCoins, TrendingUp, TrendingDown, Clock, ShieldCheck, AlertCircle, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Info, History } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format, parseISO } from 'date-fns';
@@ -114,9 +114,12 @@ export default function BorrowingsPage() {
                       {status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)}>
+                  <TableCell className="text-right space-x-1">
+                    <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)} title="Edit Record">
                       <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleLogRepayment(borrowing.id)} title="View History & Pay">
+                      <History className="h-4 w-4" />
                     </Button>
                     {!borrowing.isClosed && status !== 'Written Off' && (
                       <Button size="sm" variant="outline" onClick={() => handleLogRepayment(borrowing.id)}>
@@ -134,7 +137,7 @@ export default function BorrowingsPage() {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   <div className="flex flex-col items-center gap-2">
-                    <Info className="h-8 w-8 opacity-20" />
+                    <HandCoins className="h-8 w-8 opacity-20" />
                     <p>{emptyMessage}</p>
                   </div>
                 </TableCell>
