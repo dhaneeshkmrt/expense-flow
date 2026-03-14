@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 import type { Borrowing } from '@/lib/types';
 
 export default function BorrowingsPage() {
-  const { borrowings, getBorrowingStatus, deleteBorrowing, loadingBorrowings } = useApp();
+  const { borrowings, getBorrowingStatus, deleteBorrowing, loadingBorrowings, borrowingRepayments } = useApp();
   const formatCurrency = useCurrencyFormatter();
   
   const [borrowingDialogOpen, setBorrowingDialogOpen] = useState(false);
@@ -99,6 +99,7 @@ export default function BorrowingsPage() {
             {records.map((borrowing) => {
               const status = getBorrowingStatus(borrowing);
               const paidPercent = Math.round(((borrowing.amount - borrowing.balance) / borrowing.amount) * 100);
+              const hasHistory = borrowingRepayments.some(r => r.borrowingId === borrowing.id);
               
               return (
                 <TableRow key={borrowing.id} className={cn(borrowing.isClosed && "opacity-60", status === 'Written Off' && "opacity-50 grayscale bg-muted/20")}>
@@ -127,9 +128,11 @@ export default function BorrowingsPage() {
                     <Button size="sm" variant="ghost" onClick={() => handleEditBorrowing(borrowing)} title="Edit Record">
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleViewHistory(borrowing.id)} title="View Payment History">
-                      <History className="h-4 w-4" />
-                    </Button>
+                    {hasHistory && (
+                      <Button size="sm" variant="ghost" onClick={() => handleViewHistory(borrowing.id)} title="View Payment History">
+                        <History className="h-4 w-4" />
+                      </Button>
+                    )}
                     {!borrowing.isClosed && status !== 'Written Off' && (
                       <Button size="sm" variant="outline" onClick={() => handleRecordPayment(borrowing.id)}>
                         Log Pay
