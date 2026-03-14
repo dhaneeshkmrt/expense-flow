@@ -17,7 +17,7 @@ import { format, parseISO } from 'date-fns';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { History, Loader2 } from 'lucide-react';
+import { History, Loader2, CreditCard } from 'lucide-react';
 
 export function RepaymentDialog({ 
   open, 
@@ -82,23 +82,28 @@ export function RepaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={(val) => { if(!isSubmitting) setOpen(val); }}>
-      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Repayment Manager</DialogTitle>
-          <DialogDescription>
-            Record payments for <strong>{borrowing?.contactName}</strong>.
-            {borrowing && (
-              <div className="mt-1 font-semibold text-primary">
-                Current outstanding: {formatCurrency(borrowing.balance)}
-              </div>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-md h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <div className="p-6 pb-2">
+          <DialogHeader>
+            <DialogTitle className="text-primary flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Repayment Manager
+            </DialogTitle>
+            <DialogDescription>
+              Record payments for <strong>{borrowing?.contactName}</strong>.
+              {borrowing && (
+                <div className="mt-1 font-bold text-lg text-primary">
+                  Outstanding: {formatCurrency(borrowing.balance)}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-4 py-2 flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden px-6">
           {/* Form Section */}
           {!borrowing?.isClosed && (
-            <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+            <div className="space-y-4 p-4 border rounded-lg bg-muted/30 shrink-0">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Payment Amount</label>
                 <Input 
@@ -142,40 +147,51 @@ export function RepaymentDialog({
           )}
 
           {/* History Section */}
-          <div className="flex flex-col flex-1 min-h-[200px]">
-            <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+          <div className="flex flex-col flex-1 overflow-hidden border rounded-lg mb-4">
+            <div className="flex items-center gap-2 text-sm font-semibold p-3 border-b bg-muted/20">
               <History className="h-4 w-4" />
               Repayment History
             </div>
-            <ScrollArea className="flex-1 rounded-md border p-2">
-              {history.length > 0 ? (
-                <div className="space-y-3">
-                  {history.map((h) => (
-                    <div key={h.id} className="text-sm p-2 rounded bg-muted/50">
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-green-600">+{formatCurrency(h.amount)}</span>
-                        <span className="text-[10px] text-muted-foreground">{format(parseISO(h.date), 'dd MMM yyyy')}</span>
+            <ScrollArea className="flex-1">
+              <div className="p-3">
+                {history.length > 0 ? (
+                  <div className="space-y-3">
+                    {history.map((h) => (
+                      <div key={h.id} className="text-sm p-3 rounded bg-muted/50 border border-border/50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-bold text-green-600">+{formatCurrency(h.amount)}</span>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {format(parseISO(h.date), 'dd MMM yyyy')}
+                            </div>
+                          </div>
+                          {h.notes && (
+                            <div className="text-[11px] text-muted-foreground italic max-w-[60%] text-right bg-background/50 px-2 py-1 rounded">
+                              {h.notes}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      {h.notes && (
-                        <p className="text-[11px] text-muted-foreground italic mt-1">{h.notes}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">
-                  No repayments recorded yet.
-                </div>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground text-sm flex flex-col items-center gap-2">
+                    <History className="h-8 w-8 opacity-10" />
+                    <p>No repayments recorded yet.</p>
+                  </div>
+                )}
+              </div>
             </ScrollArea>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
-            Close
-          </Button>
-        </DialogFooter>
+        <div className="p-6 pt-2 border-t">
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting} className="w-full">
+              Close Manager
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
