@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI image generation and editing agent.
@@ -29,7 +30,13 @@ const GenerateImageOutputSchema = z.object({
 export type GenerateImageOutput = z.infer<typeof GenerateImageOutputSchema>;
 
 export async function generateImage(input: GenerateImageInput): Promise<GenerateImageOutput> {
-  return generateImageFlow(input);
+  try {
+    return await generateImageFlow(input);
+  } catch (error: any) {
+    console.error('AI image generation failed:', error);
+    // Propagate the specific error message (like 403 Forbidden) so the UI Toast can display it
+    throw new Error(error.message || 'Image generation failed. Please check your API key.');
+  }
 }
 
 const generateImageFlow = ai.defineFlow(

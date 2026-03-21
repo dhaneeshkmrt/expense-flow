@@ -1,3 +1,4 @@
+
 // This is a server-side file!
 'use server';
 
@@ -42,7 +43,12 @@ export type SuggestTransactionCategoriesOutput = z.infer<
 export async function suggestTransactionCategories(
   input: SuggestTransactionCategoriesInput
 ): Promise<SuggestTransactionCategoriesOutput> {
-  return suggestTransactionCategoriesFlow(input);
+  try {
+    return await suggestTransactionCategoriesFlow(input);
+  } catch (error) {
+    console.error('AI categorization failed (check your API key):', error);
+    return { suggestedCategory: '', suggestedSubcategory: '' };
+  }
 }
 
 const prompt = ai.definePrompt({
@@ -70,7 +76,12 @@ const suggestTransactionCategoriesFlow = ai.defineFlow(
     outputSchema: SuggestTransactionCategoriesOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+      const {output} = await prompt(input);
+      return output!;
+    } catch (error) {
+      // Re-throw so the wrapper function can catch it and return a safe default
+      throw error;
+    }
   }
 );
