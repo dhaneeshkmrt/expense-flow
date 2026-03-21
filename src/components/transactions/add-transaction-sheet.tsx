@@ -143,6 +143,36 @@ export default function AddTransactionSheet({
     onValueChange,
   });
 
+  // Track the expression we've already synced to avoid infinite loops or overwriting manual edits
+  const lastSyncedExpression = useRef<string | null>(null);
+
+  // Synchronize math expression to description field in real-time
+  useEffect(() => {
+    if (lastExpression && lastExpression !== lastSyncedExpression.current) {
+      const currentDesc = form.getValues('description');
+      
+      // Regex to find an existing expression in parentheses at the end of the string
+      const expressionRegex = /\s*\(([^)]*[+\-*/][^)]*)\)$/;
+      const match = currentDesc.match(expressionRegex);
+      
+      let newDesc = currentDesc;
+      if (match) {
+        // If an expression is already there, replace it with the latest one
+        newDesc = currentDesc.replace(expressionRegex, ` (${lastExpression})`);
+      } else {
+        // If no expression is there, append it
+        newDesc = `${currentDesc} (${lastExpression})`.trim();
+      }
+
+      if (newDesc !== currentDesc) {
+        form.setValue('description', newDesc, { shouldDirty: true, shouldValidate: true });
+      }
+      lastSyncedExpression.current = lastExpression;
+    } else if (!lastExpression) {
+      lastSyncedExpression.current = null;
+    }
+  }, [lastExpression, form]);
+
   // Check if the selected date is in a locked month
   const selectedDate = form.watch('date');
   const isSelectedMonthLocked = useMemo(() => {
@@ -159,6 +189,7 @@ export default function AddTransactionSheet({
 
   useEffect(() => {
     if (open) {
+      lastSyncedExpression.current = null;
       if (isEditing && transaction) {
         form.reset({
           ...transaction,
@@ -263,14 +294,8 @@ export default function AddTransactionSheet({
   const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
     setIsSubmitting(true);
     
-    // Auto-append expression to description if one was used
-    const finalDescription = lastExpression 
-      ? `${data.description} (${lastExpression})`.trim()
-      : data.description;
-
     const submissionData = {
         ...data,
-        description: finalDescription,
         date: format(data.date, 'yyyy-MM-dd'),
         microcategory: data.microcategory || '',
     };
@@ -280,13 +305,13 @@ export default function AddTransactionSheet({
           await editTransaction(transaction.id, submissionData);
           toast({
               title: 'Transaction Updated',
-              description: `Successfully updated "${finalDescription}".`,
+              description: `Successfully updated "${data.description}".`,
           });
       } else {
           await addTransaction(submissionData);
           toast({
               title: 'Transaction Added',
-              description: `Successfully added "${finalDescription}".`,
+              description: `Successfully added "${data.description}".`,
           });
       }
 
@@ -310,6 +335,7 @@ export default function AddTransactionSheet({
         setValue('');
         inputRef.current?.focus();
         setDuplicateAmount([]);
+        lastSyncedExpression.current = null;
       }
     } catch(error: any) {
         toast({
