@@ -133,6 +133,7 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
   const [formattedValue, setFormattedValue] = useState<string>('');
   const [calculationResult, setCalculationResult] = useState<string | null>(null);
   const [amountInWords, setAmountInWords] = useState<string | null>(null);
+  const [lastExpression, setLastExpression] = useState<string | null>(null);
 
   const format = useCallback((num: number): string => {
       if (isNaN(num)) return '';
@@ -155,11 +156,13 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
       if (result !== null && isFinite(result)) {
         numericResult = result;
         setCalculationResult(format(result));
+        setLastExpression(value.trim());
       } else {
         setCalculationResult(null);
       }
     } else {
       setCalculationResult(null);
+      setLastExpression(null);
       const { decimal, group } = getLocaleParts();
       const cleanValue = value.replace(new RegExp(`\\${group}`, 'g'), '').replace(decimal, '.');
       const parsedValue = parseFloat(cleanValue);
@@ -223,5 +226,6 @@ export function useCurrencyInput({ onValueChange }: UseCurrencyInputProps) {
     calculationResult,
     setValue,
     amountInWords,
+    lastExpression,
   };
 }

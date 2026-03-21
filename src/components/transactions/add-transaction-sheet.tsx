@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
@@ -137,6 +138,7 @@ export default function AddTransactionSheet({
     calculationResult,
     setValue,
     amountInWords,
+    lastExpression,
   } = useCurrencyInput({
     onValueChange,
   });
@@ -260,8 +262,15 @@ export default function AddTransactionSheet({
 
   const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
     setIsSubmitting(true);
+    
+    // Auto-append expression to description if one was used
+    const finalDescription = lastExpression 
+      ? `${data.description} (${lastExpression})`.trim()
+      : data.description;
+
     const submissionData = {
         ...data,
+        description: finalDescription,
         date: format(data.date, 'yyyy-MM-dd'),
         microcategory: data.microcategory || '',
     };
@@ -271,13 +280,13 @@ export default function AddTransactionSheet({
           await editTransaction(transaction.id, submissionData);
           toast({
               title: 'Transaction Updated',
-              description: `Successfully updated "${data.description}".`,
+              description: `Successfully updated "${finalDescription}".`,
           });
       } else {
           await addTransaction(submissionData);
           toast({
               title: 'Transaction Added',
-              description: `Successfully added "${data.description}".`,
+              description: `Successfully added "${finalDescription}".`,
           });
       }
 
