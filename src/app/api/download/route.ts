@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkDownloadRateLimit } from "@/lib/rate-limiter";
 
 export const runtime = "nodejs";
 
@@ -12,7 +13,7 @@ const ALLOWED_ORIGINS = [
 function getCorsHeaders(origin?: string) {
   const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "GET, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-User-Id",
     Vary: "Origin",
   };
 
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest) {
   if (!targetUrl) {
     return NextResponse.json(
       { error: "Missing required 'url' query parameter." },
-      { status: 400 }
+      { status: 400, headers: getCorsHeaders(request.headers.get("origin") || undefined) }
     );
   }
 
@@ -56,13 +57,50 @@ export async function GET(request: NextRequest) {
   try {
     parsedUrl = new URL(targetUrl);
   } catch {
-    return NextResponse.json({ error: "Invalid URL provided." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid URL provided." },
+      { status: 400, headers: getCorsHeaders(request.headers.get("origin") || undefined) }
+    );
   }
 
   if (!["http:", "https:"].includes(parsedUrl.protocol)) {
     return NextResponse.json(
       { error: "Only http and https URLs are supported." },
-      { status: 400 }
+      { status: 400, headers: getCorsHeaders(request.headers.get("origin") || undefined) }
+    );
+  }
+
+  // Rate Limiting Check
+  const rateLimit = await checkDownloadRateLimit(request);
+  const corsHeaders = getCorsHeaders(request.headers.get("origin") || undefined);
+
+  const rateLimitHeaders: Record<string, string> = {
+    ...corsHeaders,
+    "X-RateLimit-Limit-User": rateLimit.userLimit.toString(),
+    "X-RateLimit-Remaining-User": rateLimit.userRemaining.toString(),
+    "X-RateLimit-Limit-Global": rateLimit.globalLimit.toString(),
+    "X-RateLimit-Remaining-Global": rateLimit.globalRemaining.toString(),
+  };
+
+  if (!rateLimit.allowed) {
+    const isUserLimit = rateLimit.reason === "user_limit_exceeded";
+    const errorMessage = isUserLimit
+      ? `Rate limit exceeded. Maximum ${rateLimit.userLimit} downloads allowed per user per day.`
+      : `Global daily rate limit reached. Maximum ${rateLimit.globalLimit} downloads allowed per day overall.`;
+
+    return NextResponse.json(
+      {
+        error: errorMessage,
+        limitType: rateLimit.reason,
+        resetInSeconds: rateLimit.resetInSeconds,
+      },
+      {
+        status: 429,
+        headers: {
+          ...rateLimitHeaders,
+          "Retry-After": rateLimit.resetInSeconds.toString(),
+        },
+      }
     );
   }
 
@@ -78,7 +116,7 @@ export async function GET(request: NextRequest) {
     if (!upstreamResponse.ok) {
       return NextResponse.json(
         { error: `Remote file request failed with status ${upstreamResponse.status}.` },
-        { status: 502 }
+        { status: 502, headers: rateLimitHeaders }
       );
     }
 
@@ -87,27 +125,28 @@ export async function GET(request: NextRequest) {
       "application/octet-stream";
 
     const filename = getFilenameFromUrl(parsedUrl);
-    const headers = new Headers({
+    const responseHeaders = new Headers({
       "Content-Type": contentType,
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
-      ...getCorsHeaders(request.headers.get("origin") || undefined),
+      ...rateLimitHeaders,
     });
 
     const contentLength = upstreamResponse.headers.get("content-length");
     if (contentLength) {
-      headers.set("Content-Length", contentLength);
+      responseHeaders.set("Content-Length", contentLength);
     }
 
     return new NextResponse(upstreamResponse.body, {
       status: 200,
-      headers,
+      headers: responseHeaders,
     });
   } catch (error) {
     console.error("Download proxy failed:", error);
     return NextResponse.json(
       { error: "Unable to download the requested file." },
-      { status: 502 }
+      { status: 502, headers: rateLimitHeaders }
     );
   }
 }
+
