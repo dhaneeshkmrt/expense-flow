@@ -13,10 +13,25 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { useMemo, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Calendar } from '../ui/calendar';
+import { CalendarIcon, Trash2 } from 'lucide-react';
+import { Button } from '../ui/button';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../ui/alert-dialog';
 
 interface DayTransactionsDialogProps {
   open: boolean;
@@ -34,10 +49,13 @@ export default function DayTransactionsDialog({
   date,
   transactions,
 }: DayTransactionsDialogProps) {
-  const { categories } = useApp();
+  const { categories, editTransaction, deleteTransaction } = useApp();
+  const { toast } = useToast();
   const formatCurrency = useCurrencyFormatter();
   const [sortKey, setSortKey] = useState<SortKey>('time');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [editingDateTxId, setEditingDateTxId] = useState<string | null>(null);
+  const [transactionToDelete, setTransactionToDelete] = useState<{id: string; description: string; amount: number} | null>(null);
 
   const getCategoryIcon = (categoryName: string) => {
     const category = categories.find(c => c.name === categoryName);
@@ -64,8 +82,9 @@ export default function DayTransactionsDialog({
 
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Transactions for {date ? format(date, 'PPP') : ''}</DialogTitle>
            <div className="flex justify-between items-center pt-2">
@@ -89,37 +108,142 @@ export default function DayTransactionsDialog({
             </Select>
           </div>
         </DialogHeader>
-        <ScrollArea className="h-[400px] pr-4">
-          <div className="space-y-4 py-4">
-            {sortedTransactions.length > 0 ? (
-              sortedTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center">
-                  <Avatar className="h-9 w-9">
-                    <AvatarFallback className="bg-secondary text-secondary-foreground">
-                      {getCategoryIcon(transaction.category)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="ml-4 space-y-1">
-                    <p className="text-sm font-medium leading-none">{transaction.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                        {transaction.category} / {transaction.subcategory}
-                    </p>
-                  </div>
-                  <div className="ml-auto font-medium text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <span>{formatCurrency(transaction.amount)}</span>
-                      <Badge variant="outline" className="font-mono">{transaction.paidBy.toUpperCase()}</Badge>
+        <ScrollArea className="max-h-[65vh] h-[420px] pr-2 sm:pr-4">
+          <div className="overflow-x-auto pb-2">
+            <div className="min-w-[640px] space-y-4 py-4">
+              {sortedTransactions.length > 0 ? (
+                sortedTransactions.map((transaction) => (
+                  <div key={transaction.id} className="flex items-center justify-between gap-4 py-2.5 border-b border-border/40 last:border-0">
+                    <div className="flex items-start gap-3 flex-1 min-w-0 pr-2">
+                      <Avatar className="h-9 w-9 shrink-0 mt-0.5">
+                        <AvatarFallback className="bg-secondary text-secondary-foreground">
+                          {getCategoryIcon(transaction.category)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground leading-snug truncate" title={transaction.description}>{transaction.description}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground/80">{transaction.category}</span>
+                          {transaction.subcategory && <span>&bull; {transaction.subcategory}</span>}
+                          {transaction.microcategory && <span>&bull; {transaction.microcategory}</span>}
+                          {transaction.notes && <span className="italic text-muted-foreground/80">({transaction.notes})</span>}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">{transaction.time}</p>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-sm font-semibold">{formatCurrency(transaction.amount)}</span>
+                          <Badge variant="outline" className="font-mono text-xs uppercase">{transaction.paidBy}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{transaction.time}</p>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <Popover open={editingDateTxId === transaction.id} onOpenChange={(isOpen) => setEditingDateTxId(isOpen ? transaction.id : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs font-normal gap-1 hover:border-primary hover:text-primary shrink-0"
+                              title={`Click to change date (Current: ${format(parseISO(transaction.date), 'MMM dd, yyyy')})`}
+                            >
+                              <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+                              <span>{format(parseISO(transaction.date), 'MMM dd')}</span>
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0 z-[9999]" align="end" side="bottom">
+                            <Calendar
+                              mode="single"
+                              selected={parseISO(transaction.date)}
+                              onSelect={async (newDate) => {
+                                if (!newDate) return;
+                                const newDateStr = format(newDate, 'yyyy-MM-dd');
+                                setEditingDateTxId(null);
+                                if (newDateStr === transaction.date) return;
+                                try {
+                                  await editTransaction(transaction.id, {
+                                    date: newDateStr,
+                                    time: transaction.time || '12:00',
+                                    description: transaction.description,
+                                    amount: transaction.amount,
+                                    category: transaction.category,
+                                    subcategory: transaction.subcategory,
+                                    microcategory: transaction.microcategory || '',
+                                    paidBy: transaction.paidBy,
+                                    notes: transaction.notes || '',
+                                  });
+                                  toast({
+                                    title: 'Date Updated',
+                                    description: `Moved "${transaction.description}" to ${format(newDate, 'PPP')}.`,
+                                  });
+                                } catch (error: any) {
+                                  toast({
+                                    title: 'Update Failed',
+                                    description: error.message || 'Could not update transaction date.',
+                                    variant: 'destructive',
+                                  });
+                                }
+                              }}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => setTransactionToDelete({ id: transaction.id, description: transaction.description, amount: transaction.amount })}
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-center text-muted-foreground">No transactions for this day.</p>
-            )}
+                ))
+              ) : (
+                <p className="text-center text-muted-foreground">No transactions for this day.</p>
+              )}
+            </div>
           </div>
         </ScrollArea>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={!!transactionToDelete} onOpenChange={(open) => { if (!open) setTransactionToDelete(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Transaction?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete <strong>&ldquo;{transactionToDelete?.description}&rdquo;</strong> ({transactionToDelete ? formatCurrency(transactionToDelete.amount) : ''})? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={async () => {
+              if (!transactionToDelete) return;
+              try {
+                await deleteTransaction(transactionToDelete.id);
+                toast({ title: 'Transaction Deleted', description: `"${transactionToDelete.description}" has been removed.` });
+              } catch (error: any) {
+                toast({ title: 'Delete Failed', description: error.message, variant: 'destructive' });
+              } finally {
+                setTransactionToDelete(null);
+              }
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
