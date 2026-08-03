@@ -256,6 +256,32 @@ export default function SettingsPage() {
     }
   }
 
+  const handleCopyCsv = async () => {
+    const csv = generateCurrentMonthCsv();
+    if (!csv) {
+      toast({
+        title: 'No Data',
+        description: `No transactions or budget data to export for ${selectedMonthName} ${selectedYear}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(csv);
+      toast({
+        title: 'Copied!',
+        description: `CSV data for ${selectedMonthName} ${selectedYear} copied to clipboard.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Copy Failed',
+        description: 'Failed to copy CSV data to clipboard.',
+        variant: 'destructive',
+      });
+    }
+  }
+
   // Hierarchical Default Value Logic
   const watchedCategoryName = settingsForm.watch('defaultCategory');
   const watchedSubcategoryName = settingsForm.watch('defaultSubcategory');
@@ -440,19 +466,25 @@ export default function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Data Export</CardTitle>
-          <CardDescription>Download your financial data.</CardDescription>
+          <CardDescription>Download or copy your financial data.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <h3 className="font-medium">Monthly Transactions CSV</h3>
             <p className="text-sm text-muted-foreground">
-              Download all transactions and budget data for {selectedMonthName} {selectedYear} as a CSV file.
+              Download all transactions and budget data for {selectedMonthName} {selectedYear} as a CSV file or copy it to clipboard for Google Sheets.
             </p>
           </div>
-          <Button onClick={handleDownload}>
-            <Download className="mr-2" />
-            Download CSV for {selectedMonthName}
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Download CSV for {selectedMonthName}
+            </Button>
+            <Button variant="outline" onClick={handleCopyCsv}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copy CSV to Clipboard
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

@@ -56,6 +56,7 @@ import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
+import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 
 declare module '@tanstack/react-table' {
   interface FilterFns {
@@ -202,6 +203,17 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
   const hasAmountColumn = hasColumn('amount');
   const hasUserIdColumn = hasColumn('userId');
   const hasOperationTypeColumn = hasColumn('operationType');
+
+  const formatCurrency = useCurrencyFormatter();
+
+  const filteredTotalAmount = React.useMemo(() => {
+    if (!hasAmountColumn) return 0;
+    return table.getFilteredRowModel().rows.reduce((sum, row) => {
+      const val = row.getValue('amount');
+      const numericVal = typeof val === 'number' ? val : parseFloat(val as any);
+      return sum + (isNaN(numericVal) ? 0 : numericVal);
+    }, 0);
+  }, [table.getFilteredRowModel().rows, hasAmountColumn]);
 
   const users = React.useMemo(() => {
     if (!showFilters || !hasUserIdColumn) return [];
@@ -467,6 +479,12 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
                 <Label htmlFor="duplicates-mode">Find Duplicates</Label>
               </div>
             )}
+            {hasAmountColumn && (
+              <div className="ml-auto flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium shadow-sm">
+                <span className="text-muted-foreground">Filtered Total:</span>
+                <span className="text-primary font-bold">{formatCurrency(filteredTotalAmount)}</span>
+              </div>
+            )}
         </div>
        )}
       <div className="rounded-md border">
@@ -512,9 +530,14 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
-          {table.getFilteredRowModel().rows.length} row(s) found.
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+        <div className="flex-1 text-sm text-muted-foreground flex items-center gap-3">
+          <span>{table.getFilteredRowModel().rows.length} row(s) found.</span>
+          {hasAmountColumn && (
+            <span className="font-semibold text-foreground border-l pl-3 border-border">
+              Total: <span className="text-primary font-bold">{formatCurrency(filteredTotalAmount)}</span>
+            </span>
+          )}
         </div>
         <div className="flex items-center space-x-2">
             <p className="text-sm font-medium">Rows per page</p>
