@@ -202,7 +202,7 @@ export function ReminderDialog({ open, setOpen, reminderId }: { open: boolean, s
             )}/>
              {microcategoryOptions.length > 0 && (
                  <FormField name="microcategory" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Micro-category (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select micro-category..."/></SelectTrigger></FormControl><SelectContent>{microcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Micro Category (Optional)</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select micro category..."/></SelectTrigger></FormControl><SelectContent>{microcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                 )}/>
             )}
             <FormField name="paidBy" control={form.control} render={({ field }) => (

@@ -85,6 +85,9 @@ interface AppContextType {
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
+  reorderCategories: (orderedIds: string[]) => Promise<void>;
+  reorderSubcategories: (categoryId: string, orderedSubcategoryIds: string[]) => Promise<void>;
+  reorderMicrocategories: (categoryId: string, subcategoryId: string, orderedMicrocategoryIds: string[]) => Promise<void>;
   
   transactions: Transaction[];
   filteredTransactions: Transaction[];

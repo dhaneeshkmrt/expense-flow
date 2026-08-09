@@ -111,10 +111,10 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                     </Select>
                     <Select value={selectedMicrocategory} onValueChange={v => setSelectedMicrocategory(v === 'all' ? '' : v)} disabled={!selectedSubcategory}>
                         <SelectTrigger className="w-full sm:w-[150px]">
-                            <SelectValue placeholder="Micro" />
+                            <SelectValue placeholder="Micro Category" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="all">All Micros</SelectItem>
+                            <SelectItem value="all">All Micro Categories</SelectItem>
                             {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -188,7 +188,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                                     <span>{formatCurrency(transaction.amount)}</span>
                                     <Badge variant="outline" className="font-mono">{transaction.paidBy.toUpperCase()}</Badge>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">{transaction.subcategory}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
+                                    <p className="text-xs text-muted-foreground">{transaction.category}{transaction.subcategory ? ` / ${transaction.subcategory}` : ''}{transaction.microcategory ? ` / ${transaction.microcategory}` : ''}</p>
                                 </div>
                             </div>
                         )) : (

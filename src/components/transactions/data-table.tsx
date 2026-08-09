@@ -427,7 +427,7 @@ export function DataTable<TData extends { id: string }, TValue>({ columns, data,
             {hasMicrocategoryColumn && (
               <Select value={microcategoryFilter} onValueChange={(value) => setMicrocategoryFilter(value === 'all' ? '' : value)} disabled={!subcategoryFilter}>
                 <SelectTrigger className="w-[160px]">
-                    <SelectValue placeholder="Micro-Sub" />
+                    <SelectValue placeholder="Micro Category" />
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="all">All Micros</SelectItem>

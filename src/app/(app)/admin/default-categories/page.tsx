@@ -381,14 +381,14 @@ export default function DefaultCategoriesPage() {
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild><button className="mr-1 text-destructive"><Trash2 className="h-3 w-3" /></button></AlertDialogTrigger>
                                                 <AlertDialogContent>
-                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the <strong>{micro.name}</strong> micro-subcategory.</AlertDialogDescription></AlertDialogHeader>
+                                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the <strong>{micro.name}</strong> micro category.</AlertDialogDescription></AlertDialogHeader>
                                                 <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteMicrocategory(category.id, sub.id, micro.id)} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction></AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
                                         </div>
                                     </div>
                                 ))}
-                                {(sub.microcategories || []).length === 0 && <p className="text-xs text-muted-foreground">No micro-subcategories.</p>}
+                                {(sub.microcategories || []).length === 0 && <p className="text-xs text-muted-foreground">No micro categories.</p>}
                             </div>
                         </CollapsibleContent>
                     </Collapsible>

@@ -5,7 +5,7 @@ import { useApp } from '@/lib/provider';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2, PiggyBank } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronDown, ChevronRight, Loader2, PiggyBank, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import { CategoryDialog } from '@/components/categories/category-dialog';
 import { SubcategoryDialog } from '@/components/categories/subcategory-dialog';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
@@ -19,7 +19,19 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 export const dynamic = 'force-dynamic';
 
 export default function CategoriesPage() {
-  const { categories, deleteCategory, deleteSubcategory, deleteMicrocategory, loadingCategories, selectedTenantId, selectedMonthName, isCopyingBudget } = useApp();
+  const { 
+    categories, 
+    deleteCategory, 
+    deleteSubcategory, 
+    deleteMicrocategory, 
+    reorderCategories, 
+    reorderSubcategories, 
+    reorderMicrocategories, 
+    loadingCategories, 
+    selectedTenantId, 
+    selectedMonthName, 
+    isCopyingBudget 
+  } = useApp();
   const formatCurrency = useCurrencyFormatter();
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [subcategoryDialogOpen, setSubcategoryDialogOpen] = useState(false);
@@ -72,6 +84,37 @@ export default function CategoriesPage() {
     setSelectedSubcategory(subcategory);
     setSelectedMicrocategory(microcategory);
     setMicrocategoryDialogOpen(true);
+  };
+
+  const handleMoveCategory = async (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+    const newOrderedIds = categories.map(c => c.id);
+    const temp = newOrderedIds[index];
+    newOrderedIds[index] = newOrderedIds[targetIndex];
+    newOrderedIds[targetIndex] = temp;
+    await reorderCategories(newOrderedIds);
+  };
+
+  const handleMoveSubcategory = async (category: Category, index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= category.subcategories.length) return;
+    const newOrderedIds = category.subcategories.map(s => s.id);
+    const temp = newOrderedIds[index];
+    newOrderedIds[index] = newOrderedIds[targetIndex];
+    newOrderedIds[targetIndex] = temp;
+    await reorderSubcategories(category.id, newOrderedIds);
+  };
+
+  const handleMoveMicrocategory = async (category: Category, subcategory: Subcategory, index: number, direction: 'left' | 'right') => {
+    const micros = subcategory.microcategories || [];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= micros.length) return;
+    const newOrderedIds = micros.map(m => m.id);
+    const temp = newOrderedIds[index];
+    newOrderedIds[index] = newOrderedIds[targetIndex];
+    newOrderedIds[targetIndex] = temp;
+    await reorderMicrocategories(category.id, subcategory.id, newOrderedIds);
   };
 
   if (loadingCategories) {
@@ -143,7 +186,7 @@ export default function CategoriesPage() {
         </Alert>
       )}
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {categories.map((category) => {
+        {categories.map((category, catIdx) => {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
           const monthlyBudget = category.budget;
           return (
@@ -161,6 +204,26 @@ export default function CategoriesPage() {
                     )}
                 </div>
                 <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => handleMoveCategory(catIdx, 'up')}
+                    disabled={catIdx === 0}
+                    title="Move category up"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8" 
+                    onClick={() => handleMoveCategory(catIdx, 'down')}
+                    disabled={catIdx === categories.length - 1}
+                    title="Move category down"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditCategory(category)}>
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -186,7 +249,7 @@ export default function CategoriesPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {category.subcategories.map((sub) => (
+                {category.subcategories.map((sub, subIdx) => (
                   <Collapsible key={sub.id} open={openCollapsibles[sub.id]} onOpenChange={() => toggleCollapsible(sub.id)} className="group/sub">
                     <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
                         <CollapsibleTrigger asChild>
@@ -198,12 +261,32 @@ export default function CategoriesPage() {
                             </button>
                         </CollapsibleTrigger>
                         <div className="flex items-center opacity-0 group-hover/sub:opacity-100">
-                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMicrocategory(category, sub)}>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => handleMoveSubcategory(category, subIdx, 'up')}
+                                disabled={subIdx === 0}
+                                title="Move subcategory up"
+                             >
+                                <ArrowUp className="h-3 w-3" />
+                             </Button>
+                             <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6" 
+                                onClick={() => handleMoveSubcategory(category, subIdx, 'down')}
+                                disabled={subIdx === category.subcategories.length - 1}
+                                title="Move subcategory down"
+                             >
+                                <ArrowDown className="h-3 w-3" />
+                             </Button>
+                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleAddMicrocategory(category, sub)} title="Add Micro Category">
                                 <PlusCircle className="h-3 w-3" />
                              </Button>
-                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubcategory(category, sub)}>
+                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditSubcategory(category, sub)} title="Edit Subcategory">
                                 <Edit className="h-3 w-3" />
-                            </Button>
+                             </Button>
                             <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive">
@@ -214,7 +297,7 @@ export default function CategoriesPage() {
                                     <AlertDialogHeader>
                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                     <AlertDialogDescription>
-                                        This will permanently delete the <strong>{sub.name}</strong> subcategory and all its micro-subcategories.
+                                        This will permanently delete the <strong>{sub.name}</strong> subcategory and all its micro categories.
                                     </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
@@ -227,18 +310,34 @@ export default function CategoriesPage() {
                     </div>
                     <CollapsibleContent>
                         <div className="flex flex-wrap gap-1 pl-6 pr-2 py-2">
-                            {(sub.microcategories || []).map((micro) => (
+                            {(sub.microcategories || []).map((micro, microIdx) => (
                                 <div key={micro.id} className="group/micro relative">
-                                    <Badge variant="secondary" className="pr-7">
+                                    <Badge variant="secondary" className="pr-12">
                                         {micro.name}
                                     </Badge>
-                                    <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover/micro:opacity-100 bg-secondary/50 rounded-full">
-                                        <button onClick={() => handleEditMicrocategory(category, sub, micro)} className="mr-3 text-xs">
+                                    <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover/micro:opacity-100 bg-secondary/80 rounded-full px-1">
+                                        <button 
+                                          onClick={() => handleMoveMicrocategory(category, sub, microIdx, 'left')} 
+                                          disabled={microIdx === 0} 
+                                          className="mr-1 text-xs disabled:opacity-30" 
+                                          title="Move left"
+                                        >
+                                            <ArrowLeft className="h-3 w-3" />
+                                        </button>
+                                        <button 
+                                          onClick={() => handleMoveMicrocategory(category, sub, microIdx, 'right')} 
+                                          disabled={microIdx === (sub.microcategories || []).length - 1} 
+                                          className="mr-1 text-xs disabled:opacity-30" 
+                                          title="Move right"
+                                        >
+                                            <ArrowRight className="h-3 w-3" />
+                                        </button>
+                                        <button onClick={() => handleEditMicrocategory(category, sub, micro)} className="mr-1 text-xs" title="Edit Micro Category">
                                             <Edit className="h-3 w-3" />
                                         </button>
                                         <AlertDialog>
                                             <AlertDialogTrigger asChild>
-                                                <button className="mr-1 text-destructive">
+                                                <button className="mr-1 text-destructive" title="Delete Micro Category">
                                                 <Trash2 className="h-3 w-3" />
                                                 </button>
                                             </AlertDialogTrigger>
@@ -246,7 +345,7 @@ export default function CategoriesPage() {
                                                 <AlertDialogHeader>
                                                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                 <AlertDialogDescription>
-                                                    This will permanently delete the <strong>{micro.name}</strong> micro-subcategory.
+                                                    This will permanently delete the <strong>{micro.name}</strong> micro category.
                                                 </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
@@ -258,7 +357,7 @@ export default function CategoriesPage() {
                                     </div>
                                 </div>
                             ))}
-                            {(sub.microcategories || []).length === 0 && <p className="text-xs text-muted-foreground">No micro-subcategories.</p>}
+                            {(sub.microcategories || []).length === 0 && <p className="text-xs text-muted-foreground">No micro categories.</p>}
                         </div>
                     </CollapsibleContent>
                   </Collapsible>

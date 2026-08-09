@@ -96,7 +96,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
           querySnapshot = await getDocs(q);
       }
 
-      const fetchedCategories = querySnapshot.docs.map(doc => {
+      const fetchedCategories = querySnapshot.docs.map((doc, index) => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -108,8 +108,11 @@ export function useCategories(tenantId: string | null, user: User | null, select
             })),
             tenantId: data.tenantId,
             budget: 0, // Default budget, will be filled next
+            order: data.order !== undefined ? data.order : index,
           } as Category;
         });
+
+      fetchedCategories.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
       // Fetch budget data
       const budgetDocRef = doc(db, 'budgets', tenantIdToFetch);
@@ -385,8 +388,76 @@ export function useCategories(tenantId: string | null, user: User | null, select
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
     
     if (microcategory) {
-      await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Deleted micro-category: ${microcategory.name}`, category, updatedCategory);
+      await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Deleted micro category: ${microcategory.name}`, category, updatedCategory);
     }
+  };
+
+  const reorderCategories = async (orderedIds: string[]) => {
+    if (!tenantId || !user) return;
+    const newCategories: Category[] = [];
+    const batch = writeBatch(db);
+    
+    orderedIds.forEach((id, index) => {
+      const cat = categories.find(c => c.id === id);
+      if (cat) {
+        const updated = { ...cat, order: index };
+        newCategories.push(updated);
+        const docRef = doc(db, 'categories', id);
+        batch.update(docRef, { order: index });
+      }
+    });
+
+    setCategories(newCategories);
+    await batch.commit();
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', tenantId, `Reordered categories`, undefined, undefined);
+  };
+
+  const reorderSubcategories = async (categoryId: string, orderedSubcategoryIds: string[]) => {
+    if (!tenantId || !user) return;
+    const category = findCategory(categoryId);
+    
+    const reorderedSubs: Subcategory[] = [];
+    orderedSubcategoryIds.forEach((id, index) => {
+      const sub = category.subcategories.find(s => s.id === id);
+      if (sub) {
+        reorderedSubs.push({ ...sub, order: index });
+      }
+    });
+
+    const updatedCategory = { ...category, subcategories: reorderedSubs };
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
+    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Reordered subcategories in ${category.name}`, category, updatedCategory);
+  };
+
+  const reorderMicrocategories = async (categoryId: string, subcategoryId: string, orderedMicrocategoryIds: string[]) => {
+    if (!tenantId || !user) return;
+    const category = findCategory(categoryId);
+    const subcategory = category.subcategories.find(s => s.id === subcategoryId);
+    if (!subcategory) return;
+
+    const reorderedMicros: Microcategory[] = [];
+    orderedMicrocategoryIds.forEach((id, index) => {
+      const micro = (subcategory.microcategories || []).find(m => m.id === id);
+      if (micro) {
+        reorderedMicros.push({ ...micro, order: index });
+      }
+    });
+
+    const updatedCategory = {
+        ...category,
+        subcategories: category.subcategories.map(sub => {
+            if (sub.id === subcategoryId) {
+                return { ...sub, microcategories: reorderedMicros };
+            }
+            return sub;
+        })
+    };
+    const { budget, ...categoryToSave } = updatedCategory;
+    await updateCategoryInDb(categoryId, categoryToSave);
+    setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Reordered micro categories in ${category.name}/${subcategory.name}`, category, updatedCategory);
   };
 
   return {
@@ -395,6 +466,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     addCategory, editCategory, deleteCategory,
     addSubcategory, editSubcategory, deleteSubcategory,
     addMicrocategory, editMicrocategory, deleteMicrocategory,
+    reorderCategories, reorderSubcategories, reorderMicrocategories,
     seedDefaultCategories,
     isCopyingBudget,
   };

@@ -24,7 +24,7 @@ const ProcessVoiceTransactionOutputSchema = z.object({
   amount: z.number().optional().describe('The numeric amount of the transaction.'),
   category: z.string().optional().describe('The best matching category from the provided list.'),
   subcategory: z.string().optional().describe('A logical subcategory for the expense.'),
-  microcategory: z.string().optional().describe('A specific micro-subcategory if mentioned or implied.'),
+  microcategory: z.string().optional().describe('A specific micro category if mentioned or implied.'),
   date: z.string().optional().describe('The date mentioned, in YYYY-MM-DD format.'),
   notes: z.string().optional().describe('Any extra context, details, or specific mentions from the voice note.'),
 });

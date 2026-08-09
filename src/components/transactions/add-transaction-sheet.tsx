@@ -559,7 +559,7 @@ export default function AddTransactionSheet({
                       name="microcategory"
                       render={({ field }) => (
                         <FormItem className="space-y-3">
-                          <FormLabel>Micro-category</FormLabel>
+                          <FormLabel>Micro Category</FormLabel>
                           <FormControl>
                             <RadioGroup onValueChange={field.onChange} value={field.value} className="flex flex-wrap gap-2">
                               {microcategories.map((micro) => (

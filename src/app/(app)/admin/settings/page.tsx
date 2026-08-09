@@ -626,7 +626,7 @@ export default function SettingsPage() {
                   name="defaultMicrocategory"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Default Micro-Subcategory</FormLabel>
+                      <FormLabel>Default Micro Category</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value} 

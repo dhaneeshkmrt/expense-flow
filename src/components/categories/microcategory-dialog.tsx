@@ -27,7 +27,7 @@ import { useApp } from '@/lib/provider';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
 
 const microcategorySchema = z.object({
-  name: z.string().min(2, 'Micro-subcategory name must be at least 2 characters.'),
+  name: z.string().min(2, 'Micro category name must be at least 2 characters.'),
 });
 
 type MicrocategoryFormValues = z.infer<typeof microcategorySchema>;
@@ -84,7 +84,7 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Micro-Subcategory' : 'Add a New Micro-Subcategory'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Micro Category' : 'Add a New Micro Category'}</DialogTitle>
           <DialogDescription>
             {isEditing ? `You are editing "${microcategory?.name}"` : `Adding to "${subcategory.name}" subcategory.`}
           </DialogDescription>
@@ -96,7 +96,7 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Micro-Subcategory Name</FormLabel>
+                  <FormLabel>Micro Category Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Shampoo" {...field} />
                   </FormControl>
@@ -105,7 +105,7 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
               )}
             />
             <DialogFooter>
-              <Button type="submit">Save Micro-Subcategory</Button>
+              <Button type="submit">Save Micro Category</Button>
             </DialogFooter>
           </form>
         </Form>

@@ -18,12 +18,14 @@ export type FeatureAccess = {
 export type Microcategory = {
   id: string;
   name: string;
+  order?: number;
 };
 
 export type Subcategory = {
   id: string;
   name: string;
   microcategories: Microcategory[];
+  order?: number;
 };
 
 export type Category = {
@@ -35,6 +37,7 @@ export type Category = {
   userId?: string;
   isDefault?: boolean;
   budget: number; // This now represents the budget for the currently selected month
+  order?: number;
 };
 
 export type Transaction = {
