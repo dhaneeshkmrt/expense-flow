@@ -5,6 +5,7 @@ import { useApp } from '@/lib/provider';
 import { DailyExpenseChart } from '@/components/dashboard/daily-expense-chart';
 import { CategoryBreakdown } from '@/components/dashboard/category-breakdown';
 import { MonthlyCategoryChart } from '@/components/dashboard/monthly-category-chart';
+import { MonthlySubcategoryChart } from '@/components/dashboard/monthly-subcategory-chart';
 import { CumulativeExpenseChart } from '@/components/dashboard/cumulative-expense-chart';
 import RemindersSection from '@/components/dashboard/reminders-section';
 import InsuranceReminders from '@/components/dashboard/insurance-reminders';
@@ -34,7 +35,7 @@ export default function DashboardPage() {
 
       <DashboardStats transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
 
-       <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle>Daily Expense Overview</CardTitle>
@@ -45,7 +46,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         <Card>
-           <CardHeader>
+          <CardHeader>
             <CardTitle>Monthly Category Expenses</CardTitle>
             <CardDescription>Spending vs. budget for each category.</CardDescription>
           </CardHeader>
@@ -54,7 +55,20 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-       <div className="grid grid-cols-1">
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Monthly Subcategory Expenses</CardTitle>
+            <CardDescription>Subcategory spending vs. budget for subcategories with a set budget limit.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MonthlySubcategoryChart transactions={filteredTransactions} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1">
         <CumulativeExpenseChart transactions={filteredTransactions} year={selectedYear} month={selectedMonth} />
       </div>
       <div className="grid grid-cols-1">

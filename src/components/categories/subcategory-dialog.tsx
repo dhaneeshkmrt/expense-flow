@@ -28,6 +28,7 @@ import type { Category, Subcategory } from '@/lib/types';
 
 const subcategorySchema = z.object({
   name: z.string().min(2, 'Subcategory name must be at least 2 characters.'),
+  budget: z.coerce.number().min(0, 'Budget must be a non-negative number.').optional(),
 });
 
 type SubcategoryFormValues = z.infer<typeof subcategorySchema>;
@@ -50,15 +51,16 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
     resolver: zodResolver(subcategorySchema),
     defaultValues: {
       name: '',
+      budget: undefined,
     },
   });
 
   useEffect(() => {
     if (open) {
       if (isEditing && subcategory) {
-        form.reset({ name: subcategory.name });
+        form.reset({ name: subcategory.name, budget: subcategory.budget || undefined });
       } else {
-        form.reset({ name: '' });
+        form.reset({ name: '', budget: undefined });
       }
     }
   }, [subcategory, isEditing, open, form]);
@@ -98,6 +100,19 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
                   <FormLabel>Subcategory Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Haircut" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="budget"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monthly Budget (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

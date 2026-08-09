@@ -26,6 +26,7 @@ export type Subcategory = {
   name: string;
   microcategories: Microcategory[];
   order?: number;
+  budget?: number;
 };
 
 export type Category = {

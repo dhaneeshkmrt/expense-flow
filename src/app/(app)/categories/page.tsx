@@ -46,6 +46,12 @@ export default function CategoriesPage() {
     return categories.reduce((sum, cat) => sum + (cat.budget || 0), 0);
   }, [categories]);
 
+  const totalSubcategoryBudget = useMemo(() => {
+    return categories.reduce((totalSum, cat) => {
+      return totalSum + (cat.subcategories || []).reduce((subSum, sub) => subSum + (sub.budget || 0), 0);
+    }, 0);
+  }, [categories]);
+
   const toggleCollapsible = (id: string) => {
     setOpenCollapsibles(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -166,10 +172,19 @@ export default function CategoriesPage() {
             <div className="flex items-center gap-2 rounded-md border p-2">
                 <PiggyBank className="h-6 w-6 text-muted-foreground" />
                 <div>
-                    <div className="text-xs text-muted-foreground">Total Budget</div>
+                    <div className="text-xs text-muted-foreground">Category Budget</div>
                     <div className="text-base font-bold text-primary">{formatCurrency(totalBudget)}</div>
                 </div>
             </div>
+            {totalSubcategoryBudget > 0 && (
+                <div className="flex items-center gap-2 rounded-md border p-2">
+                    <PiggyBank className="h-6 w-6 text-muted-foreground" />
+                    <div>
+                        <div className="text-xs text-muted-foreground">Subcategory Budget Total</div>
+                        <div className="text-base font-bold text-primary">{formatCurrency(totalSubcategoryBudget)}</div>
+                    </div>
+                </div>
+            )}
             <Button onClick={handleAddCategory} disabled={!selectedTenantId}>
                 <PlusCircle className="mr-2" />
                 Add Category
@@ -189,6 +204,7 @@ export default function CategoriesPage() {
         {categories.map((category, catIdx) => {
           const Icon = typeof category.icon === 'string' ? () => null : category.icon;
           const monthlyBudget = category.budget;
+          const subcategoryBudgetTotal = (category.subcategories || []).reduce((sum, sub) => sum + (sub.budget || 0), 0);
           return (
             <Card key={category.id}>
               <CardHeader className="flex-row items-start justify-between">
@@ -200,6 +216,11 @@ export default function CategoriesPage() {
                     {monthlyBudget !== undefined && monthlyBudget > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
                             Budget for {selectedMonthName}: <span className="font-semibold text-primary">{formatCurrency(monthlyBudget)}</span>
+                        </p>
+                    )}
+                    {subcategoryBudgetTotal > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Subcategories Budget Total: <span className="font-semibold text-primary">{formatCurrency(subcategoryBudgetTotal)}</span>
                         </p>
                     )}
                 </div>
@@ -251,16 +272,21 @@ export default function CategoriesPage() {
               <CardContent className="space-y-2">
                 {category.subcategories.map((sub, subIdx) => (
                   <Collapsible key={sub.id} open={openCollapsibles[sub.id]} onOpenChange={() => toggleCollapsible(sub.id)} className="group/sub">
-                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                    <div className="relative flex items-center justify-between p-2 rounded-md hover:bg-muted group/sub">
                         <CollapsibleTrigger asChild>
-                            <button className="flex items-center gap-2">
-                                <span className="font-semibold">{sub.name}</span>
+                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left pr-2">
+                                <span className="font-semibold text-sm leading-snug break-words">{sub.name}</span>
+                                {sub.budget !== undefined && sub.budget > 0 && (
+                                    <Badge variant="outline" className="text-[10px] font-normal text-primary border-primary/30 py-0 px-1.5 shrink-0">
+                                        {formatCurrency(sub.budget)}
+                                    </Badge>
+                                )}
                                 {sub.microcategories && sub.microcategories.length > 0 && (
-                                    openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                    openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
                                 )}
                             </button>
                         </CollapsibleTrigger>
-                        <div className="flex items-center opacity-0 group-hover/sub:opacity-100">
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center opacity-0 group-hover/sub:opacity-100 bg-muted/95 px-1 py-0.5 rounded-md shadow-sm border border-border/60 z-10 transition-opacity">
                              <Button 
                                 variant="ghost" 
                                 size="icon" 

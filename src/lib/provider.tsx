@@ -79,8 +79,8 @@ interface AppContextType {
   addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number; }) => Promise<void>;
   editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
-  addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'>) => Promise<void>;
-  editSubcategory: (categoryId: string, subcategoryId: string, subcategory: Pick<Subcategory, 'name'>) => Promise<void>;
+  addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number }) => Promise<void>;
+  editSubcategory: (categoryId: string, subcategoryId: string, subcategory: { name?: string; budget?: number }) => Promise<void>;
   deleteSubcategory: (categoryId: string, subcategoryId: string) => Promise<void>;
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
   editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;

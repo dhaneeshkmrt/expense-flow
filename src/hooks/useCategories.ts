@@ -142,6 +142,10 @@ export function useCategories(tenantId: string | null, user: User | null, select
       const finalCategories = fetchedCategories.map(cat => ({
         ...cat,
         budget: allBudgets[currentMonthKey]?.[cat.id] || 0,
+        subcategories: cat.subcategories.map(sub => ({
+          ...sub,
+          budget: allBudgets[currentMonthKey]?.[sub.id] || 0,
+        })),
       }));
       
       setCategories(finalCategories);
@@ -273,6 +277,9 @@ export function useCategories(tenantId: string | null, user: User | null, select
         const allBudgets = (budgetDocSnap.data() as CategoryBudget).budgets || {};
         for (const monthKey in allBudgets) {
             delete allBudgets[monthKey][categoryId];
+            categoryToDelete?.subcategories.forEach(sub => {
+              delete allBudgets[monthKey][sub.id];
+            });
         }
         await setDoc(budgetDocRef, { budgets: allBudgets }, { merge: true });
     }
@@ -284,27 +291,56 @@ export function useCategories(tenantId: string | null, user: User | null, select
     }
   };
 
-  const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
+  const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number }) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const id = `${categoryId}_${subcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
-    const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
+    const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [], budget: subcategoryData.budget || 0 };
 
     const updatedCategory = { ...category, subcategories: [...category.subcategories, newSubcategory] };
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
+
+    if (subcategoryData.budget && subcategoryData.budget > 0) {
+      const monthKey = getMonthKey(selectedYear, selectedMonth);
+      const budgetDocRef = doc(db, 'budgets', tenantId);
+      await setDoc(budgetDocRef, {
+        budgets: { [monthKey]: { [id]: subcategoryData.budget } }
+      }, { merge: true });
+    }
+
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
 
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Added subcategory: ${newSubcategory.name} to ${category.name}`, category, updatedCategory);
   };
 
-  const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
+  const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: { name?: string; budget?: number }) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const subcategoryToUpdate = category.subcategories.find(s => s.id === subcategoryId);
-    const updatedCategory = { ...category, subcategories: category.subcategories.map(sub => sub.id === subcategoryId ? { ...sub, ...subcategoryUpdate } : sub) };
+    const updatedCategory = { 
+      ...category, 
+      subcategories: category.subcategories.map(sub => {
+        if (sub.id === subcategoryId) {
+          const updatedSub = { ...sub };
+          if (subcategoryUpdate.name) updatedSub.name = subcategoryUpdate.name;
+          if (subcategoryUpdate.budget !== undefined) updatedSub.budget = subcategoryUpdate.budget;
+          return updatedSub;
+        }
+        return sub;
+      })
+    };
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
+
+    if (subcategoryUpdate.budget !== undefined) {
+      const monthKey = getMonthKey(selectedYear, selectedMonth);
+      const budgetDocRef = doc(db, 'budgets', tenantId);
+      await setDoc(budgetDocRef, {
+        budgets: { [monthKey]: { [subcategoryId]: subcategoryUpdate.budget } }
+      }, { merge: true });
+    }
+
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
     
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited subcategory: from "${subcategoryToUpdate?.name}" to "${subcategoryUpdate.name}" in ${category.name}`, category, updatedCategory);
@@ -317,6 +353,17 @@ export function useCategories(tenantId: string | null, user: User | null, select
     const updatedCategory = { ...category, subcategories: category.subcategories.filter(sub => sub.id !== subcategoryId) };
     const { budget, ...categoryToSave } = updatedCategory;
     await updateCategoryInDb(categoryId, categoryToSave);
+
+    const budgetDocRef = doc(db, 'budgets', tenantId);
+    const budgetDocSnap = await getDoc(budgetDocRef);
+    if(budgetDocSnap.exists()) {
+        const allBudgets = (budgetDocSnap.data() as CategoryBudget).budgets || {};
+        for (const monthKey in allBudgets) {
+            delete allBudgets[monthKey][subcategoryId];
+        }
+        await setDoc(budgetDocRef, { budgets: allBudgets }, { merge: true });
+    }
+
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
     
     if (subcategoryToDelete) {
