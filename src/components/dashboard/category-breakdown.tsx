@@ -33,21 +33,21 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
 
     const subcategoryOptions = useMemo(() => {
         if (!selectedCategory) return [];
-        const category = categories.find(c => c.name === selectedCategory);
+        const category = categories.find(c => c.id === selectedCategory || c.name === selectedCategory);
         return category ? category.subcategories : [];
     }, [selectedCategory, categories]);
 
     const microcategoryOptions = useMemo(() => {
         if (!selectedSubcategory) return [];
-        const subcategory = subcategoryOptions.find(s => s.name === selectedSubcategory);
+        const subcategory = subcategoryOptions.find(s => s.id === selectedSubcategory || s.name === selectedSubcategory);
         return subcategory ? (subcategory.microcategories || []) : [];
     }, [selectedSubcategory, subcategoryOptions]);
     
     const filteredAndSortedTransactions = useMemo(() => {
         const filtered = transactions.filter(t => {
-            const categoryMatch = !selectedCategory || t.category === selectedCategory;
-            const subcategoryMatch = !selectedSubcategory || t.subcategory === selectedSubcategory;
-            const microcategoryMatch = !selectedMicrocategory || t.microcategory === selectedMicrocategory;
+            const categoryMatch = !selectedCategory || t.categoryId === selectedCategory || t.category === selectedCategory;
+            const subcategoryMatch = !selectedSubcategory || t.subcategoryId === selectedSubcategory || t.subcategory === selectedSubcategory;
+            const microcategoryMatch = !selectedMicrocategory || t.microcategoryId === selectedMicrocategory || t.microcategory === selectedMicrocategory;
             const paidByMatch = selectedPaidBy.length === 0 || selectedPaidBy.includes(t.paidBy);
             return categoryMatch && subcategoryMatch && microcategoryMatch && paidByMatch;
         });
@@ -97,7 +97,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Categories</SelectItem>
-                            {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                            {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={selectedSubcategory} onValueChange={v => {setSelectedSubcategory(v === 'all' ? '' : v); setSelectedMicrocategory('');}} disabled={!selectedCategory}>
@@ -106,7 +106,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                         </SelectTrigger>
                         <SelectContent>
                              <SelectItem value="all">All Subcategories</SelectItem>
-                            {subcategoryOptions.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                            {subcategoryOptions.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <Select value={selectedMicrocategory} onValueChange={v => setSelectedMicrocategory(v === 'all' ? '' : v)} disabled={!selectedSubcategory}>
@@ -115,7 +115,7 @@ export function CategoryBreakdown({ transactions }: { transactions: Transaction[
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Micro Categories</SelectItem>
-                            {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.name}>{m.name}</SelectItem>)}
+                            {microcategoryOptions.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
                         </SelectContent>
                     </Select>
                      <DropdownMenu>

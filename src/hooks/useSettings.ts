@@ -16,10 +16,10 @@ export function useSettings(tenantId: string | null, user: User | null) {
   });
   const [loadingSettings, setLoadingSettings] = useState(true);
 
-  const seedDefaultSettings = useCallback(async (tenantIdToSeed: string, userIdToSeed: string) => {
+  const seedDefaultSettings = useCallback(async (tenantIdToSeed: string, userIdToSeed: string = 'default') => {
     const docId = `${tenantIdToSeed}_${userIdToSeed}`;
     const settingsRef = doc(db, 'settings', docId);
-    const newSettings = { 
+    const newSettings: Settings = { 
       ...defaultSettings, 
       tenantId: tenantIdToSeed, 
       userId: userIdToSeed,

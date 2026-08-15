@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, ShieldCheck, Car, HeartPulse, LifeBuoy, MoreVertical, Trash2, Edit, AlertTriangle, AlertCircle, Loader2, BellRing } from 'lucide-react';
 import { useState, useMemo } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
 import { format, parseISO } from 'date-fns';
 import { InsuranceDialog } from '@/components/insurance/insurance-dialog';

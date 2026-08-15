@@ -254,7 +254,7 @@ export function useAccounts(tenantId: string | null, user: User | null) {
       // 2. Revert balances and prepare to delete transactions
       txSnapshot.forEach((txDoc) => {
         const txData = txDoc.data() as AccountTransaction;
-        revertedTxData.push({ id: txDoc.id, ...txData });
+        revertedTxData.push({ ...txData, id: txDoc.id });
         
         const accountRef = doc(db, 'virtualAccounts', txData.accountId);
         
@@ -340,8 +340,9 @@ export function useAccounts(tenantId: string | null, user: User | null) {
           } catch(e) { return false; }
         })
         .forEach(t => {
-          const current = categorySpending.get(t.category) || 0;
-          categorySpending.set(t.category, current + t.amount);
+          const catKey = t.categoryId || (categories.find(c => c.name === t.category)?.id) || t.category;
+          const current = categorySpending.get(catKey) || 0;
+          categorySpending.set(catKey, current + t.amount);
         });
 
       const result: MonthEndProcessResult = {
@@ -355,7 +356,7 @@ export function useAccounts(tenantId: string | null, user: User | null) {
       for (const category of categories) {
         if (!category.budget || category.budget <= 0) continue;
 
-        const spent = categorySpending.get(category.name) || 0;
+        const spent = (categorySpending.get(category.id) ?? categorySpending.get(category.name)) || 0;
         const surplus = Math.round((category.budget - spent) * 100) / 100;
 
         // Get or create account reference

@@ -32,7 +32,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
     let cumulativeTotal = 0;
     const filteredTxns = selectedCategory === 'all'
       ? transactions
-      : transactions.filter(t => t.category === selectedCategory);
+      : transactions.filter(t => t.categoryId === selectedCategory || t.category === selectedCategory);
 
     const dailyTotals = new Map<string, number>();
     filteredTxns.forEach(txn => {
@@ -124,7 +124,7 @@ export function CumulativeExpenseChart({ transactions, year, month }: Cumulative
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                        {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>

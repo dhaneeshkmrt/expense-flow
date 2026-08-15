@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback, useEffect } from 'react';
 import type { 
   Transaction, 
   Category, 
@@ -27,7 +27,7 @@ import type {
   InsuranceStatus,
   Note,
 } from './types';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
 import Papa from 'papaparse';
@@ -203,9 +203,193 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const notesHook = useNotes(selectedTenantId, user);
 
   
+  const resolveCategoryAndSubcategory = useCallback((t: Transaction, categories: Category[]) => {
+    // 1. Try matching by ID first
+    let cat = categories.find(c => t.categoryId && c.id === t.categoryId);
+    let sub = cat?.subcategories.find(s => t.subcategoryId && s.id === t.subcategoryId);
+    let micro = sub?.microcategories?.find(m => t.microcategoryId && m.id === t.microcategoryId);
+
+    if (cat && sub) {
+      return { cat, sub, micro };
+    }
+
+    // 2. Try exact name match (case-insensitive, trimmed)
+    if (!cat && t.category) {
+      const targetCatName = t.category.trim().toLowerCase();
+      cat = categories.find(c => c.name.trim().toLowerCase() === targetCatName);
+    }
+
+    if (cat && !sub && t.subcategory) {
+      const targetSubName = t.subcategory.trim().toLowerCase();
+      sub = cat.subcategories.find(s => s.name.trim().toLowerCase() === targetSubName);
+    }
+
+    if (sub && !micro && t.microcategory) {
+      const targetMicroName = t.microcategory.trim().toLowerCase();
+      micro = sub.microcategories?.find(m => m.name.trim().toLowerCase() === targetMicroName);
+    }
+
+    if (cat && sub) {
+      return { cat, sub, micro };
+    }
+
+    // 3. Cross-level matching (what if t.category or t.subcategory was stored in the other field)
+    if (!cat || !sub) {
+      const tCatLower = t.category ? t.category.trim().toLowerCase() : '';
+      const tSubLower = t.subcategory ? t.subcategory.trim().toLowerCase() : '';
+
+      for (const c of categories) {
+        for (const s of c.subcategories || []) {
+          if ((tCatLower && s.name.trim().toLowerCase() === tCatLower) || (tSubLower && s.name.trim().toLowerCase() === tSubLower)) {
+            if (!cat) cat = c;
+            if (!sub) sub = s;
+            break;
+          }
+        }
+        if (cat && sub) break;
+      }
+    }
+
+    if (cat && sub) {
+      return { cat, sub, micro };
+    }
+
+    // 4. Normalized & Fuzzy Token Alias Matching (converts ALL non-alphanumeric characters into space delimiters)
+    const normalizeText = (str: string) =>
+      (str || '')
+        .toLowerCase()
+        .replace(/&/g, 'and')
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+    const getTokensFromText = (str: string) => {
+      const norm = normalizeText(str);
+      if (!norm) return [];
+      const words = norm.split(' ').filter(w => w.length >= 2 && w !== 'and');
+      const compact = norm.replace(/\s+/g, '');
+      return [...words, ...(compact.length >= 3 && !words.includes(compact) ? [compact] : [])];
+    };
+
+    const tokens = new Set([
+      ...getTokensFromText(t.category),
+      ...getTokensFromText(t.subcategory)
+    ]);
+
+    if (tokens.size > 0) {
+      let bestScore = 0;
+      let bestCat: Category | undefined;
+      let bestSub: Subcategory | undefined;
+
+      for (const c of categories) {
+        const catTokens = new Set(getTokensFromText(c.name));
+        let catScore = 0;
+        tokens.forEach(tok => {
+          if (catTokens.has(tok) || normalizeText(c.name).includes(tok)) catScore += 2;
+        });
+
+        if (catScore > bestScore) {
+          bestScore = catScore;
+          bestCat = c;
+          bestSub = undefined;
+        }
+
+        for (const s of c.subcategories || []) {
+          const subTokens = new Set(getTokensFromText(s.name));
+          let subScore = catScore;
+          tokens.forEach(tok => {
+            if (subTokens.has(tok) || normalizeText(s.name).includes(tok)) subScore += 3;
+          });
+
+          if (subScore > bestScore) {
+            bestScore = subScore;
+            bestCat = c;
+            bestSub = s;
+          }
+        }
+      }
+
+      if (bestScore >= 2) {
+        cat = cat || bestCat;
+        sub = sub || bestSub;
+      }
+    }
+
+    if (sub && !micro && t.microcategory) {
+      const targetMicro = t.microcategory.trim().toLowerCase();
+      micro = sub.microcategories?.find(m => m.name.trim().toLowerCase() === targetMicro);
+    }
+
+    return { cat, sub, micro };
+  }, []);
+
+  const resolvedTransactions = useMemo(() => {
+    return transactionsHook.transactions.map((t) => {
+      const { cat, sub, micro } = resolveCategoryAndSubcategory(t, categoriesHook.categories);
+
+      return {
+        ...t,
+        categoryId: t.categoryId || cat?.id || '',
+        subcategoryId: t.subcategoryId || sub?.id || '',
+        microcategoryId: t.microcategoryId || micro?.id || '',
+        category: cat ? cat.name : t.category,
+        subcategory: sub ? sub.name : t.subcategory,
+        microcategory: micro ? micro.name : t.microcategory,
+      };
+    });
+  }, [transactionsHook.transactions, categoriesHook.categories, resolveCategoryAndSubcategory]);
+
+  // Auto-backfill & sync unlinked or renamed transactions in Firestore
+  useEffect(() => {
+    if (!selectedTenantId || !transactionsHook.transactions.length || !categoriesHook.categories.length) return;
+
+    const unlinked = transactionsHook.transactions.filter(t => {
+      const res = resolvedTransactions.find(r => r.id === t.id);
+      if (!res) return false;
+      return (
+        (!t.categoryId && res.categoryId) ||
+        (!t.subcategoryId && res.subcategoryId) ||
+        (res.category && t.category !== res.category) ||
+        (res.subcategory && t.subcategory !== res.subcategory)
+      );
+    });
+
+    if (unlinked.length === 0) return;
+
+    const updateUnlinked = async () => {
+      try {
+        const batch = writeBatch(db);
+        let count = 0;
+        for (const rawTx of unlinked) {
+          const res = resolvedTransactions.find(r => r.id === rawTx.id);
+          if (!res) continue;
+
+          const docRef = doc(db, 'transactions', rawTx.id);
+          batch.update(docRef, {
+            categoryId: res.categoryId,
+            subcategoryId: res.subcategoryId,
+            microcategoryId: res.microcategoryId,
+            category: res.category,
+            subcategory: res.subcategory,
+            microcategory: res.microcategory,
+          });
+          count++;
+          if (count >= 450) break; // stay within 500 limit per batch
+        }
+        if (count > 0) {
+          await batch.commit();
+          console.log(`Auto-synced ${count} legacy/renamed transactions in Firestore.`);
+        }
+      } catch (err) {
+        console.error("Error auto-syncing transactions:", err);
+      }
+    };
+
+    updateUnlinked();
+  }, [selectedTenantId, transactionsHook.transactions, categoriesHook.categories, resolvedTransactions]);
+
   const availableYears = useMemo(() => {
     const years = new Set<number>();
-    transactionsHook.transactions.forEach((t) => {
+    resolvedTransactions.forEach((t) => {
       try {
         const transactionDate = parseISO(t.date || new Date().toISOString().split('T')[0]);
         if (!Number.isNaN(transactionDate.getTime())) {
@@ -220,10 +404,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       years.add(new Date().getFullYear());
     }
     return Array.from(years).sort((a, b) => b - a);
-  }, [transactionsHook.transactions]);
+  }, [resolvedTransactions]);
 
   const filteredTransactions = useMemo(() => {
-    return transactionsHook.transactions.filter((t) => {
+    return resolvedTransactions.filter((t) => {
       try {
         const transactionDate = parseISO(t.date || new Date().toISOString().split('T')[0]);
         return !Number.isNaN(transactionDate.getTime()) && getYear(transactionDate) === selectedYear && getMonth(transactionDate) === selectedMonth;
@@ -231,7 +415,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
     });
-  }, [transactionsHook.transactions, selectedYear, selectedMonth]);
+  }, [resolvedTransactions, selectedYear, selectedMonth]);
   
   const selectedMonthName = useMemo(() => {
     return format(new Date(selectedYear, selectedMonth), 'MMMM');
@@ -295,6 +479,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     const transferSubCategory = "Category Transfer";
+    const sourceSub = sourceCategory.subcategories.find(s => s.name === transferSubCategory);
+    const destSub = destinationCategory.subcategories.find(s => s.name === transferSubCategory);
     const date = format(new Date(), 'yyyy-MM-dd');
     const time = format(new Date(), 'HH:mm');
     const defaultPaidBy = tenantHook.tenants.find(t => t.id === tenantHook.selectedTenantId)?.paidByOptions?.[0] || 'N/A';
@@ -305,6 +491,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         time,
         description: `Transfer to ${destinationCategory.name}`,
         amount: amount,
+        categoryId: sourceCategory.id,
+        subcategoryId: sourceSub?.id || '',
         category: sourceCategory.name,
         subcategory: transferSubCategory,
         paidBy: defaultPaidBy,
@@ -317,6 +505,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         time,
         description: `Transfer from ${sourceCategory.name}`,
         amount: -amount, // Negative amount to credit the destination budget
+        categoryId: destinationCategory.id,
+        subcategoryId: destSub?.id || '',
         category: destinationCategory.name,
         subcategory: transferSubCategory,
         paidBy: defaultPaidBy,
@@ -333,15 +523,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       year, 
       month, 
       categoriesHook.categories, 
-      transactionsHook.transactions, 
+      resolvedTransactions, 
       lockedBy
     );
-  }, [accountsHook, categoriesHook.categories, transactionsHook.transactions]);
+  }, [accountsHook, categoriesHook.categories, resolvedTransactions]);
 
   // Helper function to check for overspending and handle withdrawal
   const checkAndHandleOverspend = useCallback(async (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>) => {
     // Find the category
-    const category = categoriesHook.categories.find(c => c.name === transaction.category);
+    const category = categoriesHook.categories.find(c => (transaction.categoryId && c.id === transaction.categoryId) || c.name === transaction.category);
     if (!category || !category.budget) return; // Skip if no budget set
     
     const transactionDate = parseISO(transaction.date);
@@ -350,11 +540,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const monthYear = `${year}-${String(month + 1).padStart(2, '0')}`;
     
     // Calculate current spending for this category in this month
-    const monthTransactions = transactionsHook.transactions.filter(t => {
+    const monthTransactions = resolvedTransactions.filter(t => {
       const tDate = parseISO(t.date);
       return getYear(tDate) === year && 
              getMonth(tDate) === month && 
-             t.category === transaction.category;
+             (t.categoryId ? t.categoryId === category.id : t.category === category.name);
     });
     
     const currentSpent = monthTransactions.reduce((sum, t) => sum + t.amount, 0);
@@ -362,7 +552,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const overspend = Math.round((newSpent - category.budget) * 100) / 100;
     
     if (overspend > 0) {
-      console.log(`Category ${transaction.category} overspent by ${overspend}. Attempting withdrawal...`);
+      console.log(`Category ${category.name} overspent by ${overspend}. Attempting withdrawal...`);
       
       try {
         const withdrawalSuccessful = await accountsHook.handleOverspendWithdrawal(
@@ -381,7 +571,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         console.error(`Error handling overspend withdrawal:`, error);
       }
     }
-  }, [categoriesHook.categories, transactionsHook.transactions, accountsHook]);
+  }, [categoriesHook.categories, resolvedTransactions, accountsHook]);
 
   // Wrapper functions to check month locks before adding/editing transactions
   const addTransactionWithLockCheck = useCallback(async (transaction: Omit<Transaction, 'id' | 'tenantId' | 'userId'>): Promise<string> => {
@@ -511,9 +701,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
 
     ...tenantHook,
+    userTenant: tenantHook.userTenant || null,
     ...settingsHook,
     ...categoriesHook,
     ...transactionsHook,
+    transactions: resolvedTransactions,
     ...remindersHook,
     ...logsHook,
     
@@ -596,7 +788,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingBorrowings: borrowingsHook.loading,
     loadingInsurance: insuranceHook.loading,
     isCopyingBudget: categoriesHook.isCopyingBudget,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, accountsHook, remindersHook, logsHook, borrowingsHook, insuranceHook, notesHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, resolvedTransactions, accountsHook, remindersHook, logsHook, borrowingsHook, insuranceHook, notesHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
 
   return (
     <ThemeProvider>

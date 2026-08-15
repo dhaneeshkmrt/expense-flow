@@ -34,25 +34,26 @@ export function MonthlyCategoryChart({ transactions }: MonthlyCategoryChartProps
     }, []);
 
     const data = useMemo(() => {
-        const categorySpending = new Map<string, { total: number; budget: number; transactions: Transaction[] }>();
+        const categorySpending = new Map<string, { name: string; total: number; budget: number; transactions: Transaction[] }>();
 
         // Initialize map with all categories and their budgets
         categories.forEach(cat => {
             const budget = cat.budget || 0;
-            categorySpending.set(cat.name, { total: 0, budget, transactions: [] });
+            categorySpending.set(cat.id, { name: cat.name, total: 0, budget, transactions: [] });
         });
         
         // Aggregate transactions for all categories from the already filtered transactions
         transactions.forEach(txn => {
-            const catData = categorySpending.get(txn.category);
+            const catId = txn.categoryId || categories.find(c => c.name === txn.category)?.id;
+            const catData = catId ? categorySpending.get(catId) : categorySpending.get(txn.category);
             if (catData) {
                 catData.total += txn.amount;
                 catData.transactions.push(txn);
             }
         });
 
-        return Array.from(categorySpending.entries())
-            .map(([name, { total, budget, transactions }]): ChartData => ({
+        return Array.from(categorySpending.values())
+            .map(({ name, total, budget, transactions }): ChartData => ({
                 name,
                 total,
                 budget,

@@ -392,10 +392,10 @@ export default function YearlyReportPage() {
     const normalizeKey = (name: string) => name.trim().toLowerCase();
 
     yearTransactions.forEach(t => {
-      // Normalize keys for grouping (case-insensitive, trimmed)
-      const categoryKey = normalizeKey(t.category);
-      const subcategoryKey = normalizeKey(t.subcategory);
-      const microcategoryKey = t.microcategory ? normalizeKey(t.microcategory) : '';
+      // Group by ID if present, otherwise fallback to normalized text name
+      const categoryKey = t.categoryId || normalizeKey(t.category);
+      const subcategoryKey = t.subcategoryId || normalizeKey(t.subcategory);
+      const microcategoryKey = t.microcategoryId || (t.microcategory ? normalizeKey(t.microcategory) : '');
 
       // Ensure category exists
       if (!report[categoryKey]) {
@@ -408,9 +408,9 @@ export default function YearlyReportPage() {
       }
 
       // Ensure microcategory exists if applicable
-      if (t.microcategory && microcategoryKey) {
+      if ((t.microcategory || t.microcategoryId) && microcategoryKey) {
         if (!report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey]) {
-          report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey] = { total: 0, displayName: t.microcategory.trim(), transactions: [] };
+          report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey] = { total: 0, displayName: (t.microcategory || '').trim(), transactions: [] };
         }
         report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey].total += t.amount;
         report[categoryKey].subcategories[subcategoryKey].microcategories[microcategoryKey].transactions.push(t);

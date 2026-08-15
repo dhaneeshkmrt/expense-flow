@@ -102,10 +102,17 @@ export function useCategories(tenantId: string | null, user: User | null, select
             id: doc.id,
             name: data.name,
             icon: getIconComponent(data.icon),
-            subcategories: (data.subcategories || []).map((sub: any) => ({
-              ...sub,
-              microcategories: sub.microcategories || []
-            })),
+            subcategories: (data.subcategories || []).map((sub: any, sIdx: number) => {
+              const subId = sub.id || `${doc.id}_sub_${sIdx}`;
+              return {
+                ...sub,
+                id: subId,
+                microcategories: (sub.microcategories || []).map((micro: any, mIdx: number) => ({
+                  ...micro,
+                  id: micro.id || `${subId}_micro_${mIdx}`
+                }))
+              };
+            }),
             tenantId: data.tenantId,
             budget: 0, // Default budget, will be filled next
             order: data.order !== undefined ? data.order : index,
@@ -186,7 +193,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
 
   const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
     if (!tenantId || !user) return;
-    const id = `${tenantId}_${categoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+    const id = `cat_${crypto.randomUUID().replace(/-/g, '')}`;
     
     const newCategory: Category = {
       id,
@@ -262,6 +269,28 @@ export function useCategories(tenantId: string | null, user: User | null, select
         return c;
     }));
     
+    if (categoryUpdate.name && oldCategory && categoryUpdate.name !== oldCategory.name) {
+        try {
+            const txQuery = query(collection(db, 'transactions'), where('tenantId', '==', tenantId));
+            const txSnap = await getDocs(txQuery);
+            const batch = writeBatch(db);
+            let count = 0;
+            txSnap.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.categoryId === categoryId || data.category === oldCategory.name) {
+                    batch.update(docSnap.ref, {
+                        categoryId: categoryId,
+                        category: categoryUpdate.name,
+                    });
+                    count++;
+                }
+            });
+            if (count > 0) await batch.commit();
+        } catch (e) {
+            console.error("Error updating transactions on category rename:", e);
+        }
+    }
+
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Updated category: ${categoryUpdate.name || oldCategory?.name}`, oldCategory, updatedCat);
   };
   
@@ -294,7 +323,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
   const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number }) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
-    const id = `${categoryId}_${subcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+    const id = `sub_${crypto.randomUUID().replace(/-/g, '')}`;
     const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [], budget: subcategoryData.budget || 0 };
 
     const updatedCategory = { ...category, subcategories: [...category.subcategories, newSubcategory] };
@@ -343,6 +372,34 @@ export function useCategories(tenantId: string | null, user: User | null, select
 
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
     
+    if (subcategoryUpdate.name && subcategoryToUpdate && subcategoryUpdate.name !== subcategoryToUpdate.name) {
+      try {
+        const txQuery = query(collection(db, 'transactions'), where('tenantId', '==', tenantId));
+        const txSnap = await getDocs(txQuery);
+        const batch = writeBatch(db);
+        let count = 0;
+        txSnap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (
+            data.subcategoryId === subcategoryId ||
+            data.subcategory === subcategoryToUpdate.name ||
+            (data.subcategory && data.subcategory.trim().toLowerCase() === subcategoryToUpdate.name.trim().toLowerCase())
+          ) {
+            batch.update(docSnap.ref, {
+              categoryId: categoryId,
+              subcategoryId: subcategoryId,
+              category: category.name,
+              subcategory: subcategoryUpdate.name,
+            });
+            count++;
+          }
+        });
+        if (count > 0) await batch.commit();
+      } catch (e) {
+        console.error("Error updating transactions on subcategory rename:", e);
+      }
+    }
+
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited subcategory: from "${subcategoryToUpdate?.name}" to "${subcategoryUpdate.name}" in ${category.name}`, category, updatedCategory);
   };
 
@@ -374,7 +431,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
   const addMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryData: Omit<Microcategory, 'id'>) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
-    const id = `${subcategoryId}_${microcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+    const id = `micro_${crypto.randomUUID().replace(/-/g, '')}`;
     const newMicrocategory: Microcategory = { ...microcategoryData, id };
 
     const updatedCategory = {

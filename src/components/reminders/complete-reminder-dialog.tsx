@@ -63,6 +63,9 @@ export function CompleteReminderDialog({ open, setOpen, instance }: CompleteRemi
       const transactionData = {
         description: instance.reminder.description,
         amount: instance.reminder.amount,
+        categoryId: instance.reminder.categoryId || '',
+        subcategoryId: instance.reminder.subcategoryId || '',
+        microcategoryId: instance.reminder.microcategoryId || '',
         category: instance.reminder.category,
         subcategory: instance.reminder.subcategory,
         microcategory: instance.reminder.microcategory || '',

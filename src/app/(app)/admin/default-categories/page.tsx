@@ -87,7 +87,7 @@ export default function DefaultCategoriesPage() {
                 const docId = cat.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
                 const docRef = doc(db, 'defaultCategories', docId);
                 const { icon, ...rest } = cat;
-                batch.set(docRef, { ...rest, icon: getIconName(icon) });
+                batch.set(docRef, { ...rest, icon: typeof icon === 'string' ? icon : getIconName(icon as React.ElementType) });
             });
             await batch.commit();
             toast({
@@ -151,7 +151,7 @@ export default function DefaultCategoriesPage() {
     }
 
     const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
-        const docId = categoryData.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+        const docId = `cat_${crypto.randomUUID().replace(/-/g, '')}`;
         const docRef = doc(db, 'defaultCategories', docId);
         await setDoc(docRef, categoryData);
     };
@@ -172,7 +172,7 @@ export default function DefaultCategoriesPage() {
 
     const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
         const category = findCategory(categoryId);
-        const id = `${category.name.toLowerCase()}_${subcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+        const id = `sub_${crypto.randomUUID().replace(/-/g, '')}`;
         const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
         const updatedSubcategories = [...category.subcategories, newSubcategory];
         await updateCategoryInDb(categoryId, { subcategories: updatedSubcategories });
@@ -195,7 +195,7 @@ export default function DefaultCategoriesPage() {
         const subcategory = category.subcategories.find(s => s.id === subcategoryId);
         if (!subcategory) return;
         
-        const id = `${subcategory.name.toLowerCase()}_${microcategoryData.name.toLowerCase().replace(/\s+/g, '_')}`;
+        const id = `micro_${crypto.randomUUID().replace(/-/g, '')}`;
         const newMicrocategory: Microcategory = { ...microcategoryData, id };
         
         const updatedMicrocategories = [...(subcategory.microcategories || []), newMicrocategory];

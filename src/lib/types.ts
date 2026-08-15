@@ -42,11 +42,14 @@ export type Category = {
 };
 
 export type Transaction = {
-  id:string;
+  id: string;
   date: string;
   time: string;
   description: string;
   amount: number;
+  categoryId?: string;
+  subcategoryId?: string;
+  microcategoryId?: string;
   category: string;
   subcategory: string;
   microcategory?: string;
@@ -65,6 +68,9 @@ export type Settings = {
   defaultCategory?: string;
   defaultSubcategory?: string;
   defaultMicrocategory?: string;
+  defaultCategoryId?: string;
+  defaultSubcategoryId?: string;
+  defaultMicrocategoryId?: string;
   defaultPaidBy?: string;
 };
 
@@ -188,6 +194,9 @@ export type Reminder = {
   userId: string;
   description: string;
   amount: number;
+  categoryId?: string;
+  subcategoryId?: string;
+  microcategoryId?: string;
   category: string;
   subcategory: string;
   microcategory?: string;

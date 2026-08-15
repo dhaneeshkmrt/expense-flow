@@ -19,7 +19,7 @@ const generateSecretToken = () => {
 
 export function useTenants(
     seedDefaultCategories: (tenantId: string) => Promise<void>,
-    seedDefaultSettings: (tenantId: string) => Promise<any>,
+    seedDefaultSettings: (tenantId: string, userId?: string) => Promise<any>,
     user: User | null
 ) {
     const [tenants, setTenants] = useState<Tenant[]>([]);

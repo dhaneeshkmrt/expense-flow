@@ -330,9 +330,16 @@ export default function AddTransactionSheet({
 
   const handleSave = async (data: TransactionFormValues, shouldClose: boolean) => {
     setIsSubmitting(true);
+    const selectedCat = categories.find(c => c.name === data.category);
+    const selectedSub = selectedCat?.subcategories.find(s => s.name === data.subcategory);
+    const selectedMicro = selectedSub?.microcategories?.find(m => m.name === data.microcategory);
+
     const submissionData = {
         ...data,
         date: format(data.date, 'yyyy-MM-dd'),
+        categoryId: selectedCat?.id || '',
+        subcategoryId: selectedSub?.id || '',
+        microcategoryId: selectedMicro?.id || '',
         microcategory: data.microcategory || '',
     };
     try {
@@ -693,6 +700,9 @@ export default function AddTransactionSheet({
                                       time: transaction.time || '12:00',
                                       description: transaction.description,
                                       amount: transaction.amount,
+                                      categoryId: transaction.categoryId || '',
+                                      subcategoryId: transaction.subcategoryId || '',
+                                      microcategoryId: transaction.microcategoryId || '',
                                       category: transaction.category,
                                       subcategory: transaction.subcategory,
                                       microcategory: transaction.microcategory || '',

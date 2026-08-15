@@ -48,7 +48,7 @@ export const createColumns = (isMonthLocked: (year: number, month: number) => bo
                 <div className="text-xs text-muted-foreground">{transaction.time}</div>
             </div>
           {isLocked && (
-            <Lock className="h-3 w-3 text-orange-500" title="Month is locked after processing" />
+            <span title="Month is locked after processing"><Lock className="h-3 w-3 text-orange-500" /></span>
           )}
         </div>
       );

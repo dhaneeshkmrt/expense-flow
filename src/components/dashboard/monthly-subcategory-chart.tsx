@@ -42,8 +42,7 @@ export function MonthlySubcategoryChart({ transactions }: MonthlySubcategoryChar
             (cat.subcategories || []).forEach(sub => {
                 const budget = sub.budget || 0;
                 if (budget > 0) {
-                    const key = `${cat.name}___${sub.name}`;
-                    subcategorySpending.set(key, { 
+                    subcategorySpending.set(sub.id, { 
                         categoryName: cat.name, 
                         subcategoryName: sub.name, 
                         total: 0, 
@@ -56,8 +55,11 @@ export function MonthlySubcategoryChart({ transactions }: MonthlySubcategoryChar
 
         // Aggregate matching transactions for those budgeted subcategories
         transactions.forEach(txn => {
-            const key = `${txn.category}___${txn.subcategory}`;
-            const subData = subcategorySpending.get(key);
+            let subData = txn.subcategoryId ? subcategorySpending.get(txn.subcategoryId) : undefined;
+            if (!subData) {
+                const key = `${txn.category}___${txn.subcategory}`;
+                subData = Array.from(subcategorySpending.values()).find(s => `${s.categoryName}___${s.subcategoryName}` === key);
+            }
             if (subData) {
                 subData.total += txn.amount;
                 subData.transactions.push(txn);

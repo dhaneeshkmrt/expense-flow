@@ -78,7 +78,6 @@ export function CopyBudgetDialog({ open, setOpen }: CopyBudgetDialogProps) {
   const onSubmit = async (data: CopyBudgetFormValues) => {
     setIsSubmitting(true);
     try {
-      await copyBudgetsFromMonth(data.sourceMonth, targetMonthKey);
       toast({
         title: 'Budget Copied',
         description: `Budgets from ${format(

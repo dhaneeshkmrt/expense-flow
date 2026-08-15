@@ -64,6 +64,9 @@ const tenantSchema = z.object({
     admin: z.boolean().optional(),
     reminders: z.boolean().optional(),
     logs: z.boolean().optional(),
+    borrowings: z.boolean().optional(),
+    insurance: z.boolean().optional(),
+    notes: z.boolean().optional(),
   }).optional(),
 });
 

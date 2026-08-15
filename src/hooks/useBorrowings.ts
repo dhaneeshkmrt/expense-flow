@@ -246,7 +246,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     if (!tenantId || !user) return;
     const borrowing = borrowings.find(b => b.id === id);
     await deleteDoc(doc(db, 'borrowings', id));
-    await logChange(tenantId, user.name, 'DELETE', 'borrowings', id, `Deleted borrowing record: ${borrowing?.description || id}`);
+    await logChange(tenantId, user.name, 'DELETE', 'borrowings', id, `Deleted borrowing record: ${borrowing?.notes || borrowing?.contactName || id}`);
   };
 
   return {

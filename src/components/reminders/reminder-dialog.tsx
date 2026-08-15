@@ -144,8 +144,15 @@ export function ReminderDialog({ open, setOpen, reminderId }: { open: boolean, s
   }, [watchedSubcategory, form.setValue, form.formState.isDirty]);
   
   const onSubmit = async (data: ReminderFormValues) => {
+    const selectedCat = categories.find(c => c.name === data.category);
+    const selectedSub = selectedCat?.subcategories.find(s => s.name === data.subcategory);
+    const selectedMicro = selectedSub?.microcategories?.find(m => m.name === data.microcategory);
+
     const reminderData: any = {
         ...data,
+        categoryId: selectedCat?.id || '',
+        subcategoryId: selectedSub?.id || '',
+        microcategoryId: selectedMicro?.id || '',
         startDate: data.startDate.toISOString(),
         recurrence: {
             frequency: data.frequency,

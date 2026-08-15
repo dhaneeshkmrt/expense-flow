@@ -16,13 +16,13 @@ import { cn } from '@/lib/utils';
 type NavItemWithHref = {
   href: string;
   label: string;
-  icon: React.ComponentType;
+  icon: React.ElementType;
   featureFlag?: 'balanceSheet' | 'virtualAccounts' | 'yearlyReport' | 'aiImageStudio' | 'calculators' | 'admin' | 'reminders' | 'logs' | 'borrowings' | 'insurance' | 'notes'
 };
 
 type NavItemWithSubItems = {
   label: string;
-  icon: React.ComponentType;
+  icon: React.ElementType;
   subItems: NavItemWithHref[];
   featureFlag?: 'calculators' | 'admin' | 'borrowings';
 };
@@ -168,7 +168,6 @@ export function AppShellNav() {
                         "w-full justify-start",
                         isSectionActive ? 'text-primary font-bold' : 'text-muted-foreground'
                       )}
-                      variant="ghost"
                   >
                     <>
                       <item.icon className={cn(isSectionActive && "text-primary")} />
