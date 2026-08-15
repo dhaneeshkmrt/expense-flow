@@ -338,9 +338,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, [transactionsHook.transactions, categoriesHook.categories, resolveCategoryAndSubcategory]);
 
+  const syncedTenantsRef = React.useRef<Record<string, boolean>>({});
+
   // Auto-backfill & sync unlinked or renamed transactions in Firestore
   useEffect(() => {
-    if (!selectedTenantId || !transactionsHook.transactions.length || !categoriesHook.categories.length) return;
+    if (!selectedTenantId || syncedTenantsRef.current[selectedTenantId]) return;
+    if (!transactionsHook.transactions.length || !categoriesHook.categories.length) return;
 
     const unlinked = transactionsHook.transactions.filter(t => {
       const res = resolvedTransactions.find(r => r.id === t.id);
@@ -353,7 +356,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       );
     });
 
-    if (unlinked.length === 0) return;
+    if (unlinked.length === 0) {
+      syncedTenantsRef.current[selectedTenantId] = true;
+      return;
+    }
 
     const updateUnlinked = async () => {
       try {
@@ -364,14 +370,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           if (!res) continue;
 
           const docRef = doc(db, 'transactions', rawTx.id);
-          batch.update(docRef, {
+          batch.set(docRef, {
             categoryId: res.categoryId,
             subcategoryId: res.subcategoryId,
             microcategoryId: res.microcategoryId,
             category: res.category,
             subcategory: res.subcategory,
             microcategory: res.microcategory,
-          });
+          }, { merge: true });
           count++;
           if (count >= 450) break; // stay within 500 limit per batch
         }
@@ -379,8 +385,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           await batch.commit();
           console.log(`Auto-synced ${count} legacy/renamed transactions in Firestore.`);
         }
+        if (count < 450) {
+          syncedTenantsRef.current[selectedTenantId] = true;
+        }
       } catch (err) {
         console.error("Error auto-syncing transactions:", err);
+        syncedTenantsRef.current[selectedTenantId] = true;
       }
     };
 

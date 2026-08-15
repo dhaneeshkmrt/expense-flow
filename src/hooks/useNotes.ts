@@ -9,6 +9,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  setDoc,
   doc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -83,7 +84,7 @@ export function useNotes(tenantId: string | null, user: User | null) {
       Object.entries({ ...data, updatedAt: new Date().toISOString() }).filter(([, v]) => v !== undefined)
     );
     const noteRef = doc(db, 'notes', id);
-    await updateDoc(noteRef, cleanData);
+    await setDoc(noteRef, cleanData, { merge: true });
     await logChange(tenantId, user.name, 'UPDATE', 'notes', id, `Updated note: ${oldNote?.title || id}`, oldNote, { ...oldNote, ...cleanData });
   }, [tenantId, user, notes]);
 
@@ -124,7 +125,7 @@ export function useNotes(tenantId: string | null, user: User | null) {
 
     try {
       const noteRef = doc(db, 'notes', noteId);
-      await updateDoc(noteRef, { items: updatedItems, updatedAt: new Date().toISOString() });
+      await setDoc(noteRef, { items: updatedItems, updatedAt: new Date().toISOString() }, { merge: true });
     } catch (error) {
       // Revert on error
       setNotes((prev) => prev.map((n) => (n.id === noteId ? note : n)));

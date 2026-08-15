@@ -10,6 +10,7 @@ import {
   updateDoc, 
   deleteDoc, 
   doc,
+  setDoc,
   writeBatch
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -67,7 +68,7 @@ export function useReminders(tenantId: string | null, user: User | null) {
     if (!tenantId || !user) return;
     const oldReminder = reminders.find(r => r.id === reminderId);
     const reminderRef = doc(db, 'reminders', reminderId);
-    await updateDoc(reminderRef, reminderData);
+    await setDoc(reminderRef, reminderData, { merge: true });
     const updatedReminder = { ...oldReminder, ...reminderData } as Reminder;
     await logChange(tenantId, user.name, 'UPDATE', 'reminders', reminderId, `Updated reminder: ${updatedReminder.description}`, oldReminder, updatedReminder);
   };
@@ -107,7 +108,7 @@ export function useReminders(tenantId: string | null, user: User | null) {
 
     try {
       const reminderRef = doc(db, 'reminders', reminder.id);
-      await updateDoc(reminderRef, { completedInstances: updatedCompletedInstances });
+      await setDoc(reminderRef, { completedInstances: updatedCompletedInstances }, { merge: true });
       await logChange(tenantId, user.name, 'UPDATE', 'reminders', reminder.id, `Completed reminder instance for ${reminder.description} on ${dueDateKey}`, reminder, { ...reminder, completedInstances: updatedCompletedInstances });
     } catch (error) {
       console.error("Error completing reminder instance, reverting state:", error);

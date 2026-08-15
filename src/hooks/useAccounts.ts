@@ -184,10 +184,10 @@ export function useAccounts(tenantId: string | null, user: User | null) {
     const account = accounts.find(acc => acc.id === accountId);
     if (account) {
       const accountRef = doc(db, 'virtualAccounts', accountId);
-      batch.update(accountRef, {
+      batch.set(accountRef, {
         currentBalance: increment(amount),
         updatedAt: new Date().toISOString()
-      });
+      }, { merge: true });
     }
 
     await batch.commit();
@@ -260,10 +260,10 @@ export function useAccounts(tenantId: string | null, user: User | null) {
         
         // Revert balance: subtract the amount that was originally added
         // If it was a surplus (pos), subtract it. If deficit (neg), add it back (double negative).
-        batch.update(accountRef, {
+        batch.set(accountRef, {
           currentBalance: increment(-txData.amount),
           updatedAt: new Date().toISOString()
-        });
+        }, { merge: true });
         
         // Queue deletion of the month-end transaction record
         batch.delete(txDoc.ref);
@@ -387,11 +387,11 @@ export function useAccounts(tenantId: string | null, user: User | null) {
 
         // Update balance using increment
         if (balanceAdjustment !== 0) {
-            batch.update(accountRef, {
+            batch.set(accountRef, {
                 currentBalance: increment(balanceAdjustment)
-            });
+            }, { merge: true });
         }
-        batch.update(accountRef, { updatedAt: new Date().toISOString() });
+        batch.set(accountRef, { updatedAt: new Date().toISOString() }, { merge: true });
 
         // Delete old transaction if it exists
         if (oldTx) {

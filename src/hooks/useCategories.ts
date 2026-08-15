@@ -188,7 +188,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     };
     // @ts-ignore
     delete categoryForDb.id;
-    await updateDoc(categoryRef, categoryForDb);
+    await setDoc(categoryRef, categoryForDb, { merge: true });
   }
 
   const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
@@ -240,7 +240,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     
     if (Object.keys(dbUpdate).length > 0) {
         const categoryRef = doc(db, 'categories', categoryId);
-        await updateDoc(categoryRef, dbUpdate);
+        await setDoc(categoryRef, dbUpdate, { merge: true });
     }
     
     if (categoryUpdate.budget !== undefined) {
@@ -278,10 +278,10 @@ export function useCategories(tenantId: string | null, user: User | null, select
             txSnap.forEach(docSnap => {
                 const data = docSnap.data();
                 if (data.categoryId === categoryId || data.category === oldCategory.name) {
-                    batch.update(docSnap.ref, {
+                    batch.set(docSnap.ref, {
                         categoryId: categoryId,
                         category: categoryUpdate.name,
-                    });
+                    }, { merge: true });
                     count++;
                 }
             });
@@ -385,12 +385,12 @@ export function useCategories(tenantId: string | null, user: User | null, select
             data.subcategory === subcategoryToUpdate.name ||
             (data.subcategory && data.subcategory.trim().toLowerCase() === subcategoryToUpdate.name.trim().toLowerCase())
           ) {
-            batch.update(docSnap.ref, {
+            batch.set(docSnap.ref, {
               categoryId: categoryId,
               subcategoryId: subcategoryId,
               category: category.name,
               subcategory: subcategoryUpdate.name,
-            });
+            }, { merge: true });
             count++;
           }
         });
@@ -507,7 +507,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
         const updated = { ...cat, order: index };
         newCategories.push(updated);
         const docRef = doc(db, 'categories', id);
-        batch.update(docRef, { order: index });
+        batch.set(docRef, { order: index }, { merge: true });
       }
     });
 

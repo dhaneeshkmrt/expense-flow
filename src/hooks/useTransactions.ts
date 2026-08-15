@@ -1,8 +1,7 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { collection, addDoc, getDocs, doc, writeBatch, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
+import { collection, addDoc, onSnapshot, doc, writeBatch, deleteDoc, setDoc, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Transaction, User } from '@/lib/types';
 import { logChange } from '@/lib/logger';
@@ -42,28 +41,30 @@ export function useTransactions(tenantId: string | null, user: User | null) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(true);
 
-  const fetchTransactions = useCallback(async (tenantIdToFetch: string) => {
-    setLoadingTransactions(true);
-    try {
-      const q = query(collection(db, "transactions"), where("tenantId", "==", tenantIdToFetch));
-      const querySnapshot = await getDocs(q);
-      const fetchedTransactions = querySnapshot.docs.map(doc => normalizeTransaction({ id: doc.id, ...doc.data() }));
-      setTransactions(sortTransactions(fetchedTransactions));
-    } catch (error) {
-      console.error("Error fetching transactions: ", error);
-    } finally {
-      setLoadingTransactions(false);
-    }
-  }, []);
-
   useEffect(() => {
-    if (tenantId) {
-      fetchTransactions(tenantId);
-    } else {
+    if (!tenantId) {
       setTransactions([]);
       setLoadingTransactions(false);
+      return;
     }
-  }, [tenantId, fetchTransactions]);
+
+    setLoadingTransactions(true);
+    const q = query(collection(db, "transactions"), where("tenantId", "==", tenantId));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const fetchedTransactions = snapshot.docs.map(doc => normalizeTransaction({ id: doc.id, ...doc.data() }));
+        setTransactions(sortTransactions(fetchedTransactions));
+        setLoadingTransactions(false);
+      },
+      (error) => {
+        console.error("Error fetching transactions: ", error);
+        setLoadingTransactions(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [tenantId]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id' | 'tenantId'| 'userId'>): Promise<string> => {
     if (!tenantId || !user) throw new Error("Tenant or user not available");
@@ -73,7 +74,6 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     try {
       const docRef = await addDoc(collection(db, "transactions"), firestoreData);
       const newTransaction = { ...transactionData, id: docRef.id };
-      setTransactions(prev => sortTransactions([...prev, newTransaction]));
 
       await logChange(
         tenantId,
@@ -109,7 +109,6 @@ export function useTransactions(tenantId: string | null, user: User | null) {
 
     try {
       await batch.commit();
-      setTransactions(prev => sortTransactions([...prev, ...newTransactions]));
 
       for (const newTx of newTransactions) {
         await logChange(
@@ -138,11 +137,8 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     try {
         const oldTransaction = transactions.find(t => t.id === transactionId);
         const transactionRef = doc(db, "transactions", transactionId);
-        await updateDoc(transactionRef, firestoreData);
+        await setDoc(transactionRef, firestoreData, { merge: true });
         const newTransaction = { ...transactionData, id: transactionId };
-        setTransactions(prev => 
-            sortTransactions(prev.map(t => t.id === transactionId ? newTransaction : t))
-        );
 
         await logChange(
           tenantId,
@@ -165,7 +161,6 @@ export function useTransactions(tenantId: string | null, user: User | null) {
     try {
         const transactionToDelete = transactions.find(t => t.id === transactionId);
         await deleteDoc(doc(db, "transactions", transactionId));
-        setTransactions(prev => prev.filter(t => t.id !== transactionId));
         
         if (transactionToDelete) {
           await logChange(

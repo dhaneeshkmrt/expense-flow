@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, doc, where, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, setDoc, query, orderBy, doc, where, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Tenant, User, Category, Transaction, Settings } from '@/lib/types';
 import { format } from 'date-fns';
@@ -109,7 +109,7 @@ export function useTenants(
         try {
             const oldTenant = tenants.find(t => t.id === tenantId);
             const tenantRef = doc(db, 'tenants', tenantId);
-            await updateDoc(tenantRef, tenantData);
+            await setDoc(tenantRef, tenantData, { merge: true });
             const updatedTenant = { ...oldTenant, ...tenantData } as Tenant;
             setTenants(prev => prev.map(t => t.id === tenantId ? updatedTenant : t).sort((a,b) => a.name.localeCompare(b.name)));
 

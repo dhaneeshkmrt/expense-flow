@@ -10,6 +10,7 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
+  setDoc,
   orderBy 
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -78,7 +79,7 @@ export function useInsurance(tenantId: string | null, user: User | null) {
       updatedAt: new Date().toISOString(),
     };
 
-    await updateDoc(docRef, updateData);
+    await setDoc(docRef, updateData, { merge: true });
     await logChange(tenantId, user.name, 'UPDATE', 'insurances', id, `Updated insurance: ${oldInsurance?.policyNumber}`, oldInsurance, { ...oldInsurance, ...updateData });
   };
 

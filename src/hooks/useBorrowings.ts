@@ -10,6 +10,7 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
+  setDoc,
   writeBatch,
   orderBy
 } from 'firebase/firestore';
@@ -129,7 +130,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
       job: data.job || '',
     };
 
-    await updateDoc(contactRef, updateData);
+    await setDoc(contactRef, updateData, { merge: true });
     await logChange(tenantId, user.name, 'UPDATE', 'borrowingContacts', id, `Updated contact details for ${data.name}`, oldContact, { ...oldContact, ...updateData });
   };
 
@@ -185,7 +186,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
       ...(newBalance > 0 && oldBorrowing.isClosed && { closedAt: null })
     };
 
-    await updateDoc(borrowingRef, updateData);
+    await setDoc(borrowingRef, updateData, { merge: true });
     await logChange(tenantId, user.name, 'UPDATE', 'borrowings', id, `Updated borrowing record: ${oldBorrowing.contactName}`, oldBorrowing, { ...oldBorrowing, ...updateData });
   };
 
@@ -214,11 +215,11 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
     const newBalance = Math.max(0, borrowing.balance - amount);
     const isNowClosed = newBalance <= 0;
     const borrowingRef = doc(db, 'borrowings', borrowingId);
-    batch.update(borrowingRef, {
+    batch.set(borrowingRef, {
       balance: newBalance,
       isClosed: isNowClosed,
       ...(isNowClosed && { closedAt: new Date().toISOString() })
-    });
+    }, { merge: true });
 
     // 3. Update Contact Credit Score (simple logic)
     if (borrowing.type === 'Lent') {
@@ -234,7 +235,7 @@ export function useBorrowings(tenantId: string | null, user: User | null) {
         if (status === 'Written Off') scoreChange = -200;
 
         const newScore = Math.min(900, Math.max(300, contact.creditScore + scoreChange));
-        batch.update(doc(db, 'borrowingContacts', contact.id), { creditScore: newScore });
+        batch.set(doc(db, 'borrowingContacts', contact.id), { creditScore: newScore }, { merge: true });
       }
     }
 

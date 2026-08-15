@@ -1,6 +1,6 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, Firestore } from 'firebase/firestore';
 import { getAuth, Auth } from 'firebase/auth';
 
 const firebaseConfig = {
@@ -23,6 +23,18 @@ if (getApps().length === 0) {
 }
 
 auth = getAuth(app);
-db = getFirestore(app);
+
+if (typeof window !== 'undefined') {
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch (err) {
+    console.warn('Persistent cache initialization failed, falling back to default getFirestore:', err);
+    db = getFirestore(app);
+  }
+} else {
+  db = getFirestore(app);
+}
 
 export { db, auth };
