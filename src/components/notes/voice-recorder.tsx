@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mic, Square, Play, Pause, Trash2, Loader2 } from 'lucide-react';
+import { Mic, Square, Play, Pause, Trash2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const MAX_RECORDING_SECONDS = 60; // 60 seconds limit
+const TARGET_BITRATE = 16000; // 16 kbps
 
 interface VoiceRecorderProps {
   audioDataUrl?: string;
@@ -20,46 +23,99 @@ export function VoiceRecorder({ audioDataUrl, onChange }: VoiceRecorderProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const stopRecording = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+
+      // Determine supported mimeType with 16kbps bitrate
+      let options: MediaRecorderOptions = { audioBitsPerSecond: TARGET_BITRATE };
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          options = { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: TARGET_BITRATE };
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { mimeType: 'audio/webm', audioBitsPerSecond: TARGET_BITRATE };
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          options = { mimeType: 'audio/mp4', audioBitsPerSecond: TARGET_BITRATE };
+        }
+      }
+
+      let mediaRecorder: MediaRecorder;
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch {
+        mediaRecorder = new MediaRecorder(stream);
+      }
+
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       setRecordingSeconds(0);
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+          // Check cumulative size (< 95KB to stay safely under 100KB)
+          const totalSize = audioChunksRef.current.reduce((acc, chunk) => acc + chunk.size, 0);
+          if (totalSize >= 95 * 1024) {
+            stopRecording();
+          }
+        }
       };
 
       mediaRecorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
         const reader = new FileReader();
         reader.readAsDataURL(blob);
         reader.onloadend = () => {
           onChange(reader.result as string);
         };
         stream.getTracks().forEach((t) => t.stop());
-        if (timerRef.current) clearInterval(timerRef.current);
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
       };
 
-      mediaRecorder.start();
+      mediaRecorder.start(1000); // 1-second chunks for progress tracking
       setIsRecording(true);
 
       timerRef.current = setInterval(() => {
-        setRecordingSeconds((s) => s + 1);
+        setRecordingSeconds((prev) => {
+          if (prev + 1 >= MAX_RECORDING_SECONDS) {
+            stopRecording();
+            return MAX_RECORDING_SECONDS;
+          }
+          return prev + 1;
+        });
       }, 1000);
-    } catch {
-      // mic denied — silently fail; parent can show a toast
+    } catch (err) {
+      console.error('Error starting audio recording:', err);
     }
-  }, [onChange]);
+  }, [onChange, stopRecording]);
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  }, [isRecording]);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const togglePlay = useCallback(() => {
     if (!audioDataUrl) return;
@@ -104,8 +160,8 @@ export function VoiceRecorder({ audioDataUrl, onChange }: VoiceRecorderProps) {
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         <div className="flex-1">
-          <div className="text-sm font-medium text-foreground">Voice Note</div>
-          <div className="text-xs text-muted-foreground">Tap play to listen</div>
+          <div className="text-sm font-medium text-foreground">Voice Note Recorded</div>
+          <div className="text-xs text-muted-foreground">Tap play to listen · Compressed (16kbps)</div>
         </div>
         <Button
           type="button"
@@ -120,8 +176,10 @@ export function VoiceRecorder({ audioDataUrl, onChange }: VoiceRecorderProps) {
     );
   }
 
+  const isNearLimit = recordingSeconds >= 50;
+
   return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/20 py-6">
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-muted/20 py-6 px-4">
       <Button
         type="button"
         variant={isRecording ? 'destructive' : 'outline'}
@@ -134,13 +192,40 @@ export function VoiceRecorder({ audioDataUrl, onChange }: VoiceRecorderProps) {
       >
         {isRecording ? <Square className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
       </Button>
-      <p className="text-sm text-muted-foreground">
-        {isRecording ? (
-          <span className="text-destructive font-medium">Recording... {formatTime(recordingSeconds)}</span>
-        ) : (
-          'Tap to start recording'
-        )}
-      </p>
+
+      <div className="text-center space-y-1">
+        <p className="text-sm">
+          {isRecording ? (
+            <span className={cn('font-semibold', isNearLimit ? 'text-red-500' : 'text-destructive')}>
+              Recording... {formatTime(recordingSeconds)} / {formatTime(MAX_RECORDING_SECONDS)}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Tap to start voice recording</span>
+          )}
+        </p>
+        <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+          <span>Max 60 seconds · 16kbps compressed (&lt;100KB)</span>
+        </div>
+      </div>
+
+      {isRecording && (
+        <div className="w-full max-w-xs space-y-1">
+          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+            <div
+              className={cn(
+                'h-full transition-all duration-300',
+                isNearLimit ? 'bg-red-500' : 'bg-primary'
+              )}
+              style={{ width: `${(recordingSeconds / MAX_RECORDING_SECONDS) * 100}%` }}
+            />
+          </div>
+          {isNearLimit && (
+            <p className="text-[11px] text-red-500 flex items-center justify-center gap-1">
+              <AlertCircle className="h-3 w-3" /> Reaching 60s limit — will auto-save
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

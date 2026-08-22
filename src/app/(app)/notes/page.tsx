@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { NoteCard } from '@/components/notes/note-card';
 import { NoteDialog } from '@/components/notes/note-dialog';
-import type { NoteType } from '@/lib/types';
+import { NoteViewDialog } from '@/components/notes/note-view-dialog';
+import type { Note, NoteType } from '@/lib/types';
 import {
   PlusCircle,
   Loader2,
@@ -36,6 +37,8 @@ export default function NotesPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editNoteId, setEditNoteId] = useState<string | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [viewNoteId, setViewNoteId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<'all' | NoteType>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -49,6 +52,15 @@ export default function NotesPage() {
     setEditNoteId(id);
     setDialogOpen(true);
   };
+
+  const handleView = (id: string) => {
+    setViewNoteId(id);
+    setViewDialogOpen(true);
+  };
+
+  const viewNote = useMemo(() => {
+    return notes.find((n) => n.id === viewNoteId) || null;
+  }, [notes, viewNoteId]);
 
   const filteredNotes = useMemo(() => {
     return notes.filter((note) => {
@@ -171,7 +183,7 @@ export default function NotesPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {pinnedNotes.map((note) => (
-                  <NoteCard key={note.id} note={note} onEdit={handleEdit} />
+                  <NoteCard key={note.id} note={note} onEdit={handleEdit} onView={handleView} />
                 ))}
               </div>
             </div>
@@ -187,7 +199,7 @@ export default function NotesPage() {
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {unpinnedNotes.map((note) => (
-                  <NoteCard key={note.id} note={note} onEdit={handleEdit} />
+                  <NoteCard key={note.id} note={note} onEdit={handleEdit} onView={handleView} />
                 ))}
               </div>
             </div>
@@ -196,6 +208,15 @@ export default function NotesPage() {
       )}
 
       <NoteDialog open={dialogOpen} setOpen={setDialogOpen} noteId={editNoteId} />
+      <NoteViewDialog
+        open={viewDialogOpen}
+        setOpen={setViewDialogOpen}
+        note={viewNote}
+        onEdit={(id) => {
+          setViewDialogOpen(false);
+          handleEdit(id);
+        }}
+      />
     </div>
   );
 }

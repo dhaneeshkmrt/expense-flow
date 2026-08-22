@@ -38,6 +38,7 @@ import {
   ShoppingCart,
   BookOpen,
   Check,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -62,9 +63,10 @@ const TYPE_CONFIG: Record<string, { label: string; icon: React.ElementType; badg
 interface NoteCardProps {
   note: Note;
   onEdit: (id: string) => void;
+  onView?: (id: string) => void;
 }
 
-export function NoteCard({ note, onEdit }: NoteCardProps) {
+export function NoteCard({ note, onEdit, onView }: NoteCardProps) {
   const { deleteNote, pinNote, archiveNote, toggleNoteItem, dismissNoteReminder } = useApp();
   const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -123,11 +125,18 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
 
   const colorStyle = COLOR_STYLE[note.color] || COLOR_STYLE.default;
 
+  const handleCardClick = () => {
+    if (onView) {
+      onView(note.id);
+    }
+  };
+
   return (
     <>
       <div
+        onClick={handleCardClick}
         className={cn(
-          'group relative rounded-xl border border-l-4 p-4 transition-all duration-200 hover:shadow-md',
+          'group relative rounded-xl border border-l-4 p-4 transition-all duration-200 hover:shadow-md cursor-pointer',
           colorStyle.card,
           colorStyle.accent,
           note.isPinned && 'ring-1 ring-amber-400/50'
@@ -138,15 +147,23 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
           <Pin className="absolute top-3 right-10 h-3.5 w-3.5 text-amber-500 fill-amber-500 opacity-60" />
         )}
 
-        {/* Actions menu */}
-        <div className="absolute top-2 right-2">
+        {/* Actions menu - ALWAYS VISIBLE */}
+        <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted/80 rounded-md"
+                aria-label="Note options"
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onView ? onView(note.id) : onEdit(note.id)}>
+                <Eye className="mr-2 h-4 w-4" /> View Details
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onEdit(note.id)}>
                 <Pencil className="mr-2 h-4 w-4" /> Edit
               </DropdownMenuItem>
@@ -201,7 +218,14 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
 
         {/* Content body */}
         {(note.variety === 'quick' || note.variety === 'detailed') && note.content && (
-          <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">{note.content}</p>
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">{note.content}</p>
+            {note.content.length > 180 && (
+              <span className="text-xs text-primary font-medium inline-flex items-center gap-0.5 hover:underline">
+                Read full note &rarr;
+              </span>
+            )}
+          </div>
         )}
 
         {note.variety === 'list' && note.items && note.items.length > 0 && (
@@ -223,7 +247,10 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => handleToggleItem(item.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleItem(item.id);
+                  }}
                   className="flex items-center gap-2 w-full text-left group/item"
                 >
                   <div className={cn(
@@ -243,14 +270,16 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
                 </button>
               ))}
               {note.items.length > 6 && (
-                <p className="text-xs text-muted-foreground pl-6">+{note.items.length - 6} more items</p>
+                <p className="text-xs text-primary font-medium pl-6 hover:underline pt-0.5">
+                  +{note.items.length - 6} more items (View all)
+                </p>
               )}
             </div>
           </div>
         )}
 
         {note.variety === 'voice' && note.audioDataUrl && (
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
             <Button
               type="button"
               variant="ghost"
@@ -266,7 +295,7 @@ export function NoteCard({ note, onEdit }: NoteCardProps) {
 
         {/* Reminder dismiss button */}
         {note.type === 'reminder' && note.reminderDate && !note.reminderDismissed && (
-          <div className="mt-3 pt-2 border-t border-current/10">
+          <div className="mt-3 pt-2 border-t border-current/10" onClick={(e) => e.stopPropagation()}>
             <Button
               type="button"
               size="sm"
