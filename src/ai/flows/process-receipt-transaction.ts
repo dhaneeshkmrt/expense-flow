@@ -23,7 +23,7 @@ const ProcessReceiptInputSchema = z.object({
   imageDataUri: z
     .string()
     .describe(
-      "A photo or scan of a shopping receipt or bill, as a data URI. Expected format: 'data:image/<type>;base64,<encoded_data>'."
+      "A photo, image scan, or PDF document of a shopping receipt or bill, as a data URI. Expected format: 'data:image/<type>;base64,<encoded_data>' or 'data:application/pdf;base64,<encoded_data>'."
     ),
   availableCategories: z.array(z.string()).optional().describe('List of available category names.'),
   categoryDetails: z.array(CategoryInfoSchema).optional().describe('Detailed category hierarchy with descriptions and guidelines for accurate categorization.'),
@@ -63,7 +63,7 @@ const prompt = ai.definePrompt({
     ],
   },
   prompt: `You are an expert AI accountant and receipt extraction assistant.
-Analyze the provided bill or receipt image with high precision.
+Analyze the provided bill or receipt image / PDF document with high precision.
 
 TASKS:
 1. **Store/Merchant Name**: Identify the shop, supermarket, restaurant, or business name (e.g., "DMart", "Reliance Fresh", "Apollo Pharmacy", "Nilgiris").
@@ -94,7 +94,7 @@ IMPORTANT RULES:
 - Keep amounts numeric (positive numbers).
 - If the receipt is long, capture all distinct items and their amounts accurately.
 
-Receipt Image: {{media url=imageDataUri}}`,
+Receipt Document: {{media url=imageDataUri}}`,
 });
 
 const processReceiptFlow = ai.defineFlow(
@@ -104,12 +104,12 @@ const processReceiptFlow = ai.defineFlow(
     outputSchema: ProcessReceiptOutputSchema,
   },
   async input => {
-    const selectedModelName = input.model || 'gemini-2.0-flash';
+    const selectedModelName = input.model || 'gemini-3.6-flash';
     try {
       const {output} = await prompt(input, {
         model: googleAI.model(selectedModelName as any),
       });
-      if (!output) throw new Error('AI could not analyze the receipt. Please ensure the receipt image is clear and well-lit.');
+      if (!output) throw new Error('AI could not analyze the receipt. Please ensure the receipt image or PDF is clear and readable.');
       return output;
     } catch (err: any) {
       // If error is 503 high demand or unavailable and user was not already on gemini-2.0-flash, try fallback

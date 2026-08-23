@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DEFAULT_AI_MODEL } from '@/lib/ai-models';
 import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye, AlertTriangle, ChevronLeft, ChevronRight, Mic, Square, Volume2, Trash2, Layers } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -291,7 +292,7 @@ export default function AddTransactionSheet({
         audioDataUri: dataUri,
         availableCategories: categories.map(c => c.name),
         categoryDetails,
-        model: settings.aiModel || 'gemini-2.0-flash',
+        model: settings.aiModel || DEFAULT_AI_MODEL,
       });
 
       if (result) {

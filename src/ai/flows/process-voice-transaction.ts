@@ -95,7 +95,7 @@ const processVoiceTransactionFlow = ai.defineFlow(
     outputSchema: ProcessVoiceTransactionOutputSchema,
   },
   async input => {
-    const selectedModelName = input.model || 'gemini-2.0-flash';
+    const selectedModelName = input.model || 'gemini-3.6-flash';
     try {
       const {output} = await prompt(input, {
         model: googleAI.model(selectedModelName as any),

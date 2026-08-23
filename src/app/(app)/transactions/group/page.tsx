@@ -60,12 +60,13 @@ import {
   Eye,
   X,
   FileText,
+  FileCode,
   Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, getYear, getMonth, subDays, addDays } from 'date-fns';
 import type { Category, Transaction } from '@/lib/types';
-import { GEMINI_MODELS } from '@/lib/ai-models';
+import { GEMINI_MODELS, DEFAULT_AI_MODEL } from '@/lib/ai-models';
 
 // Safe arithmetic evaluator
 const evaluateExpression = (expr: string): number | null => {
@@ -232,11 +233,14 @@ export default function GroupTransactionsPage() {
 
   // Receipt Scanner States
   const [isScanningReceipt, setIsScanningReceipt] = useState(false);
-  const [selectedAiModel, setSelectedAiModel] = useState<string>(settings.aiModel || 'gemini-2.0-flash');
-  const [receiptImagePreview, setReceiptImagePreview] = useState<string | null>(null);
-  const [showImageDialog, setShowImageDialog] = useState(false);
+  const [selectedAiModel, setSelectedAiModel] = useState<string>(settings.aiModel || DEFAULT_AI_MODEL);
+  const [receiptDocPreview, setReceiptDocPreview] = useState<string | null>(null);
+  const [receiptDocType, setReceiptDocType] = useState<'image' | 'pdf' | null>(null);
+  const [receiptDocName, setReceiptDocName] = useState<string>('');
+  const [showDocDialog, setShowDocDialog] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
-  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement | null>(null);
 
   // Sync with user settings
   useEffect(() => {
@@ -287,7 +291,7 @@ export default function GroupTransactionsPage() {
     }));
   }, [categories]);
 
-  // Handle Receipt File Upload or Photo Capture
+  // Handle Receipt Image or PDF Upload / Camera Capture
   const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -295,13 +299,29 @@ export default function GroupTransactionsPage() {
 
     setIsScanningReceipt(true);
     try {
-      // 1. Client-side compression
-      const compressedDataUri = await compressImage(file);
-      setReceiptImagePreview(compressedDataUri);
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      let dataUri = '';
+
+      if (isPdf) {
+        dataUri = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read PDF document.'));
+          reader.readAsDataURL(file);
+        });
+        setReceiptDocType('pdf');
+      } else {
+        // Client-side image compression
+        dataUri = await compressImage(file);
+        setReceiptDocType('image');
+      }
+
+      setReceiptDocName(file.name);
+      setReceiptDocPreview(dataUri);
 
       // 2. Call Gemini AI Flow with chosen model
       const result = await processReceiptTransaction({
-        imageDataUri: compressedDataUri,
+        imageDataUri: dataUri,
         availableCategories: categories.map(c => c.name),
         categoryDetails,
         model: selectedAiModel,
@@ -483,7 +503,8 @@ export default function GroupTransactionsPage() {
       setIsScanningReceipt(false);
       // Reset input values so same file can be re-selected if needed
       if (cameraInputRef.current) cameraInputRef.current.value = '';
-      if (uploadInputRef.current) uploadInputRef.current.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      if (pdfInputRef.current) pdfInputRef.current.value = '';
     }
   };
 
@@ -642,7 +663,9 @@ export default function GroupTransactionsPage() {
     setGroupDate(new Date());
     setGroupTime(format(new Date(), 'HH:mm'));
     setGroupNotes('');
-    setReceiptImagePreview(null);
+    setReceiptDocPreview(null);
+    setReceiptDocType(null);
+    setReceiptDocName('');
     setItems([
       {
         id: `item-${Date.now()}`,
@@ -793,7 +816,7 @@ export default function GroupTransactionsPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-28 sm:pb-20 max-w-4xl mx-auto">
-      {/* Hidden File Inputs for Camera and Gallery */}
+      {/* Hidden File Inputs for Camera, Image, and PDF */}
       <input
         type="file"
         ref={cameraInputRef}
@@ -804,8 +827,15 @@ export default function GroupTransactionsPage() {
       />
       <input
         type="file"
-        ref={uploadInputRef}
+        ref={imageInputRef}
         accept="image/*"
+        className="hidden"
+        onChange={handleReceiptFile}
+      />
+      <input
+        type="file"
+        ref={pdfInputRef}
+        accept="application/pdf,.pdf"
         className="hidden"
         onChange={handleReceiptFile}
       />
@@ -827,7 +857,7 @@ export default function GroupTransactionsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">Group Transactions</h1>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Enter a bulk bill or scan a receipt to split across multiple categories.
+              Enter a bulk bill or scan an image / PDF receipt to split across multiple categories.
             </p>
           </div>
         </div>
@@ -858,7 +888,7 @@ export default function GroupTransactionsPage() {
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuItem
                 className="cursor-pointer gap-2 py-2 text-xs"
                 onClick={() => cameraInputRef.current?.click()}
@@ -868,10 +898,17 @@ export default function GroupTransactionsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="cursor-pointer gap-2 py-2 text-xs"
-                onClick={() => uploadInputRef.current?.click()}
+                onClick={() => imageInputRef.current?.click()}
               >
                 <Upload className="h-4 w-4 text-primary" />
-                <span>Upload Bill Image</span>
+                <span>Upload Bill Image (JPG/PNG)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 py-2 text-xs"
+                onClick={() => pdfInputRef.current?.click()}
+              >
+                <FileCode className="h-4 w-4 text-primary" />
+                <span>Upload Bill PDF Document</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -927,33 +964,46 @@ export default function GroupTransactionsPage() {
         <Alert className="bg-primary/10 border-primary/30 animate-pulse">
           <Sparkles className="h-4 w-4 text-primary" />
           <AlertDescription className="text-primary font-medium text-xs sm:text-sm flex items-center justify-between">
-            <span>Gemini is analyzing your receipt, extracting line items, and matching category guidelines...</span>
+            <span>Gemini is analyzing your document, extracting line items, and matching category guidelines...</span>
             <Loader2 className="h-4 w-4 animate-spin shrink-0 ml-2" />
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Receipt Image Thumbnail Banner (if receipt loaded) */}
-      {receiptImagePreview && (
+      {/* Document / Receipt Thumbnail Banner (if document loaded) */}
+      {receiptDocPreview && (
         <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-primary/20 bg-muted/40 text-xs">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="relative h-10 w-10 rounded-md overflow-hidden border border-border shrink-0 cursor-pointer group"
-              onClick={() => setShowImageDialog(true)}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={receiptImagePreview} alt="Receipt" className="h-full w-full object-cover group-hover:opacity-80 transition-opacity" />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Eye className="h-3.5 w-3.5 text-white" />
+            {receiptDocType === 'pdf' ? (
+              <div
+                className="h-10 w-10 rounded-md bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0 cursor-pointer text-primary"
+                onClick={() => setShowDocDialog(true)}
+                title="View PDF Document"
+              >
+                <FileText className="h-5 w-5" />
               </div>
-            </div>
+            ) : (
+              <div
+                className="relative h-10 w-10 rounded-md overflow-hidden border border-border shrink-0 cursor-pointer group"
+                onClick={() => setShowDocDialog(true)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={receiptDocPreview} alt="Receipt" className="h-full w-full object-cover group-hover:opacity-80 transition-opacity" />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Eye className="h-3.5 w-3.5 text-white" />
+                </div>
+              </div>
+            )}
+
             <div className="truncate">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span className="truncate">Scanned Bill Attachment</span>
-                <Badge variant="secondary" className="text-[10px] px-1 py-0">AI Processed</Badge>
+                <span className="truncate">{receiptDocName || (receiptDocType === 'pdf' ? 'Bill Document.pdf' : 'Scanned Receipt')}</span>
+                <Badge variant="secondary" className="text-[10px] px-1 py-0 uppercase">
+                  {receiptDocType || 'Doc'}
+                </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground">Click thumbnail to view full receipt</p>
+              <p className="text-[11px] text-muted-foreground">Click thumbnail to view attached bill</p>
             </div>
           </div>
 
@@ -963,7 +1013,7 @@ export default function GroupTransactionsPage() {
               variant="outline"
               size="sm"
               className="h-7 px-2 text-xs"
-              onClick={() => setShowImageDialog(true)}
+              onClick={() => setShowDocDialog(true)}
             >
               <Eye className="mr-1 h-3 w-3" />
               View
@@ -973,7 +1023,11 @@ export default function GroupTransactionsPage() {
               variant="ghost"
               size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => setReceiptImagePreview(null)}
+              onClick={() => {
+                setReceiptDocPreview(null);
+                setReceiptDocType(null);
+                setReceiptDocName('');
+              }}
               title="Remove Attachment"
             >
               <X className="h-3.5 w-3.5" />
@@ -1470,24 +1524,30 @@ export default function GroupTransactionsPage() {
         </div>
       </div>
 
-      {/* Full Receipt Image Viewer Dialog */}
-      <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-4">
+      {/* Full Document / Receipt Viewer Dialog */}
+      <Dialog open={showDocDialog} onOpenChange={setShowDocDialog}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4 text-primary" />
-              Scanned Receipt / Bill
+            <DialogTitle className="flex items-center gap-2 text-base truncate">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <span className="truncate">{receiptDocName || 'Attached Bill / Receipt'}</span>
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-black/5 dark:bg-black/20 rounded-md">
-            {receiptImagePreview && (
+            {receiptDocPreview && receiptDocType === 'pdf' ? (
+              <iframe
+                src={receiptDocPreview}
+                title="PDF Receipt"
+                className="w-full h-[70vh] rounded-md border-0 bg-white"
+              />
+            ) : receiptDocPreview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={receiptImagePreview}
+                src={receiptDocPreview}
                 alt="Full Receipt"
                 className="max-h-[70vh] w-auto object-contain rounded-md shadow"
               />
-            )}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

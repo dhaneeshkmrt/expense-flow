@@ -36,7 +36,7 @@ import {
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-import { GEMINI_MODELS } from '@/lib/ai-models';
+import { GEMINI_MODELS, DEFAULT_AI_MODEL } from '@/lib/ai-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +116,7 @@ export default function SettingsPage() {
       defaultSubcategory: 'none',
       defaultMicrocategory: 'none',
       defaultPaidBy: 'none',
-      aiModel: 'gemini-2.0-flash',
+      aiModel: DEFAULT_AI_MODEL,
     }
   });
 
@@ -149,7 +149,7 @@ export default function SettingsPage() {
         defaultSubcategory: settings.defaultSubcategory || 'none',
         defaultMicrocategory: settings.defaultMicrocategory || 'none',
         defaultPaidBy: settings.defaultPaidBy || 'none',
-        aiModel: settings.aiModel || 'gemini-2.0-flash',
+        aiModel: settings.aiModel || DEFAULT_AI_MODEL,
       });
     }
   }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
