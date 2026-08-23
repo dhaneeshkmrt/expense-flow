@@ -1,8 +1,10 @@
 
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { ChevronsUpDown, Check, PlusCircle } from 'lucide-react';
+import { ChevronsUpDown, Check, PlusCircle, Layers } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '@/lib/provider';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -21,6 +23,7 @@ const months = [
 ];
 
 export function AppShellHeader() {
+  const router = useRouter();
   const { 
     tenants, selectedTenantId, setSelectedTenantId, loadingTenants, isAdminUser,
     selectedYear, setSelectedYear, selectedMonth, setSelectedMonth, availableYears,
@@ -55,9 +58,18 @@ export function AppShellHeader() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            disabled={!selectedTenantId}
+            onClick={() => router.push('/transactions/group')}
+            className="border-primary/40 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Group Add
+          </Button>
           <AddTransactionSheet>
             <Button disabled={!selectedTenantId}>
-              <PlusCircle className="mr-2" />
+              <PlusCircle className="mr-2 h-4 w-4" />
               Add Transaction
             </Button>
           </AddTransactionSheet>

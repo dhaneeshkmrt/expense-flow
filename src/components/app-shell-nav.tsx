@@ -6,7 +6,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing, ScrollText, HandCoins, ShieldCheck, NotebookPen } from 'lucide-react';
+import { LayoutDashboard, ReceiptText, Shapes, Shield, Building2, Settings, Landmark, Loader2, DatabaseBackup, Database, Wallet, Wand2, Calculator, BellRing, ScrollText, HandCoins, ShieldCheck, NotebookPen, Layers } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
@@ -39,7 +39,14 @@ function hasSubItems(item: NavItem): item is NavItemWithSubItems {
 
 const allNavItems: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/transactions', label: 'Transactions', icon: ReceiptText },
+  {
+      label: 'Transactions',
+      icon: ReceiptText,
+      subItems: [
+          { href: '/transactions', label: 'All Transactions', icon: ReceiptText },
+          { href: '/transactions/group', label: 'Group Transactions', icon: Layers },
+      ]
+  },
   { href: '/categories', label: 'Categories', icon: Shapes },
   { href: '/reminders', label: 'Reminders', icon: BellRing, featureFlag: 'reminders' },
   { href: '/notes', label: 'Notes', icon: NotebookPen, featureFlag: 'notes' },
@@ -86,6 +93,7 @@ export function AppShellNav() {
   const pathname = usePathname();
   const { userTenant, isAdminUser } = useApp();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+      transactions: false,
       admin: false,
       calculators: false,
       borrowings: false,
@@ -96,6 +104,7 @@ export function AppShellNav() {
   useEffect(() => {
     setIsMounted(true);
     setOpenSections({
+        transactions: pathname.startsWith('/transactions'),
         admin: pathname.startsWith('/admin'),
         calculators: pathname.startsWith('/calculators'),
         borrowings: pathname.startsWith('/borrowings'),

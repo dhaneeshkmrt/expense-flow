@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useTransition, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -42,7 +43,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye, AlertTriangle, ChevronLeft, ChevronRight, Mic, Square, Volume2, Trash2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Lock, Plus, PlusCircle, Eye, AlertTriangle, ChevronLeft, ChevronRight, Mic, Square, Volume2, Trash2, Layers } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO, getYear, getMonth, subDays, addDays } from 'date-fns';
@@ -87,6 +88,7 @@ export default function AddTransactionSheet({
   setOpen: setControlledOpen,
   transaction,
 }: AddTransactionSheetProps) {
+  const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const { categories, addTransaction, editTransaction, deleteTransaction, tenants, selectedTenantId, isMonthLocked, settings, filteredTransactions } = useApp();
   const { toast } = useToast();
@@ -388,6 +390,20 @@ export default function AddTransactionSheet({
             <div className="flex items-center justify-between gap-3">
               <SheetTitle>{isEditing ? 'Edit Transaction' : 'New Transaction'}</SheetTitle>
               {!isEditing && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full h-8 px-3 text-xs font-medium border-primary/40 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                    onClick={() => {
+                      setOpen(false);
+                      router.push('/transactions/group');
+                    }}
+                  >
+                    <Layers className="mr-1.5 h-3.5 w-3.5" />
+                    Group Add
+                  </Button>
                   <Button 
                       type="button"
                       variant={isRecording ? "destructive" : "outline"} 
@@ -400,6 +416,7 @@ export default function AddTransactionSheet({
                       {isRecording ? "Stop" : "Speak"}
                       {isProcessingVoice && <Loader2 className="ml-1.5 h-3.5 w-3.5 animate-spin" />}
                   </Button>
+                </div>
               )}
             </div>
           </SheetHeader>

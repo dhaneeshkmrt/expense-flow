@@ -1,12 +1,14 @@
 'use client';
 
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo } from 'react';
 import { useApp } from '@/lib/provider';
 import { createColumns } from '@/components/transactions/columns';
 import { DataTable } from '@/components/transactions/data-table';
 import AddTransactionSheet from '@/components/transactions/add-transaction-sheet';
 import { Button } from '@/components/ui/button';
-import { Import, PlusCircle } from 'lucide-react';
+import { Import, PlusCircle, Layers } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import ImportCsvDialog from '@/components/transactions/import-csv-dialog';
 import type { Transaction } from '@/lib/types';
@@ -14,6 +16,7 @@ import type { Transaction } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export default function TransactionsPage() {
+  const router = useRouter();
   const { 
     user, 
     tenants, 
@@ -63,18 +66,27 @@ export default function TransactionsPage() {
             View and manage all your transactions.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {isMainTenantUser && (
             <ImportCsvDialog>
               <Button variant="outline" disabled={!selectedTenantId}>
-                <Import className="mr-2" />
+                <Import className="mr-2 h-4 w-4" />
                 Import CSV
               </Button>
             </ImportCsvDialog>
           )}
+          <Button
+            variant="outline"
+            disabled={!selectedTenantId}
+            onClick={() => router.push('/transactions/group')}
+            className="border-primary/40 text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Group Add
+          </Button>
           <AddTransactionSheet>
               <Button disabled={!selectedTenantId}>
-                <PlusCircle className="mr-2" />
+                <PlusCircle className="mr-2 h-4 w-4" />
                 Add Transaction
               </Button>
           </AddTransactionSheet>
