@@ -207,24 +207,29 @@ export default function CategoriesPage() {
           const subcategoryBudgetTotal = (category.subcategories || []).reduce((sum, sub) => sum + (sub.budget || 0), 0);
           return (
             <Card key={category.id}>
-              <CardHeader className="flex-row items-start justify-between">
-                <div>
+              <CardHeader className="flex-row items-start justify-between pb-3">
+                <div className="flex-1 min-w-0 pr-2">
                     <CardTitle className="flex items-center gap-3">
-                        {Icon && <Icon className="w-6 h-6 text-primary" />}
-                        <span>{category.name}</span>
+                        {Icon && <Icon className="w-6 h-6 text-primary shrink-0" />}
+                        <span className="truncate">{category.name}</span>
                     </CardTitle>
+                    {category.description && (
+                        <p className="text-xs text-muted-foreground/90 mt-1 line-clamp-2" title={category.description}>
+                            {category.description}
+                        </p>
+                    )}
                     {monthlyBudget !== undefined && monthlyBudget > 0 && (
                         <p className="text-sm text-muted-foreground mt-2">
                             Budget for {selectedMonthName}: <span className="font-semibold text-primary">{formatCurrency(monthlyBudget)}</span>
                         </p>
                     )}
                     {subcategoryBudgetTotal > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                             Subcategories Budget Total: <span className="font-semibold text-primary">{formatCurrency(subcategoryBudgetTotal)}</span>
                         </p>
                     )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 shrink-0">
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -274,15 +279,22 @@ export default function CategoriesPage() {
                   <Collapsible key={sub.id} open={openCollapsibles[sub.id]} onOpenChange={() => toggleCollapsible(sub.id)} className="group/sub">
                     <div className="relative flex items-center justify-between p-2 rounded-md hover:bg-muted group/sub">
                         <CollapsibleTrigger asChild>
-                            <button className="flex items-center gap-2 flex-1 min-w-0 text-left pr-2">
-                                <span className="font-semibold text-sm leading-snug break-words">{sub.name}</span>
-                                {sub.budget !== undefined && sub.budget > 0 && (
-                                    <Badge variant="outline" className="text-[10px] font-normal text-primary border-primary/30 py-0 px-1.5 shrink-0">
-                                        {formatCurrency(sub.budget)}
-                                    </Badge>
-                                )}
-                                {sub.microcategories && sub.microcategories.length > 0 && (
-                                    openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
+                            <button className="flex flex-col items-start gap-0.5 flex-1 min-w-0 text-left pr-2">
+                                <div className="flex items-center gap-2 w-full">
+                                    <span className="font-semibold text-sm leading-snug break-words">{sub.name}</span>
+                                    {sub.budget !== undefined && sub.budget > 0 && (
+                                        <Badge variant="outline" className="text-[10px] font-normal text-primary border-primary/30 py-0 px-1.5 shrink-0">
+                                            {formatCurrency(sub.budget)}
+                                        </Badge>
+                                    )}
+                                    {sub.microcategories && sub.microcategories.length > 0 && (
+                                        openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
+                                    )}
+                                </div>
+                                {sub.description && (
+                                    <span className="text-[11px] text-muted-foreground line-clamp-1" title={sub.description}>
+                                        {sub.description}
+                                    </span>
                                 )}
                             </button>
                         </CollapsibleTrigger>
@@ -338,7 +350,7 @@ export default function CategoriesPage() {
                         <div className="flex flex-wrap gap-1 pl-6 pr-2 py-2">
                             {(sub.microcategories || []).map((micro, microIdx) => (
                                 <div key={micro.id} className="group/micro relative">
-                                    <Badge variant="secondary" className="pr-12">
+                                    <Badge variant="secondary" className="pr-12" title={micro.description || micro.name}>
                                         {micro.name}
                                     </Badge>
                                     <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover/micro:opacity-100 bg-secondary/80 rounded-full px-1">

@@ -48,6 +48,8 @@ import {
 } from 'lucide-react';
 import { getIconName } from '@/hooks/useCategories';
 
+import { Textarea } from '@/components/ui/textarea';
+
 const iconList = [
     { name: 'Briefcase', component: Briefcase },
     { name: 'Gift', component: Gift },
@@ -74,6 +76,7 @@ const categorySchema = z.object({
   name: z.string().min(2, 'Category name must be at least 2 characters.'),
   icon: z.string().min(1, 'Please select an icon.'),
   budget: z.coerce.number().min(0, 'Budget must be a positive number.').optional(),
+  description: z.string().optional(),
 });
 
 type CategoryFormValues = z.infer<typeof categorySchema>;
@@ -97,6 +100,7 @@ export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefau
       name: '',
       icon: '',
       budget: 0,
+      description: '',
     },
   });
 
@@ -108,9 +112,10 @@ export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefau
           name: category.name,
           icon: iconName || '',
           budget: category.budget || 0,
+          description: category.description || '',
         });
       } else {
-        form.reset({ name: '', icon: '', budget: 0 });
+        form.reset({ name: '', icon: '', budget: 0, description: '' });
       }
     }
   }, [category, isEditing, open, form]);
@@ -126,6 +131,7 @@ export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefau
         name: data.name,
         icon: data.icon,
         budget: data.budget,
+        description: data.description || '',
       });
     }
     setOpen(false);
@@ -186,7 +192,7 @@ export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefau
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="budget"
               render={({ field }) => (
@@ -194,6 +200,23 @@ export function CategoryDialog({ open, setOpen, category, onAdd, onEdit, isDefau
                   <FormLabel>Default Budget</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="e.g., 500" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description / Expense Guidelines</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe what expenses belong to this category to help AI accurately categorize transactions (e.g., Household groceries, dairy, vegetables, travel)..." 
+                      className="min-h-[75px] resize-y text-xs sm:text-sm"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

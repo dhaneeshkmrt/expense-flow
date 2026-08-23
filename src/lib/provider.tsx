@@ -76,14 +76,14 @@ interface AppContextType {
   updateSettings: (newSettings: Partial<Omit<Settings, 'tenantId'>>) => Promise<void>;
 
   categories: Category[];
-  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number; }) => Promise<void>;
-  editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; }) => Promise<void>;
+  addCategory: (category: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'userId' | 'budget'> & { icon: string; budget?: number; description?: string; }) => Promise<void>;
+  editCategory: (categoryId: string, category: { name?: string; icon?: string | React.ElementType; budget?: number; description?: string; }) => Promise<void>;
   deleteCategory: (categoryId: string) => Promise<void>;
-  addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number }) => Promise<void>;
-  editSubcategory: (categoryId: string, subcategoryId: string, subcategory: { name?: string; budget?: number }) => Promise<void>;
+  addSubcategory: (categoryId: string, subcategory: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number; description?: string; }) => Promise<void>;
+  editSubcategory: (categoryId: string, subcategoryId: string, subcategory: { name?: string; budget?: number; description?: string; }) => Promise<void>;
   deleteSubcategory: (categoryId: string, subcategoryId: string) => Promise<void>;
   addMicrocategory: (categoryId: string, subcategoryId: string, microcategory: Omit<Microcategory, 'id'>) => Promise<void>;
-  editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Pick<Microcategory, 'name'>) => Promise<void>;
+  editMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string, microcategory: Partial<Pick<Microcategory, 'name' | 'description'>>) => Promise<void>;
   deleteMicrocategory: (categoryId: string, subcategoryId: string, microcategoryId: string) => Promise<void>;
   reorderCategories: (orderedIds: string[]) => Promise<void>;
   reorderSubcategories: (categoryId: string, orderedSubcategoryIds: string[]) => Promise<void>;

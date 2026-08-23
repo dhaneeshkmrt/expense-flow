@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrencyFormatter } from '@/hooks/useCurrencyFormatter';
+import { processReceiptTransaction } from '@/ai/flows/process-receipt-transaction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +15,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,10 +54,18 @@ import {
   Receipt,
   Layers,
   RotateCcw,
+  Camera,
+  Upload,
+  Sparkles,
+  Eye,
+  X,
+  FileText,
+  Bot,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO, getYear, getMonth, subDays, addDays } from 'date-fns';
 import type { Category, Transaction } from '@/lib/types';
+import { GEMINI_MODELS } from '@/lib/ai-models';
 
 // Safe arithmetic evaluator
 const evaluateExpression = (expr: string): number | null => {
@@ -119,6 +143,50 @@ function numberToWords(num: number): string {
   return words.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
 
+// Client-side image compressor for responsive mobile scanning
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const maxWidth = 1600;
+        const maxHeight = 1600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(event.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error('Failed to load image.'));
+    };
+    reader.onerror = () => reject(new Error('Failed to read file.'));
+  });
+};
+
 interface SplitItem {
   id: string;
   rawAmount: string;
@@ -162,6 +230,21 @@ export default function GroupTransactionsPage() {
   const [paidBy, setPaidBy] = useState<string>('');
   const [groupNotes, setGroupNotes] = useState('');
 
+  // Receipt Scanner States
+  const [isScanningReceipt, setIsScanningReceipt] = useState(false);
+  const [selectedAiModel, setSelectedAiModel] = useState<string>(settings.aiModel || 'gemini-2.0-flash');
+  const [receiptImagePreview, setReceiptImagePreview] = useState<string | null>(null);
+  const [showImageDialog, setShowImageDialog] = useState(false);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync with user settings
+  useEffect(() => {
+    if (settings.aiModel) {
+      setSelectedAiModel(settings.aiModel);
+    }
+  }, [settings.aiModel]);
+
   // Items State
   const [items, setItems] = useState<SplitItem[]>([
     {
@@ -190,6 +273,219 @@ export default function GroupTransactionsPage() {
       setPaidBy(defaultOption || '');
     }
   }, [paidByOptions, settings.defaultPaidBy, paidBy]);
+
+  // Detailed Category Guidelines for Gemini AI
+  const categoryDetails = useMemo(() => {
+    return categories.map(cat => ({
+      name: cat.name,
+      description: cat.description || '',
+      subcategories: (cat.subcategories || []).map(sub => ({
+        name: sub.name,
+        description: sub.description || '',
+        microcategories: (sub.microcategories || []).map(m => m.name),
+      })),
+    }));
+  }, [categories]);
+
+  // Handle Receipt File Upload or Photo Capture
+  const handleReceiptFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    setIsScanningReceipt(true);
+    try {
+      // 1. Client-side compression
+      const compressedDataUri = await compressImage(file);
+      setReceiptImagePreview(compressedDataUri);
+
+      // 2. Call Gemini AI Flow with chosen model
+      const result = await processReceiptTransaction({
+        imageDataUri: compressedDataUri,
+        availableCategories: categories.map(c => c.name),
+        categoryDetails,
+        model: selectedAiModel,
+      });
+
+      if (result) {
+        // Auto-fill Store / Merchant
+        if (result.storeName) {
+          setGroupDescription(result.storeName);
+        }
+
+        // Auto-fill Date if detected
+        if (result.date) {
+          try {
+            const parsedDate = parseISO(result.date);
+            if (!isNaN(parsedDate.getTime())) {
+              setGroupDate(parsedDate);
+            }
+          } catch {
+            // Ignore invalid date
+          }
+        }
+
+        // Auto-fill Total Amount
+        if (typeof result.totalAmount === 'number' && result.totalAmount > 0) {
+          setTotalAmount(result.totalAmount);
+          setTotalAmountInput(String(result.totalAmount));
+          setTotalExpression(null);
+        }
+
+        // Auto-fill Notes / Extra
+        if (result.notes) {
+          setGroupNotes(result.notes);
+        }
+
+        // Auto-fill and map Split Items with Category / Subcategory / Microcategory matching & Grouping
+        if (result.items && result.items.length > 0) {
+          // 1. First, match each individual line item to categories
+          const matchedLineItems = result.items.map((aiItem) => {
+            let matchedCatName = '';
+            let matchedSubName = '';
+            let matchedMicroName = '';
+
+            const matchedCat = categories.find(c =>
+              aiItem.category && c.name.trim().toLowerCase() === aiItem.category.trim().toLowerCase()
+            ) || categories.find(c =>
+              aiItem.category && c.name.toLowerCase().includes(aiItem.category.toLowerCase())
+            ) || categories[0];
+
+            if (matchedCat) {
+              matchedCatName = matchedCat.name;
+              const subcategories = matchedCat.subcategories || [];
+
+              const matchedSub = subcategories.find(s =>
+                aiItem.subcategory && s.name.trim().toLowerCase() === aiItem.subcategory.trim().toLowerCase()
+              ) || subcategories.find(s =>
+                aiItem.subcategory && s.name.toLowerCase().includes(aiItem.subcategory.toLowerCase())
+              ) || subcategories[0];
+
+              if (matchedSub) {
+                matchedSubName = matchedSub.name;
+                const microcategories = matchedSub.microcategories || [];
+
+                const matchedMicro = microcategories.find(m =>
+                  aiItem.microcategory && m.name.trim().toLowerCase() === aiItem.microcategory.trim().toLowerCase()
+                );
+                if (matchedMicro) {
+                  matchedMicroName = matchedMicro.name;
+                }
+              }
+            }
+
+            const itemAmount = typeof aiItem.amount === 'number' ? aiItem.amount : parseFloat(String(aiItem.amount)) || 0;
+
+            return {
+              description: aiItem.description?.trim() || '',
+              amount: itemAmount,
+              category: matchedCatName,
+              subcategory: matchedSubName,
+              microcategory: matchedMicroName,
+              quantity: aiItem.quantity,
+              notes: aiItem.notes,
+            };
+          });
+
+          // 2. Group items that share the same Category, Subcategory, and Microcategory
+          const categoryGroups = new Map<string, {
+            category: string;
+            subcategory: string;
+            microcategory: string;
+            amounts: number[];
+            descriptions: string[];
+            notes: string[];
+          }>();
+
+          for (const item of matchedLineItems) {
+            const groupKey = `${item.category}||${item.subcategory}||${item.microcategory || ''}`;
+            const existing = categoryGroups.get(groupKey);
+            const desc = item.description;
+            const note = [item.quantity ? `Qty: ${item.quantity}` : null, item.notes?.trim() || null].filter(Boolean).join(' ');
+
+            if (existing) {
+              existing.amounts.push(item.amount);
+              if (desc && !existing.descriptions.includes(desc)) {
+                existing.descriptions.push(desc);
+              }
+              if (note && !existing.notes.includes(note)) {
+                existing.notes.push(note);
+              }
+            } else {
+              categoryGroups.set(groupKey, {
+                category: item.category,
+                subcategory: item.subcategory,
+                microcategory: item.microcategory || '',
+                amounts: [item.amount],
+                descriptions: desc ? [desc] : [],
+                notes: note ? [note] : [],
+              });
+            }
+          }
+
+          // 3. Build split items with aggregated arithmetic expressions (e.g. 100+50+240)
+          const parsedItems: SplitItem[] = [];
+          let groupIndex = 0;
+
+          categoryGroups.forEach((group) => {
+            groupIndex++;
+            const isMultiple = group.amounts.length > 1;
+            const totalGroupAmount = Math.round(group.amounts.reduce((sum, a) => sum + a, 0) * 100) / 100;
+            const expressionString = isMultiple
+              ? group.amounts.map(a => Number.isInteger(a) ? a.toString() : String(a)).join('+')
+              : null;
+            const rawAmountString = isMultiple ? expressionString! : String(totalGroupAmount);
+            const combinedDesc = group.descriptions.length > 0
+              ? group.descriptions.join(', ')
+              : (group.microcategory || group.subcategory || group.category);
+
+            parsedItems.push({
+              id: `item-${Date.now()}-${groupIndex}-${Math.random().toString(36).substr(2, 4)}`,
+              rawAmount: rawAmountString,
+              evaluatedAmount: totalGroupAmount,
+              expression: expressionString,
+              description: combinedDesc,
+              category: group.category,
+              subcategory: group.subcategory,
+              microcategory: group.microcategory,
+              notes: group.notes.join(' | '),
+            });
+          });
+
+          setItems(parsedItems);
+
+          // If totalAmount was not explicitly detected on receipt, sum from items
+          if (!result.totalAmount || result.totalAmount <= 0) {
+            const calculatedTotal = parsedItems.reduce((sum, item) => sum + item.evaluatedAmount, 0);
+            setTotalAmount(calculatedTotal);
+            setTotalAmountInput(String(calculatedTotal));
+          }
+
+          toast({
+            title: 'Receipt Scanned & Grouped!',
+            description: `Extracted ${result.items.length} items from ${result.storeName || 'receipt'}, grouped into ${parsedItems.length} category splits.`,
+          });
+        } else {
+          toast({
+            title: 'Receipt Processed',
+            description: 'Extracted receipt summary. You can add split items below.',
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Receipt scan failed:', err);
+      toast({
+        title: 'Receipt Scan Failed',
+        description: err.message || 'Could not analyze receipt. Please try with a clearer, brighter photo.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsScanningReceipt(false);
+      // Reset input values so same file can be re-selected if needed
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
+      if (uploadInputRef.current) uploadInputRef.current.value = '';
+    }
+  };
 
   // Handle total amount change with arithmetic calculation
   const handleTotalAmountChange = (val: string) => {
@@ -346,6 +642,7 @@ export default function GroupTransactionsPage() {
     setGroupDate(new Date());
     setGroupTime(format(new Date(), 'HH:mm'));
     setGroupNotes('');
+    setReceiptImagePreview(null);
     setItems([
       {
         id: `item-${Date.now()}`,
@@ -496,6 +793,23 @@ export default function GroupTransactionsPage() {
 
   return (
     <div className="flex flex-col gap-6 pb-28 sm:pb-20 max-w-4xl mx-auto">
+      {/* Hidden File Inputs for Camera and Gallery */}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={handleReceiptFile}
+      />
+      <input
+        type="file"
+        ref={uploadInputRef}
+        accept="image/*"
+        className="hidden"
+        onChange={handleReceiptFile}
+      />
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -513,12 +827,88 @@ export default function GroupTransactionsPage() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">Group Transactions</h1>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Enter a bulk purchase amount and split it across multiple categories with smart descriptions.
+              Enter a bulk bill or scan a receipt to split across multiple categories.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        {/* Top Action Buttons: AI Receipt Scanner & Reset */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* AI Scan Receipt Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isScanningReceipt}
+                className="border-primary/50 text-foreground hover:bg-accent hover:text-accent-foreground font-semibold text-xs shadow-sm gap-1.5"
+              >
+                {isScanningReceipt ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    Scanning Bill...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-3.5 w-3.5 text-primary" />
+                    Scan Receipt / Bill
+                    <Sparkles className="h-3 w-3 text-amber-500" />
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 py-2 text-xs"
+                onClick={() => cameraInputRef.current?.click()}
+              >
+                <Camera className="h-4 w-4 text-primary" />
+                <span>Take Photo (Camera)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer gap-2 py-2 text-xs"
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4 text-primary" />
+                <span>Upload Bill Image</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Quick AI Model Switcher */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 text-xs font-mono text-muted-foreground hover:text-foreground gap-1 border-border/60"
+                title={`Active AI Model: ${selectedAiModel}`}
+              >
+                <Bot className="h-3.5 w-3.5 text-primary" />
+                <span className="max-w-[110px] truncate">{selectedAiModel}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel className="text-xs">Active Gemini Model</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {GEMINI_MODELS.filter(m => m.value !== 'custom').map((m) => (
+                <DropdownMenuItem
+                  key={m.value}
+                  className={cn(
+                    "cursor-pointer text-xs justify-between py-1.5",
+                    selectedAiModel === m.value && "font-semibold text-primary bg-primary/10"
+                  )}
+                  onClick={() => setSelectedAiModel(m.value)}
+                >
+                  <span className="truncate">{m.label} {m.isNew ? '🔥' : ''}</span>
+                  {selectedAiModel === m.value && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0 ml-1" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             type="button"
             variant="ghost"
@@ -531,6 +921,66 @@ export default function GroupTransactionsPage() {
           </Button>
         </div>
       </div>
+
+      {/* AI Processing Alert */}
+      {isScanningReceipt && (
+        <Alert className="bg-primary/10 border-primary/30 animate-pulse">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-primary font-medium text-xs sm:text-sm flex items-center justify-between">
+            <span>Gemini is analyzing your receipt, extracting line items, and matching category guidelines...</span>
+            <Loader2 className="h-4 w-4 animate-spin shrink-0 ml-2" />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Receipt Image Thumbnail Banner (if receipt loaded) */}
+      {receiptImagePreview && (
+        <div className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-primary/20 bg-muted/40 text-xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div
+              className="relative h-10 w-10 rounded-md overflow-hidden border border-border shrink-0 cursor-pointer group"
+              onClick={() => setShowImageDialog(true)}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={receiptImagePreview} alt="Receipt" className="h-full w-full object-cover group-hover:opacity-80 transition-opacity" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Eye className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
+            <div className="truncate">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="truncate">Scanned Bill Attachment</span>
+                <Badge variant="secondary" className="text-[10px] px-1 py-0">AI Processed</Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Click thumbnail to view full receipt</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setShowImageDialog(true)}
+            >
+              <Eye className="mr-1 h-3 w-3" />
+              View
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={() => setReceiptImagePreview(null)}
+              title="Remove Attachment"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* MASTER / TOP SECTION: Total Amount & Group Info */}
       <Card className="border-primary/20 shadow-sm">
@@ -545,7 +995,7 @@ export default function GroupTransactionsPage() {
             </Badge>
           </div>
           <CardDescription className="text-xs">
-            Enter the total bill amount and store/merchant description.
+            Enter the total bill amount and store/merchant description, or scan a bill image.
           </CardDescription>
         </CardHeader>
 
@@ -1004,7 +1454,7 @@ export default function GroupTransactionsPage() {
             <Button
               type="button"
               onClick={handleSaveClick}
-              disabled={isSubmitting || isSelectedMonthLocked || items.length === 0}
+              disabled={isSubmitting || isSelectedMonthLocked || items.length === 0 || isScanningReceipt}
               className="px-4 sm:px-6 font-semibold text-xs sm:text-sm h-10 shadow-sm"
             >
               {isSubmitting ? (
@@ -1019,6 +1469,28 @@ export default function GroupTransactionsPage() {
           </div>
         </div>
       </div>
+
+      {/* Full Receipt Image Viewer Dialog */}
+      <Dialog open={showImageDialog} onOpenChange={setShowImageDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4 text-primary" />
+              Scanned Receipt / Bill
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto flex items-center justify-center p-2 bg-black/5 dark:bg-black/20 rounded-md">
+            {receiptImagePreview && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={receiptImagePreview}
+                alt="Full Receipt"
+                className="max-h-[70vh] w-auto object-contain rounded-md shadow"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm Mismatch Alert Dialog */}
       <AlertDialog open={showConfirmMismatchDialog} onOpenChange={setShowConfirmMismatchDialog}>
@@ -1055,7 +1527,7 @@ export default function GroupTransactionsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset Group Form?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will clear all entered amounts, store descriptions, and split items. Are you sure?
+              This will clear all entered amounts, store descriptions, receipt attachments, and split items. Are you sure?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

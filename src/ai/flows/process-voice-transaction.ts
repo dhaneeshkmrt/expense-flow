@@ -9,13 +9,25 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 
+const CategoryInfoSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  subcategories: z.array(z.object({
+    name: z.string(),
+    description: z.string().optional(),
+    microcategories: z.array(z.string()).optional(),
+  })).optional(),
+});
+
 const ProcessVoiceTransactionInputSchema = z.object({
   audioDataUri: z
     .string()
     .describe(
       "A recording of a transaction detail, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:audio/webm;base64,<encoded_data>'."
     ),
-  availableCategories: z.array(z.string()).describe('List of current user categories.'),
+  availableCategories: z.array(z.string()).optional().describe('List of current user category names.'),
+  categoryDetails: z.array(CategoryInfoSchema).optional().describe('Detailed category list with descriptions and subcategories to guide matching.'),
+  model: z.string().optional().describe('The Gemini model to use for processing.'),
 });
 export type ProcessVoiceTransactionInput = z.infer<typeof ProcessVoiceTransactionInputSchema>;
 
@@ -49,11 +61,24 @@ const prompt = ai.definePrompt({
   - Even if the input is in Tamil, provide the final 'description' in English for consistency.
   - Correctly identify Tamil numbers (e.g., "ஆயிரத்து ஐந்நூறு" is 1500) and dates (e.g., "நேற்று" is yesterday).
   
+  CATEGORY MATCHING GUIDELINES:
+  Use the category descriptions below to identify which category and subcategory the mentioned expense belongs to:
+  {{#if categoryDetails}}
+  {{#each categoryDetails}}
+  - Category: "{{name}}"{{#if description}} (Guideline: {{description}}){{/if}}
+    {{#each subcategories}}
+    * Subcategory: "{{name}}"{{#if description}} (Guideline: {{description}}){{/if}}{{#if microcategories}} [Micros: {{#each microcategories}}{{this}}, {{/each}}]{{/if}}
+    {{/each}}
+  {{/each}}
+  {{else}}
+  Available Categories: {{#each availableCategories}}{{{this}}}, {{/each}}
+  {{/if}}
+
   Fields to extract (ALL ARE OPTIONAL, only provide what you hear):
   1. **description**: A concise summary of what was purchased (translated to English).
   2. **amount**: The numeric value.
-  3. **category**: Choose the BEST match from this list: {{#each availableCategories}}{{{this}}}, {{/each}}.
-  4. **subcategory**: Identify a specific sub-type (e.g., "Grocery", "Petrol", "Hospital Bill").
+  3. **category**: Choose the BEST match from the available categories using the expense guidelines above.
+  4. **subcategory**: Choose the matching subcategory under the chosen category using the guidelines.
   5. **microcategory**: If mentioned (e.g., "Shampoo", "Apples", "Tablets"), capture it here.
   6. **date**: The date of the transaction. If the user mentions "yesterday" (நேற்று) or a specific weekday, calculate it relative to today: ${new Date().toISOString().split('T')[0]}.
   7. **notes**: Any extra context like "emergency", "for mom", "birthday gift", or payment method mentions.
@@ -70,9 +95,23 @@ const processVoiceTransactionFlow = ai.defineFlow(
     outputSchema: ProcessVoiceTransactionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    if (!output) throw new Error('AI failed to generate a structured response. Please try with clearer audio.');
-    return output;
+    const selectedModelName = input.model || 'gemini-2.0-flash';
+    try {
+      const {output} = await prompt(input, {
+        model: googleAI.model(selectedModelName as any),
+      });
+      if (!output) throw new Error('AI failed to generate a structured response. Please try with clearer audio.');
+      return output;
+    } catch (err: any) {
+      if (selectedModelName !== 'gemini-2.0-flash' && (err?.message?.includes('503') || err?.message?.includes('high demand') || err?.message?.includes('UNAVAILABLE'))) {
+        console.warn(`Model ${selectedModelName} unavailable, falling back to gemini-2.0-flash...`);
+        const {output} = await prompt(input, {
+          model: googleAI.model('gemini-2.0-flash'),
+        });
+        if (output) return output;
+      }
+      throw err;
+    }
   }
 );
 

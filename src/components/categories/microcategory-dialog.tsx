@@ -23,11 +23,13 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Category, Subcategory, Microcategory } from '@/lib/types';
 
 const microcategorySchema = z.object({
   name: z.string().min(2, 'Micro category name must be at least 2 characters.'),
+  description: z.string().optional(),
 });
 
 type MicrocategoryFormValues = z.infer<typeof microcategorySchema>;
@@ -38,8 +40,8 @@ interface MicrocategoryDialogProps {
   category: Category | null | Omit<Category, 'budget'> & { budget?: number };
   subcategory: Subcategory | null;
   microcategory?: Microcategory | null;
-  onAdd?: (categoryId: string, subcategoryId: string, data: { name: string }) => Promise<void>;
-  onEdit?: (categoryId: string, subcategoryId: string, microcategoryId: string, data: { name: string }) => Promise<void>;
+  onAdd?: (categoryId: string, subcategoryId: string, data: { name: string; description?: string }) => Promise<void>;
+  onEdit?: (categoryId: string, subcategoryId: string, microcategoryId: string, data: { name: string; description?: string }) => Promise<void>;
   isDefaultCategory?: boolean;
 }
 
@@ -51,15 +53,19 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
     resolver: zodResolver(microcategorySchema),
     defaultValues: {
       name: '',
+      description: '',
     },
   });
 
   useEffect(() => {
     if (open) {
       if (isEditing && microcategory) {
-        form.reset({ name: microcategory.name });
+        form.reset({
+          name: microcategory.name,
+          description: microcategory.description || '',
+        });
       } else {
-        form.reset({ name: '' });
+        form.reset({ name: '', description: '' });
       }
     }
   }, [microcategory, isEditing, open, form]);
@@ -71,9 +77,15 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
     const finalOnEdit = onEdit || appEditMicrocategory;
 
     if (isEditing && microcategory) {
-      finalOnEdit(category.id, subcategory.id, microcategory.id, data);
+      finalOnEdit(category.id, subcategory.id, microcategory.id, {
+        name: data.name,
+        description: data.description || '',
+      });
     } else {
-      finalOnAdd(category.id, subcategory.id, data);
+      finalOnAdd(category.id, subcategory.id, {
+        name: data.name,
+        description: data.description || '',
+      });
     }
     setOpen(false);
   };
@@ -99,6 +111,23 @@ export function MicrocategoryDialog({ open, setOpen, category, subcategory, micr
                   <FormLabel>Micro Category Name</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g., Shampoo" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description / Expense Guidelines</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe what items belong to this micro category (e.g., Onion, garlic, shallots)..." 
+                      className="min-h-[75px] resize-y text-xs sm:text-sm"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

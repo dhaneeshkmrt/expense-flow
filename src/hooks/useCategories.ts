@@ -13,6 +13,8 @@ import { collection, doc, writeBatch, updateDoc, deleteDoc, setDoc, getDocs, que
 import { format } from 'date-fns';
 import { logChange } from '@/lib/logger';
 
+import { categories as staticCategories } from '@/lib/data';
+
 const iconMap: { [key: string]: React.ElementType } = {
   Briefcase, Gift, HeartPulse, Home, Utensils, Car, Plane, ShieldAlert,
   GraduationCap, Sparkles, ShoppingBag, CircleDollarSign, Factory, HelpCircle,
@@ -28,10 +30,22 @@ export const getIconComponent = (iconName: string): React.ElementType => {
   return iconMap[iconName] || HelpCircle;
 };
 
+const getDefaultCategoryDescription = (catName: string): string => {
+  const match = staticCategories.find(c => c.name.trim().toLowerCase() === catName.trim().toLowerCase());
+  return match?.description || '';
+};
+
+const getDefaultSubcategoryDescription = (catName: string, subName: string): string => {
+  const catMatch = staticCategories.find(c => c.name.trim().toLowerCase() === catName.trim().toLowerCase());
+  const subMatch = catMatch?.subcategories.find(s => s.name.trim().toLowerCase() === subName.trim().toLowerCase());
+  return subMatch?.description || '';
+};
+
 type EditCategoryData = {
     name?: string;
     icon?: string | React.ElementType;
     budget?: number;
+    description?: string;
 };
 
 export function useCategories(tenantId: string | null, user: User | null, selectedYear: number, selectedMonth: number) {
@@ -66,9 +80,14 @@ export function useCategories(tenantId: string | null, user: User | null, select
           const categoryForDb = {
               name: category.name,
               icon: category.icon,
-              subcategories: category.subcategories.map((sub: any) => ({
+              description: category.description || getDefaultCategoryDescription(category.name),
+              subcategories: (category.subcategories || []).map((sub: any) => ({
                   ...sub, 
-                  microcategories: sub.microcategories || []
+                  description: sub.description || getDefaultSubcategoryDescription(category.name, sub.name),
+                  microcategories: (sub.microcategories || []).map((micro: any) => ({
+                      ...micro,
+                      description: micro.description || ''
+                  }))
               })),
               tenantId: tenantIdToSeed,
           };
@@ -98,18 +117,23 @@ export function useCategories(tenantId: string | null, user: User | null, select
 
       const fetchedCategories = querySnapshot.docs.map((doc, index) => {
           const data = doc.data();
+          const catDesc = data.description || getDefaultCategoryDescription(data.name);
           return {
             id: doc.id,
             name: data.name,
             icon: getIconComponent(data.icon),
+            description: catDesc,
             subcategories: (data.subcategories || []).map((sub: any, sIdx: number) => {
               const subId = sub.id || `${doc.id}_sub_${sIdx}`;
+              const subDesc = sub.description || getDefaultSubcategoryDescription(data.name, sub.name);
               return {
                 ...sub,
                 id: subId,
+                description: subDesc,
                 microcategories: (sub.microcategories || []).map((micro: any, mIdx: number) => ({
                   ...micro,
-                  id: micro.id || `${subId}_micro_${mIdx}`
+                  id: micro.id || `${subId}_micro_${mIdx}`,
+                  description: micro.description || '',
                 }))
               };
             }),
@@ -191,7 +215,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     await setDoc(categoryRef, categoryForDb, { merge: true });
   }
 
-  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
+  const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; description?: string; }) => {
     if (!tenantId || !user) return;
     const id = `cat_${crypto.randomUUID().replace(/-/g, '')}`;
     
@@ -199,6 +223,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
       id,
       name: categoryData.name,
       icon: getIconComponent(categoryData.icon),
+      description: categoryData.description || '',
       subcategories: [],
       tenantId: tenantId,
       budget: categoryData.budget || 0,
@@ -232,6 +257,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     const dbUpdate: { [key: string]: any } = {};
 
     if (categoryUpdate.name) dbUpdate.name = categoryUpdate.name;
+    if (categoryUpdate.description !== undefined) dbUpdate.description = categoryUpdate.description;
     if (typeof categoryUpdate.icon === 'string') {
         dbUpdate.icon = categoryUpdate.icon;
     } else if (categoryUpdate.icon) {
@@ -256,6 +282,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
         if (c.id === categoryId) {
             updatedCat = { ...c };
             if (categoryUpdate.name) updatedCat.name = categoryUpdate.name;
+            if (categoryUpdate.description !== undefined) updatedCat.description = categoryUpdate.description;
             if (categoryUpdate.icon && typeof categoryUpdate.icon === 'string') {
                 updatedCat.icon = getIconComponent(categoryUpdate.icon);
             } else if (categoryUpdate.icon) {
@@ -320,11 +347,11 @@ export function useCategories(tenantId: string | null, user: User | null, select
     }
   };
 
-  const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number }) => {
+  const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number; description?: string; }) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const id = `sub_${crypto.randomUUID().replace(/-/g, '')}`;
-    const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [], budget: subcategoryData.budget || 0 };
+    const newSubcategory: Subcategory = { ...subcategoryData, id, description: subcategoryData.description || '', microcategories: [], budget: subcategoryData.budget || 0 };
 
     const updatedCategory = { ...category, subcategories: [...category.subcategories, newSubcategory] };
     const { budget, ...categoryToSave } = updatedCategory;
@@ -343,7 +370,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Added subcategory: ${newSubcategory.name} to ${category.name}`, category, updatedCategory);
   };
 
-  const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: { name?: string; budget?: number }) => {
+  const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: { name?: string; budget?: number; description?: string; }) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const subcategoryToUpdate = category.subcategories.find(s => s.id === subcategoryId);
@@ -353,6 +380,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
         if (sub.id === subcategoryId) {
           const updatedSub = { ...sub };
           if (subcategoryUpdate.name) updatedSub.name = subcategoryUpdate.name;
+          if (subcategoryUpdate.description !== undefined) updatedSub.description = subcategoryUpdate.description;
           if (subcategoryUpdate.budget !== undefined) updatedSub.budget = subcategoryUpdate.budget;
           return updatedSub;
         }
@@ -432,7 +460,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const id = `micro_${crypto.randomUUID().replace(/-/g, '')}`;
-    const newMicrocategory: Microcategory = { ...microcategoryData, id };
+    const newMicrocategory: Microcategory = { ...microcategoryData, id, description: microcategoryData.description || '' };
 
     const updatedCategory = {
         ...category,
@@ -450,7 +478,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Added micro-category: ${newMicrocategory.name} to ${category.name}/${updatedCategory.subcategories.find(s => s.id === subcategoryId)?.name}`, category, updatedCategory);
   };
 
-  const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Pick<Microcategory, 'name'>) => {
+  const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Partial<Pick<Microcategory, 'name' | 'description'>>) => {
     if (!tenantId || !user) return;
     const category = findCategory(categoryId);
     const subcategory = category.subcategories.find(s => s.id === subcategoryId);
@@ -469,7 +497,7 @@ export function useCategories(tenantId: string | null, user: User | null, select
     await updateCategoryInDb(categoryId, categoryToSave);
     setCategories(prev => prev.map(c => c.id === categoryId ? updatedCategory : c));
     
-    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited micro-category from "${microcategory?.name}" to "${microcategoryUpdate.name}"`, category, updatedCategory);
+    await logChange(tenantId, user.name, 'UPDATE', 'categories', categoryId, `Edited micro-category from "${microcategory?.name}" to "${microcategoryUpdate.name || microcategory?.name}"`, category, updatedCategory);
   };
 
   const deleteMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string) => {

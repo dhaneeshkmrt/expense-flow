@@ -277,9 +277,21 @@ export default function AddTransactionSheet({
   const processVoice = async (dataUri: string) => {
     setIsProcessingVoice(true);
     try {
+      const categoryDetails = categories.map(c => ({
+        name: c.name,
+        description: c.description || '',
+        subcategories: (c.subcategories || []).map(s => ({
+          name: s.name,
+          description: s.description || '',
+          microcategories: (s.microcategories || []).map(m => m.name),
+        })),
+      }));
+
       const result = await processVoiceTransaction({
         audioDataUri: dataUri,
         availableCategories: categories.map(c => c.name),
+        categoryDetails,
+        model: settings.aiModel || 'gemini-2.0-flash',
       });
 
       if (result) {

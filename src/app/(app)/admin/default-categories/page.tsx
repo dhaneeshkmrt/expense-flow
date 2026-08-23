@@ -63,9 +63,14 @@ export default function DefaultCategoriesPage() {
                     id: doc.id,
                     name: data.name,
                     icon: getIconComponent(data.icon),
+                    description: data.description || '',
                     subcategories: (data.subcategories || []).map((sub: any) => ({
                         ...sub,
-                        microcategories: sub.microcategories || []
+                        description: sub.description || '',
+                        microcategories: (sub.microcategories || []).map((micro: any) => ({
+                            ...micro,
+                            description: micro.description || ''
+                        }))
                     })),
                     budget: data.budget,
                 } as CategoryWithOptionalBudget);
@@ -150,13 +155,13 @@ export default function DefaultCategoriesPage() {
         return category;
     }
 
-    const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; }) => {
+    const addCategory = async (categoryData: Omit<Category, 'id' | 'subcategories' | 'icon' | 'tenantId' | 'budget'> & { icon: string; budget?: number; description?: string; }) => {
         const docId = `cat_${crypto.randomUUID().replace(/-/g, '')}`;
         const docRef = doc(db, 'defaultCategories', docId);
         await setDoc(docRef, categoryData);
     };
 
-    const editCategory = async (categoryId: string, categoryUpdate: { name?: string; icon?: string | React.ElementType; budget?: number; }) => {
+    const editCategory = async (categoryId: string, categoryUpdate: { name?: string; icon?: string | React.ElementType; budget?: number; description?: string; }) => {
         const dbUpdate: { [key: string]: any } = { ...categoryUpdate };
         if (typeof categoryUpdate.icon !== 'string') {
             dbUpdate.icon = getIconName(categoryUpdate.icon as React.ElementType);
@@ -170,7 +175,7 @@ export default function DefaultCategoriesPage() {
         await deleteDoc(categoryRef);
     };
 
-    const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'>) => {
+    const addSubcategory = async (categoryId: string, subcategoryData: Omit<Subcategory, 'id' | 'microcategories'> & { budget?: number; description?: string; }) => {
         const category = findCategory(categoryId);
         const id = `sub_${crypto.randomUUID().replace(/-/g, '')}`;
         const newSubcategory: Subcategory = { ...subcategoryData, id, microcategories: [] };
@@ -178,7 +183,7 @@ export default function DefaultCategoriesPage() {
         await updateCategoryInDb(categoryId, { subcategories: updatedSubcategories });
     };
 
-    const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: Pick<Subcategory, 'name'>) => {
+    const editSubcategory = async (categoryId: string, subcategoryId: string, subcategoryUpdate: { name?: string; budget?: number; description?: string; }) => {
         const category = findCategory(categoryId);
         const updatedSubcategories = category.subcategories.map(sub => sub.id === subcategoryId ? { ...sub, ...subcategoryUpdate } : sub);
         await updateCategoryInDb(categoryId, { subcategories: updatedSubcategories });
@@ -204,7 +209,7 @@ export default function DefaultCategoriesPage() {
         await updateCategoryInDb(categoryId, { subcategories: updatedSubcategories });
     };
     
-    const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Pick<Microcategory, 'name'>) => {
+    const editMicrocategory = async (categoryId: string, subcategoryId: string, microcategoryId: string, microcategoryUpdate: Partial<Pick<Microcategory, 'name' | 'description'>>) => {
         const category = findCategory(categoryId);
         const subcategory = category.subcategories.find(s => s.id === subcategoryId);
         if (!subcategory) return;
@@ -301,14 +306,19 @@ export default function DefaultCategoriesPage() {
             const Icon = category.icon as React.ElementType;
             return (
                 <Card key={category.id}>
-                <CardHeader className="flex-row items-start justify-between">
-                    <div>
+                <CardHeader className="flex-row items-start justify-between pb-3">
+                    <div className="flex-1 min-w-0 pr-2">
                         <CardTitle className="flex items-center gap-3">
-                            {Icon && <Icon className="w-6 h-6 text-primary" />}
-                            <span>{category.name}</span>
+                            {Icon && <Icon className="w-6 h-6 text-primary shrink-0" />}
+                            <span className="truncate">{category.name}</span>
                         </CardTitle>
+                        {category.description && (
+                            <p className="text-xs text-muted-foreground/90 mt-1 line-clamp-2" title={category.description}>
+                                {category.description}
+                            </p>
+                        )}
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditCategory(category)}>
                         <Edit className="h-4 w-4" />
                     </Button>
@@ -338,10 +348,17 @@ export default function DefaultCategoriesPage() {
                     <Collapsible key={sub.id} open={openCollapsibles[sub.id]} onOpenChange={() => setOpenCollapsibles(prev => ({...prev, [sub.id]: !prev[sub.id]}))}>
                         <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted group/sub">
                             <CollapsibleTrigger asChild>
-                                <button className="flex items-center gap-2">
-                                    <span className="font-semibold">{sub.name}</span>
-                                    {sub.microcategories && sub.microcategories.length > 0 && (
-                                        openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+                                <button className="flex flex-col items-start gap-0.5 flex-1 min-w-0 text-left pr-2">
+                                    <div className="flex items-center gap-2 w-full">
+                                        <span className="font-semibold">{sub.name}</span>
+                                        {sub.microcategories && sub.microcategories.length > 0 && (
+                                            openCollapsibles[sub.id] ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
+                                        )}
+                                    </div>
+                                    {sub.description && (
+                                        <span className="text-[11px] text-muted-foreground line-clamp-1" title={sub.description}>
+                                            {sub.description}
+                                        </span>
                                     )}
                                 </button>
                             </CollapsibleTrigger>
@@ -375,7 +392,7 @@ export default function DefaultCategoriesPage() {
                             <div className="flex flex-wrap gap-1 pl-6 pr-2 py-2">
                                 {(sub.microcategories || []).map((micro) => (
                                     <div key={micro.id} className="group/micro relative">
-                                        <Badge variant="secondary" className="pr-7">{micro.name}</Badge>
+                                        <Badge variant="secondary" className="pr-7" title={micro.description || micro.name}>{micro.name}</Badge>
                                         <div className="absolute inset-0 flex items-center justify-end opacity-0 group-hover/micro:opacity-100 bg-secondary/50 rounded-full">
                                             <button onClick={() => handleEditMicrocategory(category, sub, micro)} className="mr-3 text-xs"><Edit className="h-3 w-3" /></button>
                                             <AlertDialog>

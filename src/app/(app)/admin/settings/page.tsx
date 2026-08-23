@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useApp } from '@/lib/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Moon, Sun, Download, Sparkles, AlertCircle } from 'lucide-react';
+import { Loader2, PlusCircle, Trash2, Copy, RefreshCw, Palette, Moon, Sun, Download, Sparkles, AlertCircle, Bot, Cpu } from 'lucide-react';
 import type { Settings, Tenant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+import { GEMINI_MODELS } from '@/lib/ai-models';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +67,7 @@ const settingsSchema = z.object({
   defaultSubcategory: z.string().optional(),
   defaultMicrocategory: z.string().optional(),
   defaultPaidBy: z.string().optional(),
+  aiModel: z.string().optional(),
 });
 
 const tenantSchema = z.object({
@@ -113,6 +116,7 @@ export default function SettingsPage() {
       defaultSubcategory: 'none',
       defaultMicrocategory: 'none',
       defaultPaidBy: 'none',
+      aiModel: 'gemini-2.0-flash',
     }
   });
 
@@ -145,6 +149,7 @@ export default function SettingsPage() {
         defaultSubcategory: settings.defaultSubcategory || 'none',
         defaultMicrocategory: settings.defaultMicrocategory || 'none',
         defaultPaidBy: settings.defaultPaidBy || 'none',
+        aiModel: settings.aiModel || 'gemini-2.0-flash',
       });
     }
   }, [settings, settingsForm.formState.isDirty, settingsForm.reset]);
@@ -672,6 +677,87 @@ export default function SettingsPage() {
               <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty}>
                 {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
                 Save My Defaults
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-primary" />
+            AI & Intelligence Models
+          </CardTitle>
+          <CardDescription>Select or customize the Google Gemini model used for receipt scanning, voice notes, and smart categorization.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...settingsForm}>
+            <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit, onSettingsError)} className="space-y-4">
+              <FormField
+                control={settingsForm.control}
+                name="aiModel"
+                render={({ field }) => {
+                  const isPredefined = GEMINI_MODELS.some(m => m.value === field.value && m.value !== 'custom');
+                  const selectedSelectValue = isPredefined ? field.value : 'custom';
+
+                  return (
+                    <div className="space-y-4">
+                      <FormItem>
+                        <FormLabel>Gemini AI Model</FormLabel>
+                        <Select
+                          value={selectedSelectValue || 'gemini-2.0-flash'}
+                          onValueChange={(val) => {
+                            if (val === 'custom') {
+                              if (isPredefined) field.onChange('gemini-3.7-flash');
+                            } else {
+                              field.onChange(val);
+                            }
+                          }}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full md:w-2/3">
+                              <SelectValue placeholder="Select Gemini model" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {GEMINI_MODELS.map(m => (
+                              <SelectItem key={m.value} value={m.value}>
+                                {m.label} {m.isNew ? '🔥' : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          If a model experiences temporary high demand (503), switch to <strong>Gemini 2.0 Flash</strong> for high availability.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+
+                      {(!isPredefined || selectedSelectValue === 'custom') && (
+                        <FormItem>
+                          <FormLabel>Custom Model Identifier</FormLabel>
+                          <FormControl>
+                            <Input
+                              value={field.value || ''}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              placeholder="e.g. gemini-2.5-flash or gemini-3.0-flash"
+                              className="w-full md:w-2/3 font-mono text-sm"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Enter any newly released Google Gemini model ID to use it immediately.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+              <Button type="submit" disabled={settingsForm.formState.isSubmitting || !settingsForm.formState.isDirty}>
+                {settingsForm.formState.isSubmitting && <Loader2 className="mr-2 animate-spin" />}
+                Save AI Settings
               </Button>
             </form>
           </Form>

@@ -19,6 +19,7 @@ export type Microcategory = {
   id: string;
   name: string;
   order?: number;
+  description?: string;
 };
 
 export type Subcategory = {
@@ -27,6 +28,7 @@ export type Subcategory = {
   microcategories: Microcategory[];
   order?: number;
   budget?: number;
+  description?: string;
 };
 
 export type Category = {
@@ -39,6 +41,7 @@ export type Category = {
   isDefault?: boolean;
   budget: number; // This now represents the budget for the currently selected month
   order?: number;
+  description?: string;
 };
 
 export type Transaction = {
@@ -72,6 +75,7 @@ export type Settings = {
   defaultSubcategoryId?: string;
   defaultMicrocategoryId?: string;
   defaultPaidBy?: string;
+  aiModel?: string;
 };
 
 export type TenantMember = {

@@ -23,12 +23,14 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useApp } from '@/lib/provider';
 import type { Category, Subcategory } from '@/lib/types';
 
 const subcategorySchema = z.object({
   name: z.string().min(2, 'Subcategory name must be at least 2 characters.'),
   budget: z.coerce.number().min(0, 'Budget must be a non-negative number.').optional(),
+  description: z.string().optional(),
 });
 
 type SubcategoryFormValues = z.infer<typeof subcategorySchema>;
@@ -52,15 +54,20 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
     defaultValues: {
       name: '',
       budget: undefined,
+      description: '',
     },
   });
 
   useEffect(() => {
     if (open) {
       if (isEditing && subcategory) {
-        form.reset({ name: subcategory.name, budget: subcategory.budget || undefined });
+        form.reset({
+          name: subcategory.name,
+          budget: subcategory.budget || undefined,
+          description: subcategory.description || '',
+        });
       } else {
-        form.reset({ name: '', budget: undefined });
+        form.reset({ name: '', budget: undefined, description: '' });
       }
     }
   }, [subcategory, isEditing, open, form]);
@@ -72,9 +79,17 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
     const finalOnEdit = onEdit || appEditSubcategory;
 
     if (isEditing && subcategory) {
-      finalOnEdit(category.id, subcategory.id, data);
+      finalOnEdit(category.id, subcategory.id, {
+        name: data.name,
+        budget: data.budget,
+        description: data.description || '',
+      });
     } else {
-      finalOnAdd(category.id, data);
+      finalOnAdd(category.id, {
+        name: data.name,
+        budget: data.budget,
+        description: data.description || '',
+      });
     }
     setOpen(false);
   };
@@ -113,6 +128,23 @@ export function SubcategoryDialog({ open, setOpen, category, subcategory, onAdd,
                   <FormLabel>Monthly Budget (Optional)</FormLabel>
                   <FormControl>
                     <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description / Expense Guidelines</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describe what specific expenses belong to this subcategory (e.g., Fresh vegetables, onions, tomatoes, greens)..." 
+                      className="min-h-[75px] resize-y text-xs sm:text-sm"
+                      {...field} 
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
