@@ -162,6 +162,7 @@ interface AppContextType {
 
   logs: AuditLog[];
   generateCurrentMonthCsv: () => string | null;
+  copyCurrentMonthToClipboard: () => Promise<boolean>;
 
   loading: boolean;
   loadingAuth: boolean;
@@ -655,7 +656,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return await transactionsHook.deleteTransaction(transactionId);
   }, [accountsHook.isMonthLocked, transactionsHook]);
 
-  const generateCurrentMonthCsv = useCallback((): string | null => {
+  const getCurrentMonthExportData = useCallback(() => {
     if (!tenantHook.selectedTenantId) {
         return null;
     }
@@ -699,8 +700,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return null;
     }
 
-    return Papa.unparse(dataToExport, { header: false });
+    return dataToExport;
   }, [tenantHook.selectedTenantId, tenantHook.tenants, categoriesHook.categories, selectedYear, selectedMonth, filteredTransactions]);
+
+  const generateCurrentMonthCsv = useCallback((): string | null => {
+    const dataToExport = getCurrentMonthExportData();
+    if (!dataToExport) {
+        return null;
+    }
+
+    return Papa.unparse(dataToExport, { header: false });
+  }, [getCurrentMonthExportData]);
+
+  const copyCurrentMonthToClipboard = useCallback(async (): Promise<boolean> => {
+    const dataToExport = getCurrentMonthExportData();
+    if (!dataToExport || dataToExport.length === 0) {
+        return false;
+    }
+
+    const tsv = Papa.unparse(dataToExport, { delimiter: '\t', header: false });
+    const escapeHtml = (str: string) =>
+      str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const htmlTable = `<table><tbody>${dataToExport.map(row => 
+      `<tr>${Object.values(row).map(val => `<td>${escapeHtml(String(val ?? ''))}</td>`).join('')}</tr>`
+    ).join('')}</tbody></table>`;
+
+    if (typeof window !== 'undefined' && typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+      try {
+        const textBlob = new Blob([tsv], { type: 'text/plain' });
+        const htmlBlob = new Blob([htmlTable], { type: 'text/html' });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/plain': textBlob,
+            'text/html': htmlBlob,
+          }),
+        ]);
+        return true;
+      } catch (err) {
+        console.warn('ClipboardItem write failed, falling back to writeText:', err);
+      }
+    }
+
+    if (typeof window !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(tsv);
+      return true;
+    }
+
+    return false;
+  }, [getCurrentMonthExportData]);
 
   const loading = loadingAuth || tenantHook.loadingTenants || settingsHook.loadingSettings || categoriesHook.loadingCategories || transactionsHook.loadingTransactions || accountsHook.loading || logsHook.loadingLogs || borrowingsHook.loading || insuranceHook.loading || notesHook.loadingNotes;
 
@@ -757,6 +810,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     fetchBalanceSheet,
     saveBalanceSheet,
     generateCurrentMonthCsv,
+    copyCurrentMonthToClipboard,
 
     // Virtual Banking System
     virtualAccounts: accountsHook.accounts,
@@ -798,7 +852,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadingBorrowings: borrowingsHook.loading,
     loadingInsurance: insuranceHook.loading,
     isCopyingBudget: categoriesHook.isCopyingBudget,
-  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, resolvedTransactions, accountsHook, remindersHook, logsHook, borrowingsHook, insuranceHook, notesHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, reminderInstances, pendingReminders, completedReminders]);
+  }), [user, signIn, signOut, signInWithGoogle, tenantHook, settingsHook, categoriesHook, transactionsHook, resolvedTransactions, accountsHook, remindersHook, logsHook, borrowingsHook, insuranceHook, notesHook, addTransactionWithLockCheck, addMultipleTransactionsWithLockCheck, editTransactionWithLockCheck, deleteTransactionWithLockCheck, handleCategoryTransfer, processMonthEnd, loading, loadingAuth, filteredTransactions, selectedYear, selectedMonth, availableYears, selectedMonthName, fetchBalanceSheet, saveBalanceSheet, generateCurrentMonthCsv, copyCurrentMonthToClipboard, reminderInstances, pendingReminders, completedReminders]);
 
   return (
     <ThemeProvider>

@@ -98,7 +98,7 @@ const colorThemes = [
 export default function SettingsPage() {
   const { 
     user, settings, updateSettings, loadingSettings, selectedTenantId, tenants, editTenant, 
-    isMainTenantUser, generateCurrentMonthCsv, selectedMonth, selectedMonthName, 
+    isMainTenantUser, generateCurrentMonthCsv, copyCurrentMonthToClipboard, selectedMonth, selectedMonthName, 
     selectedYear, categories 
   } = useApp();
   const { theme, colorTheme, setColorTheme, toggleTheme } = useTheme();
@@ -262,26 +262,25 @@ export default function SettingsPage() {
   }
 
   const handleCopyCsv = async () => {
-    const csv = generateCurrentMonthCsv();
-    if (!csv) {
-      toast({
-        title: 'No Data',
-        description: `No transactions or budget data to export for ${selectedMonthName} ${selectedYear}.`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
     try {
-      await navigator.clipboard.writeText(csv);
+      const success = await copyCurrentMonthToClipboard();
+      if (!success) {
+        toast({
+          title: 'No Data',
+          description: `No transactions or budget data to export for ${selectedMonthName} ${selectedYear}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
-        title: 'Copied!',
-        description: `CSV data for ${selectedMonthName} ${selectedYear} copied to clipboard.`,
+        title: 'Copied to Clipboard!',
+        description: `Spreadsheet data for ${selectedMonthName} ${selectedYear} copied. You can paste directly into Google Sheets or Excel cells.`,
       });
     } catch (err) {
       toast({
         title: 'Copy Failed',
-        description: 'Failed to copy CSV data to clipboard.',
+        description: 'Failed to copy spreadsheet data to clipboard.',
         variant: 'destructive',
       });
     }
@@ -475,9 +474,9 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="font-medium">Monthly Transactions CSV</h3>
+            <h3 className="font-medium">Monthly Transactions & Budget Data</h3>
             <p className="text-sm text-muted-foreground">
-              Download all transactions and budget data for {selectedMonthName} {selectedYear} as a CSV file or copy it to clipboard for Google Sheets.
+              Download all transactions and budget data for {selectedMonthName} {selectedYear} as a CSV file or copy it to clipboard to paste directly into cells in Google Sheets or Excel.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -487,7 +486,7 @@ export default function SettingsPage() {
             </Button>
             <Button variant="outline" onClick={handleCopyCsv}>
               <Copy className="mr-2 h-4 w-4" />
-              Copy CSV to Clipboard
+              Copy for Google Sheets / Excel
             </Button>
           </div>
         </CardContent>
